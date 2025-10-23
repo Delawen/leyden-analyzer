@@ -39,7 +39,10 @@ jobs:
       with:
         files: target/*-runner.jar
         prerelease: true
+        make_latest: true
         generate_release_notes: false
+        draft: false
+        body: "This is a nightly snapshot for testing purposes."
         tag_name: v.${{ steps.set-release-name.outputs.RELEASE_DATE }}-dev
         token: ${{ secrets.RELEASE }}
 
@@ -52,17 +55,28 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-tags: 'true'
+
+    # checkout action is broken, so... https://github.com/actions/checkout/pull/2200
+    - run: git fetch --tags
 
     - name: Find older snapshot tags
       id: find-older-tags
-      run: echo 'tags=['$(git tag -l "*dev" | grep -v $(date +"%Y.%m.%d")  | xargs | sed -e 's/ /,/g')']' >> $GITHUB_OUTPUT
+      run: |
+        echo 'tags=["'$(git tag -l "*dev" | grep -v $(date +"%Y.%m.%d")  | xargs | sed -e 's/ /","/g')'"]' >> $GITHUB_OUTPUT
+    - run: |
+        echo 'Going to remove tags: ${{ steps.find-older-tags.outputs.tags }}'
 
   remove-older-snapshots:
     needs: find-older-snapshots
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
-        tag: ${{ fromJSON(needs.find-older-tags.outputs.tags) }}
+        tag: ${{ fromJSON(needs.find-older-snapshots.outputs.tags) }}
     steps:
     - name: Remove older snapshot tags and releases
       uses: ClementTsang/delete-tag-and-release@v0.3.1
@@ -70,4 +84,4 @@ jobs:
         delete_release: true
         tag_name: ${{ matrix.tag }}
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.RELEASE }}
