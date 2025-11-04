@@ -1,12 +1,16 @@
-# This workflow will build and create a release when a tag starting with "v" is pushed
+# This workflow will build and create a release when a tag following semver
 name: ci-release
 
 on:
   push:
-    tags-ignore:
-      - '*-dev'
-    branches-ignore:
-      - '*'
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-rc*'
+      - '[0-9]+.[0-9]+.[0-9]+-alpha*'
+      - '[0-9]+.[0-9]+.[0-9]+-beta*'
+      - '[0-9]+.[0-9]+.[0-9]+-gamma*'
+      - '[0-9]+.[0-9]+.[0-9]+-delta*'
+      - '[0-9]+.[0-9]+.[0-9]+-epsilon*'
 
 jobs:
   release:

@@ -43,7 +43,7 @@ jobs:
         generate_release_notes: false
         draft: false
         body: "This is a nightly snapshot for testing purposes."
-        tag_name: v.${{ steps.set-release-name.outputs.RELEASE_DATE }}-dev
+        tag_name: ${{ steps.set-release-name.outputs.RELEASE_DATE }}-dev
         token: ${{ secrets.RELEASE }}
 
   find-older-snapshots:
