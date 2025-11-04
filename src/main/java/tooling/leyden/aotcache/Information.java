@@ -3,10 +3,11 @@ package tooling.leyden.aotcache;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -31,6 +32,11 @@ public class Information {
 
 	//To pre-calculate auto-completion
 	private List<String> identifiers = new ArrayList<>();
+	//To search by address
+	private Map<String, Element> elementsByAddress = new ConcurrentHashMap<>();
+	//To find Heap Roots
+	private Set<String> heapRootAddresses = Collections.synchronizedSet(new HashSet<>());
+	private ReferencingElement heapRoot = null;
 
 	//Singletonish
 	private static Information myself;
@@ -49,12 +55,22 @@ public class Information {
 		elements.put(key, e);
 
 		// Due to weird ordering in logfiles, sometimes a method gets
-		// Due to weird ordering in logfiles, sometimes a method gets
 		// referenced before the class it belongs to gets referenced.
 		// So we have to make sure elements are not repeated both in
 		// this.elements and this.elementsNotInTheCache
 		if (elementsNotInTheCache.containsKey(key)) {
 			elementsNotInTheCache.remove(key);
+		}
+
+		if (e.getAddress() != null) {
+			elementsByAddress.putIfAbsent(e.getAddress(), e);
+			if (heapRootAddresses.contains(e.getAddress())) {
+				e.setHeapRoot(true);
+				heapRootAddresses.remove(e.getAddress());
+				if (heapRoot != null) {
+					heapRoot.addReference(e);
+				}
+			}
 		}
 
 		// Pre-calculate auto-completions
@@ -65,11 +81,22 @@ public class Information {
 
 	public void addExternalElement(Element e, String source) {
 		elementsNotInTheCache.put(new Key(e.getKey(), e.getType()), e);
+		if (e.getAddress() != null) {
+			elementsByAddress.putIfAbsent(e.getAddress(), e);
+		}
 		e.addSource(source);
 	}
 
 	public Map<Key, Element> getExternalElements() {
 		return this.elementsNotInTheCache;
+	}
+
+	public void addHeapRoot(String address) {
+		this.heapRootAddresses.add(address);
+	}
+
+	public void setHeapRoot(ReferencingElement e) {
+		this.heapRoot = e;
 	}
 
 	public void addWarning(Element element, String reason, WarningType warningType) {
@@ -84,9 +111,16 @@ public class Information {
 		statistics.clear();
 		configuration.clear();
 		identifiers.clear();
+		elementsByAddress.clear();
+		heapRootAddresses.clear();
+		heapRoot = null;
 	}
 	public boolean cacheContains(Element e) {
 		return getElements(e.getKey(), null, null, true, false, e.getType()).count() > 0;
+	}
+
+	public Element getByAddress(String address) {
+		return elementsByAddress.getOrDefault(address, null);
 	}
 
 	public Stream<Element> getElements(String key, String[] packageName, String[] excludePackageName,

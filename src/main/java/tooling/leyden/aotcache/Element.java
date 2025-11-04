@@ -13,8 +13,17 @@ import java.util.List;
 public abstract class Element {
 
 	private String type;
+	private Boolean isHeapRoot = false;
 
 	private List<String> whereDoesItComeFrom = new ArrayList<>();
+
+	public Boolean isHeapRoot() {
+		return isHeapRoot;
+	}
+
+	public void setHeapRoot(Boolean heapRoot) {
+		isHeapRoot = heapRoot;
+	}
 
 	/**
 	 * Do we know why this element was stored in the cache?
@@ -67,6 +76,13 @@ public abstract class Element {
 			sb.style(AttributedStyle.DEFAULT);
 		}
 		sb.append(".");
+		if (isHeapRoot()) {
+			sb.append("This is a ");
+			sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
+			sb.append("HEAP ROOT");
+			sb.style(AttributedStyle.DEFAULT);
+			sb.append(" element.");
+		}
 		sb.append(AttributedString.NEWLINE);
 		sb.append(leftPadding + "This information comes from: ");
 		getSources().forEach( s -> {

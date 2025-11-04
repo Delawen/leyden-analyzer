@@ -30,6 +30,11 @@ public class TrainingLogParser extends LogParser {
 		return "Training log";
 	}
 
+	@Override
+	public void postProcessing() {
+
+	}
+
 	private void processAOT(Line line) {
 		if (containsTags(line.tags(), "resolve")) {
 			if (line.level().equals("trace")) {

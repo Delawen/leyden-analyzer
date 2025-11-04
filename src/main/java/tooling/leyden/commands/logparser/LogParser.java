@@ -9,12 +9,10 @@ import java.util.function.Consumer;
 /**
  * This class is capable of parsing (certain) Java logs.
  */
-public abstract class LogParser implements Consumer<String> {
-
-	protected final Information information;
+public abstract class LogParser extends Parser {
 
 	public LogParser(LoadFileCommand loadFile) {
-		this.information = loadFile.getParent().getInformation();
+		super(loadFile);
 	}
 
 	@Override
@@ -23,8 +21,6 @@ public abstract class LogParser implements Consumer<String> {
 	}
 
 	abstract void processLine(Line line);
-
-	abstract String getSource();
 
 	private Line extractLineInformation(String content) {
 		String[] tags = new String[]{};

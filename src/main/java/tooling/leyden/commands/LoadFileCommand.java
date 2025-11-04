@@ -5,6 +5,7 @@ import org.jline.utils.AttributedStyle;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import tooling.leyden.commands.logparser.AOTMapParser;
+import tooling.leyden.commands.logparser.Parser;
 import tooling.leyden.commands.logparser.ProductionLogParser;
 import tooling.leyden.commands.logparser.TrainingLogParser;
 
@@ -12,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Scanner;
-import java.util.function.Consumer;
 
 /**
  * Commands to load information about the AOT Cache into memory. This can be for example in the form of logs.
@@ -41,7 +41,7 @@ public class LoadFileCommand implements Runnable {
 	public void run() {
 	}
 
-	private void load(Consumer<String> consumer, Path... files) {
+	private void load(Parser consumer, Path... files) {
 
 		if (files != null) {
 			for (Path file : files) {
@@ -54,7 +54,7 @@ public class LoadFileCommand implements Runnable {
 		}
 	}
 
-	private void load(Path path, Consumer<String> consumer) {
+	private void load(Path path, Parser consumer) {
 		long time = System.currentTimeMillis();
 		parent.getOut().println("Adding " + path.toAbsolutePath().getFileName()
 				+ (background ? " in background " : " ")
@@ -87,6 +87,7 @@ public class LoadFileCommand implements Runnable {
 					//to other loglines that we know how to process
 				}
 			}
+			consumer.postProcessing();
 		} catch (Exception e) {
 			(new AttributedString("ERROR: Loading " + path.getFileName(),
 					AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED))).println(parent.getTerminal());

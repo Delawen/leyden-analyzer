@@ -64,6 +64,16 @@ class AOTCacheParserTest extends DefaultTest {
 	}
 
 	@Test
+	void acceptMiscData() {
+		aotCacheParser.accept("0x00000008049a8410: @@ Misc data 1985520 bytes");
+		Element e = information.getByAddress("0x00000008049a8410");
+		assertNotNull(e);
+		assertEquals("Misc-data", e.getType());
+		assertEquals(1985520, e.getSize());
+
+	}
+
+	@Test
 	void acceptObjectsWithReferences() {
 		var classObject = new ClassObject("java.lang.Float");
 		information.addAOTCacheElement(classObject, "test");
@@ -370,6 +380,233 @@ class AOTCacheParserTest extends DefaultTest {
 		assertTrue(information.getElements(null, null, null, true, true, "Class")
 				.filter(e -> ((ClassObject)e).isClassLoader())
 				.allMatch(e -> ((ClassObject) e).getPackageName().equalsIgnoreCase("jdk.internal.loader")));
+	}
+
+	@Test
+	void objectBasedDependencyGraph() {
+		String mapfile =
+				"""
+						0x00000008007f4290: @@ Class             688 java.lang.String
+						0x00000008007eee30: @@ Class             512 [Ljava.lang.Object;
+						0x00000008007f08c0: @@ Class             512 [B
+						0x00000008007f4648: @@ Class             512 [Ljava.lang.String;
+						0x00000008007f5a48: @@ Class             776 java.lang.Class
+						0x00000008008057c8: @@ Class             560 java.lang.module.ModuleDescriptor
+						0x000000080081b748: @@ Class             648 java.lang.Integer
+						0x000000080081be80: @@ Class             512 [Ljava.lang.Integer;
+						0x000000080084e2e8: @@ Class             528 jdk.internal.loader.ClassLoaders
+						0x0000000800851090: @@ Class             840 jdk.internal.loader.ClassLoaders$AppClassLoader
+						0x00000008008518b0: @@ Class             832 jdk.internal.loader.ClassLoaders$PlatformClassLoader
+						0x0000000800853708: @@ Class             832 jdk.internal.loader.ClassLoaders$BootClassLoader
+						0x00000008008b0a08: @@ Class             1632 java.util.ArrayList
+						0x0000000800932e00: @@ Class             560 java.lang.module.ModuleDescriptor$Version
+						
+						0x00000000ffd00000: @@ Object (0xffd00000) [Ljava.lang.Object; length: 5391
+						 - klass: 'java/lang/Object'[] 0x00000008007eee30
+						 root[   0]: 0x00000000ffd05450 (0xffd05450) [Ljava.lang.Integer; length: 256
+						
+						0x00000000ffd05450: @@ Object (0xffd05450) [Ljava.lang.Integer; length: 256
+						 - klass: 'java/lang/Integer'[] 0x000000080081be80
+						 -   0: 0x00000000ffe5d0a0 (0xffe5d0a0) java.lang.Integer
+						
+						0x00000000ffd074c0: @@ Object (0xffd074c0) java.lang.module.ModuleDescriptor
+						 - klass: 'java/lang/module/ModuleDescriptor' 0x00000008008057c8
+						 - fields (8 words):
+						 - private transient 'hash' 'I' @12  -954841806 (0xc7164532)
+						 - private final 'open' 'Z' @16  false (0x00)
+						 - private final 'automatic' 'Z' @17  false (0x00)
+						 - private final 'name' 'Ljava/lang/String;' @20 0x00000000ffd07500 (0xffd07500) java.lang.String "jdk.internal.opt"
+						 - private final 'version' 'Ljava/lang/module/ModuleDescriptor$Version;' @24 0x00000000ffd07518 (0xffd07518) java.lang.module.ModuleDescriptor$Version
+						 - private final 'rawVersionString' 'Ljava/lang/String;' @28 null
+						
+						0x00000000ffd07500: @@ Object (0xffd07500) java.lang.String "jdk.internal.opt"
+						 - klass: 'java/lang/String' 0x00000008007f4290
+						 - fields (3 words):
+						 - private 'hash' 'I' @12  -1098610593 (0xbe84885f)
+						 - private final 'coder' 'B' @16  0 (0x00)
+						 - private 'hashIsZero' 'Z' @17  false (0x00)
+						 - injected 'flags' 'B' @18  1 (0x01)
+						 - private final 'value' '[B' @20 0x00000000ffe61c80 (0xffe61c80) [B length: 16
+						
+						0x00000000ffe61c80: @@ Object (0xffe61c80) [B length: 16
+						 - klass: {type array byte} 0x00000008007f08c0
+						 -   0: 6a j
+						 -   1: 64 d
+						 -   2: 6b k
+						 -   3: 2e .
+						 -   4: 69 i
+						 -   5: 6e n
+						 -   6: 74 t
+						 -   7: 65 e
+						 -   8: 72 r
+						 -   9: 6e n
+						 -  10: 61 a
+						 -  11: 6c l
+						 -  12: 2e .
+						 -  13: 6f o
+						 -  14: 70 p
+						 -  15: 74 t
+						
+						0x00000000ffd07ba0: @@ Object (0xffd07ba0) [Ljava.lang.Object; length: 2
+						 - klass: 'java/lang/Object'[] 0x00000008007eee30
+						 -   0: 0x00000000ffd07500 (0xffd07500) java.lang.String "jdk.internal.opt"
+						 -   1: null
+						
+						
+						0x00000000ffd07518: @@ Object (0xffd07518) java.lang.module.ModuleDescriptor$Version
+						 - klass: 'java/lang/module/ModuleDescriptor$Version' 0x0000000800932e00
+						 - fields (4 words):
+						 - private final 'sequence' 'Ljava/util/List;' @16 0x00000000ffd07550 (0xffd07550) java.util.ArrayList
+						 - resolved_references: 0x00000000ffd07ba0 (0xffd07ba0) [Ljava.lang.Object; length: 18
+						0x00000000ffd07518:   00000001 00000000 00932e00 ffd07538 ffd07550 ffd07588 ffd075d0 00000000   ............8u..Pu...u...u......
+					
+						
+						0x00000000ffd07550: @@ Object (0xffd07550) java.util.ArrayList
+						 - klass: 'java/util/ArrayList' 0x00000008008b0a08
+						 - fields (3 words):
+						 - protected transient 'modCount' 'I' @12  1 (0x00000001)
+						 - private 'size' 'I' @16  1 (0x00000001)
+						 - transient 'elementData' '[Ljava/lang/Object;' @20 0x00000000ffd07568 (0xffd07568) [Ljava.lang.Object; length: 4
+						
+						0x00000000ffd07568: @@ Object (0xffd07568) [Ljava.lang.Object; length: 4
+						 - klass: 'java/lang/Object'[] 0x00000008007eee30
+						 -   0: 0x00000000ffe5d0a0 (0xffe5d0a0) java.lang.Integer
+						 -   1: null
+						 -   2: null
+						 -   3: null
+						0x00000000ffd07568:   00000001 00000000 007eee30 00000004 ffe5d0a0 00000000 00000000 00000000   ........0.~.....................
+						
+						0x00000000ffe5d0a0: @@ Object (0xffe5d0a0) java.lang.Integer
+						 - klass: 'java/lang/Integer' 0x000000080081b748
+						 - fields (2 words):
+						 - private final 'value' 'I' @12  26 (0x0000001a)
+						  - resolved_references: null- ---- static fields (1):
+						
+						0x00000000ffdf4f38: @@ Object (0xffdf4f38) java.lang.Class Ljava/util/ArrayList; (aot-inited)
+						 - klass: 'java/lang/Class' 0x00000008007f5a48
+						 - fields (18 words):
+						 - private volatile transient 'classRedefinedCount' 'I' @12  0 (0x00000000)
+						 - injected 'klass' 'J' @16  34368850440 (0x00000008008b0a08)
+						 - injected 'array_klass' 'J' @24  0 (0x0000000000000000)
+						 - injected 'oop_size' 'I' @32  18 (0x00000012)
+						 - injected 'static_oop_field_count' 'I' @36  2 (0x00000002)
+						 - private final transient 'modifiers' 'C' @40    1 (0x0001)
+						 - private final transient 'classFileAccessFlags' 'C' @42  ! 33 (0x0021)
+						 - private final transient 'primitive' 'Z' @44  false (0x00)
+						 - private transient 'name' 'Ljava/lang/String;' @52 null
+						
+						""";
+
+		BufferedReader reader = new BufferedReader(new StringReader(mapfile));
+		reader.lines().forEach(aotCacheParser::accept);
+		aotCacheParser.postProcessing();
+
+		assertEquals(14, information.getElements(null, null, null, true, true, "Class").count());
+		assertEquals(11, information.getElements(null, null, null, true, true, "Object").count());
+
+		Element e = information.getByAddress("0x00000000ffd00000");
+		assertEquals("Object", e.getType());
+		assertTrue(e.isHeapRoot());
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008007eee30")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd05450")));
+		assertEquals(2, ((ReferencingElement)e).getReferences().size());
+
+		e = information.getByAddress("0x00000000ffd05450");
+		assertEquals("Object", e.getType());
+		assertTrue(e.isHeapRoot());
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x000000080081be80")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffe5d0a0")));
+		assertEquals(2, ((ReferencingElement)e).getReferences().size());
+
+		e = information.getByAddress("0x00000000ffd074c0");
+		assertEquals("Object", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008008057c8")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd07500")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd07518")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008007f4290")));
+		assertEquals(4, ((ReferencingElement)e).getReferences().size());
+
+		e = information.getByAddress("0x00000000ffd07500");
+		assertEquals("Object", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008007f4290")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffe61c80")));
+		assertEquals(2, ((ReferencingElement)e).getReferences().size());
+
+		e = information.getByAddress("0x00000000ffe61c80");
+		assertEquals("Object", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008007f08c0")));
+		assertEquals(1, ((ReferencingElement)e).getReferences().size());
+
+		e = information.getByAddress("0x00000000ffd07ba0");
+		assertEquals("Object", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008007eee30")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd07500")));
+		assertEquals(2, ((ReferencingElement)e).getReferences().size());
+
+		e = information.getByAddress("0x00000000ffd07518");
+		assertEquals("Object", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x0000000800932e00")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd07550")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd07ba0")));
+		assertEquals(3, ((ReferencingElement)e).getReferences().size());
+
+		e = information.getByAddress("0x00000000ffd07550");
+		assertEquals("Object", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008008b0a08")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd07568")));
+		assertEquals(2, ((ReferencingElement)e).getReferences().size());
+
+		e = information.getByAddress("0x00000000ffd07568");
+		assertEquals("Object", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008007eee30")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffe5d0a0")));
+		assertEquals(2, ((ReferencingElement)e).getReferences().size());
+
+		e = information.getByAddress("0x00000000ffe5d0a0");
+		assertEquals("Object", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x000000080081b748")));
+		assertEquals(1, ((ReferencingElement)e).getReferences().size());
+
+		e = information.getByAddress("0x00000000ffdf4f38");
+		assertEquals("Object", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008007f5a48")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008007f4290")));
+		assertTrue(((ReferencingElement)e).getReferences().stream()
+				.anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008008b0a08")));
+		assertEquals(3, ((ReferencingElement)e).getReferences().size());
+
 	}
 
 }

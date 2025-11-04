@@ -50,6 +50,11 @@ public class ProductionLogParser extends LogParser {
 		return "Production log";
 	}
 
+	@Override
+	public void postProcessing() {
+
+	}
+
 	private void processClassLoad(Line line) {
 		if (line.message().contains(" source: ")) {
 			String className = line.message().substring(0, line.message().indexOf("source: ")).trim();
