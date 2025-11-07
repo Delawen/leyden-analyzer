@@ -3,16 +3,19 @@ package tooling.leyden.commands;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
+import org.w3c.dom.Attr;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import tooling.leyden.aotcache.ClassObject;
 import tooling.leyden.aotcache.ConstantPoolObject;
 import tooling.leyden.aotcache.Information;
 import tooling.leyden.aotcache.Element;
+import tooling.leyden.aotcache.MethodObject;
 import tooling.leyden.aotcache.ReferencingElement;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -64,8 +67,19 @@ class TreeCommand implements Runnable {
 			return;
 		}
 
+		//Always show classes (Objects are nice too, for traceability)
 		if (parameters.types == null) {
 			parameters.types = new String[]{"Class", "Object"};
+		}
+
+		//Really, always show classes
+		if (Arrays.stream(parameters.types).noneMatch(t -> t.equalsIgnoreCase("Class"))) {
+			ArrayList<String> types = new ArrayList<>();
+			for (String t : parameters.types) {
+				types.add(t);
+			}
+			types.add("Class");
+			parameters.types = types.toArray(parameters.types);
 		}
 
 		List<Element> elements;
@@ -73,26 +87,41 @@ class TreeCommand implements Runnable {
 		switch (parameters.use) {
 			case both -> elements = parent.getInformation().getElements(parameters.getName(), parameters.packageName,
 					parameters.excludePackageName, parameters.showArrays, true, "Class").toList();
-			case notCached ->
-					elements = Information.getMyself().filterByParams(
-							parameters.packageName, parameters.excludePackageName, parameters.showArrays,
-							new String[] {"Class"},
-							parent.getInformation().getExternalElements().entrySet().parallelStream()
-									.filter(keyElementEntry -> parameters.getName().isBlank()
-											|| keyElementEntry.getKey().identifier().equalsIgnoreCase(parameters.getName()))
-									.map(keyElementEntry -> keyElementEntry.getValue())).toList();
+			case notCached -> elements = Information.getMyself().filterByParams(
+					parameters.packageName, parameters.excludePackageName, parameters.showArrays,
+					new String[]{"Class"},
+					parent.getInformation().getExternalElements().entrySet().parallelStream()
+							.filter(keyElementEntry -> keyElementEntry.getKey().identifier().equalsIgnoreCase(parameters.getName()))
+							.map(keyElementEntry -> keyElementEntry.getValue())).toList();
 			default -> elements = parent.getInformation().getElements(parameters.getName(), parameters.packageName,
 					parameters.excludePackageName, parameters.showArrays, false, "Class").toList();
 		}
 
 		if (!elements.isEmpty()) {
+			//Should be just one, but...
 			elements.forEach(e -> {
-				(new AttributedString("Calculating dependency graph... ",
-						AttributedStyle.DEFAULT)).println(parent.getTerminal());
+				AttributedStringBuilder asb = new AttributedStringBuilder();
+				asb.append("Showing which classes ");
+				if (!reverse) {
+					asb.append(e.toAttributedString());
+					asb.append(" uses.");
+				} else {
+					asb.append("are used by ");
+					asb.append(e.toAttributedString());
+					asb.append(".");
+				}
+				asb.append(AttributedString.NEWLINE);
+				asb.append("Calculating dependency graph... ");
+				asb.toAttributedString().println(parent.getTerminal());
 				parent.getTerminal().flush();
 				(new AttributedString("+ ")).print(parent.getTerminal());
 				e.toAttributedString().println(parent.getTerminal());
-				printReferrals(e, "  ", new ArrayList<>(List.of(e)), 0);
+				try {
+					printReferrals(e, "  ", Collections.synchronizedSet(new HashSet<>(List.of(e))), 0);
+				} catch (Throwable except) {
+					(new AttributedString("ERROR: Calculating the dependency graph:" + except.getLocalizedMessage(),
+							AttributedStyle.DEFAULT.foreground(AttributedStyle.RED).bold())).println(parent.getTerminal());
+				}
 			});
 			parent.getTerminal().flush();
 		} else {
@@ -101,13 +130,13 @@ class TreeCommand implements Runnable {
 		}
 	}
 
-	private void printReferrals(Element root, String leftPadding, List<Element> travelled, Integer level) {
+	private void printReferrals(Element root, String leftPadding, Set<Element> travelled, Integer level) {
 		if (level > this.level || (max > 0 && travelled.size() > max))
 			return;
 		level++;
 
 		boolean isFirst = true;
-		for (Element refer : getElementsReferencingThisOne(root)) {
+		for (Element refer : getElementsReferencingThisOne(root, Collections.synchronizedSet(new HashSet<>()))) {
 			AttributedStringBuilder asb = new AttributedStringBuilder();
 
 			if (isFirst) {
@@ -140,90 +169,83 @@ class TreeCommand implements Runnable {
 		}
 	}
 
-	Set<Element> getElementsReferencingThisOne(Element element) {
-		var referenced = new HashSet<Element>();
-		final var includeSymbols = Arrays.stream(parameters.types)
-				.anyMatch(t -> t.equalsIgnoreCase("Symbol"));
+	Set<Element> getElementsReferencingThisOne(Element element, Set<Element> walkedBy) {
+		if (walkedBy.contains(element)) {
+			// We have already been here, stop!
+			return Set.of();
+		}
+		walkedBy.add(element);
+
+		var referenced = Collections.synchronizedSet(new HashSet<Element>());
 
 		if (reverse) {
-			List<Element> tmp = new ArrayList<>();
+			//TODO This is heavy. Heavy heavy heavy no please don't
+			parent.getInformation().getAll().parallelStream()
+							.forEach(e -> {
+								if (e instanceof ReferencingElement re && re.getReferences().contains(element)) {
+									referenced.add(e);
+								}
 
-			if (element instanceof ClassObject c) {
-				if (includeSymbols) {
-					tmp.addAll(c.getSymbols());
-				} else {
-					c.getSymbols().forEach(s -> tmp.addAll(getElementsReferencingThisOne(s)));
-				}
-			} else {
-				List<ReferencingElement> elements = parent.getInformation().getAll().parallelStream()
-						.filter(e -> (e instanceof ReferencingElement))
-						.map(ReferencingElement.class::cast)
-						.filter(e -> (e.getReferences().contains(element)))
-						.toList();
-				for (Element e : elements) {
-					if (e.getType().equalsIgnoreCase("Symbol")) {
-						if (includeSymbols) {
-							tmp.add(e);
-						}
-						// Add the class this symbol refers to
-						// each symbol with a class should have only one class, so this is fine
-						((ReferencingElement) e).getReferences().stream()
-								.filter(c -> c.getType().equalsIgnoreCase("Class"))
-								.forEach(tmp::add);
-
-					} else {
-						tmp.add(e);
-					}
-				}
-			}
-
-			referenced.addAll(filter(tmp.parallelStream()).toList());
+								if (e instanceof ConstantPoolObject cp && cp.getPoolHolder() == element) {
+									referenced.add(e);
+								} else if (e instanceof MethodObject method && method.getClassObject() == element) {
+									referenced.add(e);
+								} else if (e instanceof ClassObject classObject
+										//We don't jump from Symbol to Symbol
+										&& !element.getType().equalsIgnoreCase("Symbol")
+										&& classObject.getSymbols().contains(element)) {
+									referenced.add(e);
+								}
+							});
 		} else {
 			if (element instanceof ClassObject classObject) {
-				//Add object instances of this class
-				if (Arrays.stream(parameters.types).anyMatch(t -> t.equalsIgnoreCase("Object"))) {
-					referenced.addAll(filter(parent.getInformation().getAll().parallelStream()
-							.filter(e -> e.getType().equalsIgnoreCase("Object"))
-							.filter(e -> ((ReferencingElement) e).getReferences().contains(element))).toList());
-				}
-
-				if (includeSymbols) {
-					referenced.addAll(
-							filter(classObject.getSymbols()
-									.parallelStream().map(Element.class::cast))
-									.toList());
-				} else {
-					//Add whatever the symbols redirect us to
-					Set<Element> builtBySymbols = new HashSet<>();
-					classObject.getSymbols().forEach(s -> traverseSymbols(s, builtBySymbols));
-					referenced.addAll(filter(builtBySymbols.parallelStream()).toList());
-				}
-
-				//If there are no symbols (maybe no log was loaded), show at least the methods
-				if (classObject.getSymbols().isEmpty()) {
-					referenced.addAll(classObject.getMethods());
-				}
+				referenced.addAll(classObject.getSymbols());
+				referenced.addAll(classObject.getMethods());
 			} else if (element instanceof ConstantPoolObject cp) {
-				referenced.addAll(filter(Stream.of(cp.getPoolHolder())).toList());
-			} else if (element instanceof ReferencingElement re) {
-				referenced.addAll(filter(re.getReferences().parallelStream()).toList());
+//it would be clearer if we could show the dependency connection as being to a specific Method or Field
+// and maybe mark it in some way as a CPCache pre-link dependency rather than, say, a Method link that arises because
+// of, say, a compilation dependency.
+				referenced.add(cp.getPoolHolder());
+			} else if (element instanceof MethodObject method) {
+				referenced.add(method.getClassObject());
+			}
+
+			if (element instanceof ReferencingElement re) {
+				referenced.addAll(re.getReferences());
 			}
 		}
 
+		final Set<Element> elements = Collections.synchronizedSet(new HashSet<>());
+
+		Set<Element> tmp = new HashSet<>();
+		// If we are showing these elements (in parameters.type), add them to result:
+		referenced.parallelStream()
+				.filter(e -> Arrays.stream(parameters.types).anyMatch(t -> t.equalsIgnoreCase(e.getType())))
+				.forEach(tmp::add);
+		//filter in case we have more constraints from packages or something
+		filter(tmp.stream()).forEach(elements::add);
 		//remove parent node, if it is there
-		referenced.remove(element);
+		elements.remove(element);
+		walkedBy.addAll(elements);
 
-		return referenced;
-	}
+		if (max > 0 && max < elements.size()) {
+			// Do not continue looping recursively, this is already enough
+			// because all elements here are going to be printed
+			// this is the last call
+			return elements;
+		}
+
+		// If we are not showing these elements (not in parameters.type), traverse them recursively:
+		//TODO do we need to traverse all of them? Or only certain types?
+		referenced.stream()
+				.filter(e -> Arrays.stream(parameters.types).noneMatch(t -> t.equalsIgnoreCase(e.getType())))
+				.filter(e -> !walkedBy.contains(e))
+				.peek(e -> System.out.println("Recursively looping over " + e))
+				.forEach(e -> elements.addAll(getElementsReferencingThisOne(e, walkedBy))
+				);
 
 
-	private void traverseSymbols(ReferencingElement symbol, Set<Element> referenced) {
-		symbol.getReferences().stream()
-				.filter(e -> e.getType().equalsIgnoreCase("Symbol"))
-				.map(ReferencingElement.class::cast)
-				.forEach(s -> s.getReferences().stream()
-						.filter(e -> e.getType().equalsIgnoreCase("Class"))
-						.forEach(referenced::add));
+		return elements;
 	}
 
 	//Delegate on Information for filtering

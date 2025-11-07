@@ -7,6 +7,7 @@ import tooling.leyden.aotcache.Information;
 import tooling.leyden.commands.logparser.AOTMapParser;
 import tooling.leyden.commands.logparser.TrainingLogParser;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -59,7 +60,7 @@ class TreeCommandTest extends DefaultTest {
 		Element root = Information.getMyself()
 				.getElements("org.infinispan.rest.framework.impl.InvocationImpl", null, null, true, true, "Class")
 				.findAny().get();
-		Set<Element> elements = command.getElementsReferencingThisOne(root);
+		Set<Element> elements = command.getElementsReferencingThisOne(root, new HashSet<>());
 		assertEquals(4, elements.size());
 		elements.stream().allMatch(e -> e.getType().equalsIgnoreCase("Class") || e.getType().equalsIgnoreCase("Object"));
 
@@ -67,31 +68,31 @@ class TreeCommandTest extends DefaultTest {
 				.getElements("java.util.Set", null, null, true, true, "Class")
 				.findAny().get();
 		command.reverse = true;
-		elements = command.getElementsReferencingThisOne(reversedRoot);
+		elements = command.getElementsReferencingThisOne(reversedRoot, new HashSet<>());
 		assertEquals(1, elements.size());
 		assertTrue(elements.contains(root));
 
 		//Now include Symbols
 		command.parameters.types = new String[]{"Class", "Object", "Symbol"};
 		command.reverse = false;
-		elements = command.getElementsReferencingThisOne(root);
+		elements = command.getElementsReferencingThisOne(root, new HashSet<>());
 		assertEquals(1, elements.size());
 		elements.stream().allMatch(e -> e.getType().equalsIgnoreCase("Symbol"));
 		elements.stream().allMatch(e -> e.getKey().equalsIgnoreCase("org/infinispan/rest/framework/impl/InvocationImpl"));
 
 		//Next level (based on Symbol)
-		elements = command.getElementsReferencingThisOne(elements.iterator().next());
+		elements = command.getElementsReferencingThisOne(elements.iterator().next(), new HashSet<>());
 		assertEquals(12, elements.size());
 		elements.stream().allMatch(e -> e.getType().equalsIgnoreCase("Class") || e.getType().equalsIgnoreCase("Symbol"));
 
 		command.reverse = true;
-		elements = command.getElementsReferencingThisOne(reversedRoot);
+		elements = command.getElementsReferencingThisOne(reversedRoot, new HashSet<>());
 		assertEquals(1, elements.size());
 		elements.stream().allMatch(e -> e.getType().equalsIgnoreCase("Symbol"));
 		elements.stream().allMatch(e -> e.getKey().equalsIgnoreCase("java/util/Set"));
 
 		//Next level (based on Symbol)
-		elements = command.getElementsReferencingThisOne(elements.iterator().next());
+		elements = command.getElementsReferencingThisOne(elements.iterator().next(), new HashSet<>());
 		assertEquals(2, elements.size());
 		elements.stream().anyMatch(e -> e.getType().equalsIgnoreCase("Class"));
 		elements.stream().anyMatch(e -> e.getType().equalsIgnoreCase("Symbol"));
