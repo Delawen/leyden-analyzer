@@ -47,6 +47,7 @@ public class ReferencingElement extends Element {
 	public void addReference(Element reference) {
 		if (!this.references.contains(reference) && this != reference) {
 			this.references.add(reference);
+			reference.markAsReferenced(this);
 		}
 	}
 

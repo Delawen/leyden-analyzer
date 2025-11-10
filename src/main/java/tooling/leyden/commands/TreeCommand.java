@@ -179,24 +179,7 @@ class TreeCommand implements Runnable {
 		var referenced = Collections.synchronizedSet(new HashSet<Element>());
 
 		if (reverse) {
-			//TODO This is heavy. Heavy heavy heavy no please don't
-			parent.getInformation().getAll().parallelStream()
-							.forEach(e -> {
-								if (e instanceof ReferencingElement re && re.getReferences().contains(element)) {
-									referenced.add(e);
-								}
-
-								if (e instanceof ConstantPoolObject cp && cp.getPoolHolder() == element) {
-									referenced.add(e);
-								} else if (e instanceof MethodObject method && method.getClassObject() == element) {
-									referenced.add(e);
-								} else if (e instanceof ClassObject classObject
-										//We don't jump from Symbol to Symbol
-										&& !element.getType().equalsIgnoreCase("Symbol")
-										&& classObject.getSymbols().contains(element)) {
-									referenced.add(e);
-								}
-							});
+			referenced.addAll(element.getWhoReferencesMe());
 		} else {
 			if (element instanceof ClassObject classObject) {
 				referenced.addAll(classObject.getSymbols());
@@ -231,19 +214,20 @@ class TreeCommand implements Runnable {
 		if (max > 0 && max < elements.size()) {
 			// Do not continue looping recursively, this is already enough
 			// because all elements here are going to be printed
-			// this is the last call
 			return elements;
 		}
 
 		// If we are not showing these elements (not in parameters.type), traverse them recursively:
-		//TODO do we need to traverse all of them? Or only certain types?
-		referenced.stream()
+		referenced.parallelStream()
 				.filter(e -> Arrays.stream(parameters.types).noneMatch(t -> t.equalsIgnoreCase(e.getType())))
+				//Do not loop infinitely
 				.filter(e -> !walkedBy.contains(e))
-				.peek(e -> System.out.println("Recursively looping over " + e))
 				.forEach(e -> elements.addAll(getElementsReferencingThisOne(e, walkedBy))
 				);
 
+		//remove parent node, again, if it is there
+		//(it is usually there, because when traversing elements we usually find circular references)
+		elements.remove(element);
 
 		return elements;
 	}

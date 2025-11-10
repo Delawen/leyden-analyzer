@@ -30,6 +30,7 @@ public class ConstantPoolObject extends Element {
 
 	public void setPoolHolder(ClassObject poolHolder) {
 		this.poolHolder = poolHolder;
+		poolHolder.markAsReferenced(this);
 	}
 
 	@Override

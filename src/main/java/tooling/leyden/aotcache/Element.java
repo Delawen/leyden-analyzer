@@ -6,16 +6,25 @@ import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-/** Elements that can be found on the Information.**/
+/**
+ * Elements that can be found on the Information.
+ **/
 public abstract class Element {
 
 	private String type;
 	private Boolean isHeapRoot = false;
-
 	private List<String> whereDoesItComeFrom = new ArrayList<>();
+	private List<String> source = new ArrayList<>();
+	private Set<Element> whoReferencesMe = new HashSet<>();
+	/**
+	 * Address where an element can be found
+	 */
+	private String address;
 
 	public Boolean isHeapRoot() {
 		return isHeapRoot;
@@ -34,7 +43,7 @@ public abstract class Element {
 		return whereDoesItComeFrom;
 	}
 
-	public void addWhereDoesItComeFrom(String whereDoesItComeFrom) {
+	public final void addWhereDoesItComeFrom(String whereDoesItComeFrom) {
 		this.whereDoesItComeFrom.add(whereDoesItComeFrom);
 	}
 
@@ -46,9 +55,11 @@ public abstract class Element {
 	public String getType() {
 		return type;
 	}
+
 	public void setType(String type) {
 		this.type = type;
 	}
+
 	/**
 	 * When describing an element, this is the String we are going to use.
 	 *
@@ -85,7 +96,7 @@ public abstract class Element {
 		}
 		sb.append(AttributedString.NEWLINE);
 		sb.append(leftPadding + "This information comes from: ");
-		getSources().forEach( s -> {
+		getSources().forEach(s -> {
 			sb.style(AttributedStyle.DEFAULT);
 			sb.append(AttributedString.NEWLINE);
 			sb.append(leftPadding);
@@ -110,6 +121,16 @@ public abstract class Element {
 		this.size = size;
 	}
 
+	public Collection<Element> getWhoReferencesMe() {
+		return whoReferencesMe;
+	}
+
+	public final void markAsReferenced(Element e) {
+		if (e != this) {
+			this.whoReferencesMe.add(e);
+		}
+	}
+
 	/**
 	 * Used to search for this element. For example, on classes this would be the full qualified name of the class.
 	 *
@@ -118,7 +139,6 @@ public abstract class Element {
 	public abstract String getKey();
 
 
-	private List<String> source = new LinkedList<>();
 	public void addSource(String source) {
 		if (!this.source.contains(source)) {
 			this.source.add(source);
@@ -136,10 +156,6 @@ public abstract class Element {
 	}
 
 
-	/**
-	 * Address where an element can be found
-	 */
-	private String address;
 	public String getAddress() {
 		return address;
 	}
@@ -188,10 +204,5 @@ public abstract class Element {
 			return false;
 
 		return getType().equals(element.getType()) && getKey().equals(element.getKey());
-	}
-
-	@Override
-	public int hashCode() {
-		return getType().hashCode();
 	}
 }

@@ -67,6 +67,7 @@ public class ClassObject extends ReferencingElement {
 			this.getSymbols().add(symbol);
 			this.getSymbols().sort(Comparator.comparing(Element::getKey));
 		}
+		symbol.markAsReferenced(this);
 	}
 
 	public void setName(String name) {
@@ -100,6 +101,7 @@ public class ClassObject extends ReferencingElement {
 			method.setClassObject(this);
 			this.getMethods().sort(Comparator.comparing(Element::isTrained).thenComparing(Element::getKey));
 		}
+		method.markAsReferenced(this);
 	}
 
 	public Boolean isArray() {

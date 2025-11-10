@@ -21,7 +21,7 @@ public class AOTMapParser extends Parser {
 
 	private final String regexpAddress = "(?<address>0[xX][0-9a-fA-F]+)";
 
-// 0x0000000800868d58: @@ Class             520 java.lang.constant.ClassDesc
+	// 0x0000000800868d58: @@ Class             520 java.lang.constant.ClassDesc
 // 0x00000008049a8410: @@ Misc data 1985520 bytes
 // 0x00000000fff69c68: @@ Object (0xfff69c68) [B length: 45
 // 0x00000000fff63458: @@ Object (0xfff63458) java.lang.String$CaseInsensitiveComparator
@@ -29,9 +29,9 @@ public class AOTMapParser extends Parser {
 // 0x00000000ffef4720: @@ Object (0xffef4720) java.lang.Class Lsun/util/locale/BaseLocale$1;
 // 0x0000000801cd0518: @@ MethodTrainingData 96
 	private final Pattern assetHeader =
-		Pattern.compile(regexpAddress + ": @@ (?<type>\\w+)(?: data)?\\s+"
-				+ "(?<miniaddress>\\(0[xX][0-9a-fA-F]+\\))?"
-				+ "(?<size>\\d+)?\\s*(?<identifier>.*)");
+			Pattern.compile(regexpAddress + ": @@ (?<type>\\w+)(?: data)?\\s+"
+					+ "(?<miniaddress>\\(0[xX][0-9a-fA-F]+\\))?"
+					+ "(?<size>\\d+)?\\s*(?<identifier>.*)");
 
 	//  - klass: 'java/lang/Integer'[] 0x000000080081be80
 	private final Pattern klass = Pattern.compile(" - klass: '(?<class>[\\w+\\/?]+)' " + regexpAddress);
@@ -334,7 +334,10 @@ public class AOTMapParser extends Parser {
 			current = element;
 
 		} catch (Exception e) {
-			loadFile.getParent().getOut().println("ERROR at " + address + ": " + e.getMessage());
+			loadFile.getParent().getOut().println(
+					"ERROR at " + address + ": " + e.getClass() + " " +
+							e.getStackTrace()[0].getFileName() + e.getStackTrace()[0].getLineNumber()
+							+ " " + e.getMessage());
 		}
 	}
 
