@@ -1,40 +1,49 @@
 package tooling.leyden.aotcache;
 
+import jakarta.inject.Inject;
+import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Transient;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
+import tooling.leyden.commands.CommonParameters;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 /**
  * This class represents a method inside the AOT Cache.
  */
+@Entity
 public class MethodObject extends ReferencingElement {
 
+	@ManyToOne
 	private ClassObject classObject;
+	@OneToOne
 	private BasicObject constMethod;
-	private Element methodData;
-	private Element methodCounters;
-	private Element methodTrainingData;
-	private Map<Integer, Element> compileTrainingData = new HashMap<>();
+	@OneToOne
+	private ReferencingElement methodData;
+	@OneToOne
+	private ReferencingElement methodCounters;
+	@OneToOne
+	private ReferencingElement methodTrainingData;
+	@OneToMany(mappedBy = "method")
+	private Set<CompileTrainingData> compileTrainingData;
 
 	private String returnType;
 	private List<String> parameters = new ArrayList<>();
 
 	MethodObject(String identifier) {
 		super(identifier, "Method");
-		String qualifiedName = identifier.substring(identifier.indexOf(" ") + 1);
-		if (qualifiedName.contains("(")) {
-			qualifiedName = qualifiedName.substring(0, qualifiedName.indexOf("("));
-		}
-		this.setName(qualifiedName.substring(qualifiedName.lastIndexOf(".") + 1));
-		String className = qualifiedName.substring(0, qualifiedName.lastIndexOf("."));
-		this.fillReturnClass(identifier);
-		this.fillClass(className);
-		this.procesParameters(identifier);
+	}
+
+	public MethodObject() {
+
 	}
 
 	public ClassObject getClassObject() {
@@ -54,40 +63,40 @@ public class MethodObject extends ReferencingElement {
 		this.constMethod = constMethod;
 	}
 
-	public Element getMethodData() {
+	public ReferencingElement getMethodData() {
 		return methodData;
 	}
 
-	public void setMethodData(Element methodData) {
+	public void setMethodData(ReferencingElement methodData) {
 		this.methodData = methodData;
 	}
 
-	public Element getMethodCounters() {
+	public ReferencingElement getMethodCounters() {
 		return methodCounters;
 	}
 
-	public void setMethodCounters(Element methodCounters) {
+	public void setMethodCounters(ReferencingElement methodCounters) {
 		this.methodCounters = methodCounters;
 	}
 
-	public Element getMethodTrainingData() {
+	public ReferencingElement getMethodTrainingData() {
 		return methodTrainingData;
 	}
 
-	public void setMethodTrainingData(Element methodTrainingData) {
+	public void setMethodTrainingData(ReferencingElement methodTrainingData) {
 		this.methodTrainingData = methodTrainingData;
 	}
 
-	public Map<Integer, Element> getCompileTrainingData() {
+	public Set<CompileTrainingData> getCompileTrainingData() {
 		return compileTrainingData;
 	}
 
-	public void addCompileTrainingData(Integer level, Element compileTrainingData) {
-		this.compileTrainingData.put(level, compileTrainingData);
+	public void addCompileTrainingData(CompileTrainingData compileTrainingData) {
+		this.compileTrainingData.add(compileTrainingData);
 	}
 
-	public void addParameter(Element parameter) {
-		this.parameters.add(parameter.getKey());
+	public void addParameter(ClassObject parameter) {
+		this.parameters.add(parameter.getIdentifier());
 		addReference(parameter);
 	}
 
@@ -95,6 +104,10 @@ public class MethodObject extends ReferencingElement {
 	//Maybe it is defined later?
 	public void addParameter(String parameter) {
 		this.parameters.add(parameter);
+	}
+
+	public List<String> getParameters() {
+		return parameters;
 	}
 
 	public String getReturnType() {
@@ -106,21 +119,9 @@ public class MethodObject extends ReferencingElement {
 	}
 
 	@Override
-	public String getKey() {
-		StringBuilder sb = new StringBuilder(getReturnType() + " ");
-		sb.append((getClassObject() != null) ? getClassObject().getKey() + "." + getName() : getName());
-		sb.append("(");
-		if (!parameters.isEmpty()) {
-			sb.append(String.join(", ", parameters));
-		}
-		sb.append(")");
-		return sb.toString();
-	}
-
-	@Override
 	public boolean isTrained() {
 		return this.getMethodTrainingData() != null
-				|| !this.getCompileTrainingData().isEmpty();
+				|| (this.getCompileTrainingData() != null && !this.getCompileTrainingData().isEmpty());
 	}
 
 	@Override
@@ -135,7 +136,7 @@ public class MethodObject extends ReferencingElement {
 		sb.append(AttributedString.NEWLINE);
 		sb.append(leftPadding + "Belongs to the class ");
 		sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.CYAN));
-		sb.append(getClassObject().getKey());
+		sb.append(getClassObject().getIdentifier());
 		sb.style(AttributedStyle.DEFAULT);
 
 		if (this.methodCounters != null) {
@@ -165,8 +166,8 @@ public class MethodObject extends ReferencingElement {
 			sb.style(AttributedStyle.DEFAULT);
 			sb.append(" associated to it on level:");
 			sb.style(AttributedStyle.DEFAULT.bold());
-			for (Integer level : this.compileTrainingData.keySet()) {
-				sb.append(" " + level);
+			for (CompileTrainingData ctd : this.compileTrainingData) {
+				sb.append(" " + ctd.getLevel());
 			}
 			sb.style(AttributedStyle.DEFAULT);
 		} else {
@@ -201,43 +202,7 @@ public class MethodObject extends ReferencingElement {
 		return sb.toAttributedString();
 	}
 
-	private void procesParameters(final String identifier) {
-		if (!identifier.contains("(") || !identifier.contains(")")) {
-			return;
-		}
-		//Get parameter classes to add as references
-//88 void java.util.Hashtable.reconstitutionPut(java.util.Hashtable$Entry[], java.lang.Object, java.lang.Object)
-		String parameters[] = identifier.substring(identifier.indexOf("(") + 1, identifier.indexOf(")"))
-				.split(", ");
-		for (String parameter : parameters) {
-			if (!parameter.isBlank()) {
-				var classes = Information.getMyself().getElements(parameter, null, null, true, true, "Class").toList();
-				classes.forEach(this::addParameter);
-				if (classes.isEmpty()) {
-					this.addParameter(parameter);
-					//Maybe it was an array:
-					if (parameter.endsWith("[]")) {
-						parameter = parameter.substring(0, parameter.length() - 2);
-						Information.getMyself()
-								.getElements(parameter, null, null, true, true, "Class")
-								.forEachOrdered(this::addReference);
-					}
-				}
-			}
-		}
-	}
-
-	private void fillClass(String className) {
-		classObject = (ClassObject) ElementFactory.getOrCreate(className, "Class", null);
-		classObject.addMethod(this);
-	}
-
-	private void fillReturnClass(String identifier) {
-		if (identifier.indexOf(" ") > 0) {
-			this.setReturnType(identifier.substring(0, identifier.indexOf(" ")));
-			Information.getMyself()
-					.getElements(this.getReturnType(), null, null, true, true, "Class")
-					.forEach(this::addReference);
-		}
+	public void setCompileTrainingData(Set<CompileTrainingData> compileTrainingData) {
+		this.compileTrainingData = compileTrainingData;
 	}
 }

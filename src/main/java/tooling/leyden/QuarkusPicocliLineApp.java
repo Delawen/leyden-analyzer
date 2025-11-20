@@ -42,6 +42,9 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
 	@Inject
 	CommandLine.IFactory factory;
 
+	@Inject
+	DefaultCommand commands;
+
 	private static Status status;
 	private static Information information;
 
@@ -77,9 +80,7 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
 			Builtins builtins = new Builtins(workDir, new ConfigurationPath(workDir.get(), workDir.get()), null);
 			builtins.rename(Builtins.Command.TTOP, "top");
 
-			DefaultCommand commands = new DefaultCommand();
 			information = commands.getInformation();
-			PicocliCommandsFactory factory = new PicocliCommandsFactory();
 
 			CommandLine cmd = new CommandLine(commands, factory);
 			PicocliCommands picocliCommands = new PicocliCommands(cmd);
@@ -118,7 +119,10 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
 				reader.setOpt(LineReader.Option.HISTORY_IGNORE_SPACE);
 				builtins.setLineReader(reader);
 				commands.setReader(reader);
-				factory.setTerminal(terminal);
+				if (factory instanceof PicocliCommands.PicocliCommandsFactory fact) {
+					fact.setTerminal(terminal);
+				}
+
 
 				String prompt = "> ";
 

@@ -1,9 +1,11 @@
 package tooling.leyden.commands;
 
+import io.quarkus.arc.Unremovable;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
-import org.w3c.dom.Attr;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import tooling.leyden.aotcache.ClassObject;
@@ -31,9 +33,6 @@ import java.util.stream.Stream;
 		subcommands = {CommandLine.HelpCommand.class})
 class TreeCommand implements Runnable {
 
-	@CommandLine.ParentCommand
-	DefaultCommand parent;
-
 	@CommandLine.Mixin
 	CommonParameters parameters;
 
@@ -60,6 +59,16 @@ class TreeCommand implements Runnable {
 			paramLabel = "<true>")
 	Boolean reverse;
 
+	Information information;
+
+	@CommandLine.ParentCommand
+	DefaultCommand parent;
+
+	public TreeCommand(Information information, DefaultCommand parent) {
+		this.information = information;
+		this.parent = parent;
+	}
+
 	public void run() {
 
 		if (parameters.getName() == null || parameters.getName().isBlank()) {
@@ -83,20 +92,8 @@ class TreeCommand implements Runnable {
 			parameters.types = types.toArray(parameters.types);
 		}
 
-		List<Element> elements;
-
-		switch (parameters.use) {
-			case both -> elements = parent.getInformation().getElements(parameters.getName(), parameters.packageName,
-					parameters.excludePackageName, parameters.showArrays, true, "Class").toList();
-			case notCached -> elements = Information.getMyself().filterByParams(
-					parameters.packageName, parameters.excludePackageName, parameters.showArrays,
-					new String[]{"Class"},
-					parent.getInformation().getExternalElements().entrySet().parallelStream()
-							.filter(keyElementEntry -> keyElementEntry.getKey().identifier().equalsIgnoreCase(parameters.getName()))
-							.map(keyElementEntry -> keyElementEntry.getValue())).toList();
-			default -> elements = parent.getInformation().getElements(parameters.getName(), parameters.packageName,
-					parameters.excludePackageName, parameters.showArrays, false, "Class").toList();
-		}
+		List<Element> elements = parent.getInformation().getElements(parameters.getName(), parameters.packageName,
+					parameters.excludePackageName, parameters.use, "Class").toList();
 
 		if (!elements.isEmpty()) {
 			//Should be just one, but...
@@ -238,10 +235,67 @@ class TreeCommand implements Runnable {
 		return filter(elements.stream()).collect(Collectors.toSet());
 	}
 
-	//Delegate on Information for filtering
-	private Stream<Element> filter(Stream<Element> elements) {
-		return Information.filterByParams(parameters.packageName, parameters.excludePackageName, parameters.showArrays,
-				parameters.types, elements);
-	}
+	private Stream<Element> filter(Stream<Element> result) {
+		if (parameters.packageName != null && parameters.packageName.length > 0) {
+			result = result.filter(e -> {
+				if (e instanceof ClassObject classObject) {
+					return Arrays.stream(parameters.packageName).anyMatch(p -> classObject.getPackageName().startsWith(p));
+				}
+				if (e instanceof MethodObject methodObject) {
+					if (methodObject.getClassObject() != null) {
+						return Arrays.stream(parameters.packageName).anyMatch(p ->
+								methodObject.getClassObject().getPackageName().startsWith(p));
+					}
+					return Arrays.stream(parameters.packageName).anyMatch(p -> methodObject.getName().startsWith(p));
+				}
+				if (e.getType().equals("Object")
+						|| e.getType().startsWith("ConstantPool")) {
+					return Arrays.stream(parameters.packageName)
+							.anyMatch(p -> e.getIdentifier().startsWith(p));
+				}
+				if (e.getType().endsWith("TrainingData")
+						|| e.getType().equalsIgnoreCase("MethodData")
+						|| e.getType().equalsIgnoreCase("MethodCounters")) {
+					return Arrays.stream(parameters.packageName)
+							.anyMatch(p -> ((ReferencingElement) e).getReferences().stream()
+									.anyMatch(r -> {
+										if (r instanceof ClassObject classObject) {
+											return classObject.getPackageName().startsWith(p);
+										} else if (r instanceof MethodObject methodObject) {
+											return methodObject.getClassObject().getPackageName().startsWith(p);
+										}
+										return false;
+									}));
+				}
+				return false;
+			});
+		}
 
+		if (parameters.excludePackageName != null && parameters.excludePackageName.length > 0) {
+			result = result.filter(e -> {
+				if (e instanceof ClassObject classObject) {
+					return Arrays.stream(parameters.excludePackageName).noneMatch(p -> classObject.getPackageName().startsWith(p));
+				}
+				if (e instanceof MethodObject methodObject) {
+					if (methodObject.getClassObject() != null) {
+						return Arrays.stream(parameters.excludePackageName).noneMatch(p ->
+								methodObject.getClassObject().getPackageName().startsWith(p));
+					}
+					return Arrays.stream(parameters.excludePackageName).noneMatch(p -> methodObject.getName().startsWith(p));
+				}
+				if (e.getType().equals("Object") || e.getType().startsWith("ConstantPool")) {
+
+					return Arrays.stream(parameters.excludePackageName).noneMatch(p -> e.getIdentifier().startsWith(p));
+				}
+				return false;
+			});
+		}
+
+		if (parameters.types != null && parameters.types.length > 0) {
+			result = result.filter(e -> Arrays.stream(parameters.types).anyMatch(t -> t.equalsIgnoreCase(e.getType()))
+			);
+		}
+
+		return result;
+	}
 }

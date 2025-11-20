@@ -1,26 +1,39 @@
 package tooling.leyden.aotcache;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.transaction.Transactional;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 
 /**
  * This element represents a class inside the AOT Cache.
  */
+@Entity
 public class ClassObject extends ReferencingElement {
 
 	private String name;
 	private String packageName = "";
-	private List<MethodObject> methods = new ArrayList<>();
 	private String arrayPrefix = "";
-	private Element klassTrainingData;
-	private List<ReferencingElement> symbols = new ArrayList<>();
 	private Boolean isClassLoader = false;
+	@OneToOne
+	private ReferencingElement klassTrainingData;
+	@OneToMany(mappedBy = "classObject")
+	private Set<MethodObject> methods = new HashSet<>();
+	@OneToMany
+	private Set<ReferencingElement> symbols = new HashSet<>();
+	@OneToOne
+	private ConstantPoolObject constantPoolObject;
 
 	ClassObject(String identifier) {
 		super(identifier, "Class");
@@ -33,14 +46,16 @@ public class ClassObject extends ReferencingElement {
 				&& this.getName().startsWith("ClassLoaders")) {
 			isClassLoader = true;
 		}
+
+		setIdentifier(arrayPrefix + getPackageName() + "." + getName());
+	}
+
+	public ClassObject() {
+
 	}
 
 	public String getType() {
 		return "Class";
-	}
-
-	public String getKey() {
-		return arrayPrefix + getPackageName() + "." + getName();
 	}
 
 	public String getName() {
@@ -51,7 +66,7 @@ public class ClassObject extends ReferencingElement {
 		return packageName;
 	}
 
-	public List<MethodObject> getMethods() {
+	public Set<MethodObject> getMethods() {
 		return methods;
 	}
 
@@ -59,15 +74,13 @@ public class ClassObject extends ReferencingElement {
 		return isClassLoader;
 	}
 
-	public List<ReferencingElement> getSymbols() {
+	public Set<ReferencingElement> getSymbols() {
 		return symbols;
 	}
 
+	@Transactional
 	public void addSymbol(ReferencingElement symbol) {
-		if (!this.getSymbols().contains(symbol)) {
-			this.getSymbols().add(symbol);
-			this.getSymbols().sort(Comparator.comparing(Element::getKey));
-		}
+		this.getSymbols().add(symbol);
 		symbol.markAsReferenced(this);
 	}
 
@@ -79,7 +92,7 @@ public class ClassObject extends ReferencingElement {
 		return klassTrainingData;
 	}
 
-	public void setKlassTrainingData(Element klassTrainingData) {
+	public void setKlassTrainingData(ReferencingElement klassTrainingData) {
 		this.klassTrainingData = klassTrainingData;
 	}
 
@@ -100,7 +113,6 @@ public class ClassObject extends ReferencingElement {
 		if (!this.methods.contains(method)) {
 			this.methods.add(method);
 			method.setClassObject(this);
-			this.getMethods().sort(Comparator.comparing(Element::isTrained).thenComparing(Element::getKey));
 		}
 		method.markAsReferenced(this);
 	}
@@ -119,13 +131,21 @@ public class ClassObject extends ReferencingElement {
 		return true;
 	}
 
+	public ConstantPoolObject getConstantPoolObject() {
+		return constantPoolObject;
+	}
+
+	public void setConstantPoolObject(ConstantPoolObject constantPoolObject) {
+		this.constantPoolObject = constantPoolObject;
+	}
+
 	@Override
 	public AttributedString getDescription(String leftPadding) {
 		AttributedStringBuilder sb = new AttributedStringBuilder();
 		sb.append(super.getDescription(leftPadding));
 		sb.append(AttributedString.NEWLINE);
 		sb.append(leftPadding + "This class is ");
-		if (!Information.getMyself().cacheContains(this)) {
+		if (this.isCached()) {
 			sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
 			sb.append("NOT ");
 			sb.style(AttributedStyle.DEFAULT);

@@ -1,5 +1,9 @@
 package tooling.leyden.commands;
 
+import io.quarkus.arc.Unremovable;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.TransactionScoped;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 import picocli.CommandLine;
@@ -26,11 +30,13 @@ import java.io.PrintWriter;
 				CommandLine.HelpCommand.class})
 public class DefaultCommand implements Runnable {
 	private PrintWriter out;
-	private Information information = new Information();
+
+	private Information information;
 	private Terminal terminal;
 
 
-	public DefaultCommand() {
+	public DefaultCommand(Information information) {
+		this.information = information;
 	}
 
 	public void setReader(LineReader reader) {

@@ -1,9 +1,13 @@
 package tooling.leyden.commands;
 
+import io.quarkus.arc.Unremovable;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.TransactionScoped;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStyle;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import tooling.leyden.aotcache.CompileTrainingData;
 import tooling.leyden.aotcache.Configuration;
 import tooling.leyden.aotcache.ConstantPoolObject;
 import tooling.leyden.aotcache.Element;
@@ -38,6 +42,10 @@ class InfoCommand implements Runnable {
 			completionCandidates = InfoCommandTypes.class)
 	private String[] whatToShow;
 
+	public InfoCommand(DefaultCommand parent) {
+		this.parent = parent;
+	}
+
 	public void run() {
 		if (shouldShow(InfoCommandTypes.Types.Configuration.name()))
 			print(InfoCommandTypes.Types.Configuration.name(), parent.getInformation().getConfiguration());
@@ -49,7 +57,7 @@ class InfoCommand implements Runnable {
 	}
 
 	public void count() {
-		Stream<Element> elements = parent.getInformation().getElements(null, null, null, true, true, null);
+		Stream<Element> elements = parent.getInformation().getElements(null, null, null, CommonParameters.ElementsToUse.both, null);
 		final var counts = new HashMap<String, AtomicInteger>();
 
 		elements.forEach(item -> {
@@ -101,10 +109,10 @@ class InfoCommand implements Runnable {
 		var extLambdas = Double.valueOf(stats.getValue("[LOG] Lambda Methods not loaded from AOT Cache", 0).toString());
 		var classes = Double.valueOf(stats.getValue("[LOG] Classes loaded from AOT Cache", -1).toString());
 		if (classes < 0) {
-			classes = (double) parent.getInformation().getElements(null, null, null, true, false, "Class").count();
+			classes = (double) parent.getInformation().getElements(null, null, null, CommonParameters.ElementsToUse.cached, "Class").count();
 		}
 		var lambdas = Double.valueOf(stats.getValue("[LOG] Lambda Methods loaded from AOT Cache", 0).toString());
-		final double methodsSize = parent.getInformation().getElements(null, null, null, true, false, "Method").count();
+		final double methodsSize = parent.getInformation().getElements(null, null, null, CommonParameters.ElementsToUse.cached, "Method").count();
 
 		(new AttributedString("RUN SUMMARY: ", blueFormat)).println(parent.getTerminal());
 		if (extClasses < 0) {
@@ -156,7 +164,7 @@ class InfoCommand implements Runnable {
 		} else {
 
 			Long trainingData =
-					parent.getInformation().getElements(null, null, null, true, false, "KlassTrainingData")
+					parent.getInformation().getElements(null, null, null, CommonParameters.ElementsToUse.cached, "KlassTrainingData")
 							//Remove the training data that is not linked to anything
 							.filter(ktd -> !((ReferencingElement) ktd).getReferences().isEmpty())
 							.count();
@@ -166,12 +174,12 @@ class InfoCommand implements Runnable {
 			printPercentage("  -> KlassTrainingData: ", classes.doubleValue(), percentFormat, intFormat, greenFormat,
 					trainingData.doubleValue());
 			(new AttributedString("Objects in AOT Cache: ", AttributedStyle.DEFAULT)).print(parent.getTerminal());
-			(new AttributedString(intFormat.format(parent.getInformation().getElements(null, null, null, true, false,
+			(new AttributedString(intFormat.format(parent.getInformation().getElements(null, null, null, CommonParameters.ElementsToUse.cached,
 					"Object").count()), greenFormat)).println(parent.getTerminal());
 		}
 
 		Long methodCounters =
-				parent.getInformation().getElements(null, null, null, true, false, "MethodCounters")                        //Remove the training data that is not linked to anything
+				parent.getInformation().getElements(null, null, null, CommonParameters.ElementsToUse.cached, "MethodCounters")                        //Remove the training data that is not linked to anything
 						.filter(ktd -> !((ReferencingElement) ktd).getReferences().isEmpty())
 						.count();
 
@@ -180,11 +188,11 @@ class InfoCommand implements Runnable {
 					.println(parent.getTerminal());
 		} else {
 			Long methodData =
-					parent.getInformation().getElements(null, null, null, true, false, "MethodData")                        //Remove the training data that is not linked to anything
+					parent.getInformation().getElements(null, null, null, CommonParameters.ElementsToUse.cached, "MethodData")                        //Remove the training data that is not linked to anything
 							.filter(ktd -> !((ReferencingElement) ktd).getReferences().isEmpty())
 							.count();
 			Long methodTrainingData =
-					parent.getInformation().getElements(null, null, null, true, false, "MethodTrainingData")                        //Remove the training data that is not linked to anything
+					parent.getInformation().getElements(null, null, null, CommonParameters.ElementsToUse.cached, "MethodTrainingData")                        //Remove the training data that is not linked to anything
 							.filter(ktd -> !((ReferencingElement) ktd).getReferences().isEmpty())
 							.count();
 
@@ -199,12 +207,12 @@ class InfoCommand implements Runnable {
 					methodTrainingData.doubleValue());
 
 			Map<Integer, Integer> compilationLevels = new HashMap<>();
-			parent.getInformation().getElements(null, null, null, true, false, "Method")
+			parent.getInformation().getElements(null, null, null, CommonParameters.ElementsToUse.cached, "Method")
 					.forEach(e -> {
 						MethodObject method = (MethodObject) e;
-						for (Map.Entry<Integer, Element> entry : method.getCompileTrainingData().entrySet()) {
-							compilationLevels.putIfAbsent(entry.getKey(), 0);
-							compilationLevels.replace(entry.getKey(), compilationLevels.get(entry.getKey()) + 1);
+						for (CompileTrainingData ctd : method.getCompileTrainingData()) {
+							compilationLevels.putIfAbsent(ctd.getLevel(), 0);
+							compilationLevels.replace(ctd.getLevel(), compilationLevels.get(ctd.getLevel()) + 1);
 						}
 					});
 

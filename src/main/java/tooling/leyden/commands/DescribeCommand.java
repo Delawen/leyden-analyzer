@@ -1,5 +1,9 @@
 package tooling.leyden.commands;
 
+import io.quarkus.arc.Unremovable;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.TransactionScoped;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
@@ -31,23 +35,17 @@ class DescribeCommand implements Runnable {
 	@CommandLine.Mixin
 	private CommonParameters parameters;
 
+	Information information;
+
+	public DescribeCommand(Information information, DefaultCommand parent) {
+		this.information = information;
+		this.parent = parent;
+	}
+
 	public void run() {
 
-		List<Element> elements;
-
-		switch (parameters.use) {
-			case both -> elements = parent.getInformation().getElements(parameters.getName(), parameters.packageName,
-					parameters.excludePackageName, parameters.showArrays, true, parameters.types).toList();
-			case notCached ->
-					elements = Information.getMyself().filterByParams(
-							parameters.packageName, parameters.excludePackageName, parameters.showArrays, parameters.types,
-							parent.getInformation().getExternalElements().entrySet().parallelStream()
-									.filter(keyElementEntry -> parameters.getName().isBlank()
-											|| keyElementEntry.getKey().identifier().equalsIgnoreCase(parameters.getName()))
-									.map(keyElementEntry -> keyElementEntry.getValue())).toList();
-			default -> elements = parent.getInformation().getElements(parameters.getName(), parameters.packageName,
-					parameters.excludePackageName, parameters.showArrays, false, parameters.types).toList();
-		}
+		List<Element> elements = parent.getInformation().getElements(parameters.getName(), parameters.packageName,
+					parameters.excludePackageName, parameters.use, parameters.types).toList();
 
 		AttributedStringBuilder sb = new AttributedStringBuilder();
 		if (!elements.isEmpty()) {

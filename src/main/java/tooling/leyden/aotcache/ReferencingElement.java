@@ -1,6 +1,16 @@
 package tooling.leyden.aotcache;
 
 
+import jakarta.inject.Inject;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Transient;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 
@@ -14,13 +24,25 @@ import java.util.Set;
  * Elements that refer to other types of elements. For example: An element in the ConstantPool may be of certain
  * class, which is defined and loaded on the Information independently.
  **/
+@Entity
 public class ReferencingElement extends Element {
+
+	@Inject
+	@Transient
+	private Information information;
+
+	@OneToMany
 	private Set<Element> references = new HashSet<>();
 	private String name;
 
 	public ReferencingElement(String name, String type) {
 		this.setName(name);
 		this.setType(type);
+		this.setIdentifier(name);
+	}
+
+	public ReferencingElement() {
+
 	}
 
 	public String getName() {
@@ -29,11 +51,6 @@ public class ReferencingElement extends Element {
 
 	public void setName(String name) {
 		this.name = name;
-	}
-
-	@Override
-	public String getKey() {
-		return name;
 	}
 
 	public List<Element> getReferences() {
@@ -65,7 +82,7 @@ public class ReferencingElement extends Element {
 		refs.addAll(references);
 		refs.replaceAll(element ->
 						(element instanceof PlaceHolderElement) ?
-								Information.getMyself().getByAddress(element.getAddress()) : element);
+								information.getByAddress(element.getAddress()) : element);
 		references.clear();
 		references.addAll(refs);
 		references.remove(null);

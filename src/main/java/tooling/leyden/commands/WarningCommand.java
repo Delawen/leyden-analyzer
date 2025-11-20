@@ -1,11 +1,16 @@
 package tooling.leyden.commands;
 
+import io.quarkus.arc.Unremovable;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.TransactionScoped;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import tooling.leyden.aotcache.ClassObject;
 import tooling.leyden.aotcache.Element;
+import tooling.leyden.aotcache.Information;
 import tooling.leyden.aotcache.MethodObject;
 import tooling.leyden.aotcache.Warning;
 import tooling.leyden.aotcache.WarningType;
@@ -24,9 +29,6 @@ import java.util.Map;
 		description = {"Help detect and clarify warnings found. By default, it lists incidents detected on the logs."},
 		subcommands = {CommandLine.HelpCommand.class})
 class WarningCommand implements Runnable {
-
-	@CommandLine.ParentCommand
-	DefaultCommand parent;
 
 	@CommandLine.Option(
 			names = {"-t", "--type"},
@@ -52,6 +54,16 @@ class WarningCommand implements Runnable {
 			paramLabel = "<id>",
 			completionCandidates = Identifiers.class)
 	protected String name;
+
+	Information information;
+
+	@CommandLine.ParentCommand
+	DefaultCommand parent;
+
+	public WarningCommand(Information information, DefaultCommand parent) {
+		this.information = information;
+		this.parent = parent;
+	}
 
 	// Packages that are usually not part of the user application
 	// so we skip them on our auto checks
@@ -100,8 +112,8 @@ class WarningCommand implements Runnable {
 					"You can't recover it afterwards without doing a new check or loading the log file."})
 	public void rm(@CommandLine.Parameters(paramLabel = "<id>",
 			description = "warning to clear") String id) {
-		parent.getInformation().getAutoWarnings().removeIf(w -> w.getId().equalsIgnoreCase(id));
-		parent.getInformation().getWarnings().removeIf(w -> w.getId().equalsIgnoreCase(id));
+		parent.getInformation().getAutoWarnings().removeIf(w -> w.getId().equals(id));
+		parent.getInformation().getWarnings().removeIf(w -> w.getId().equals(id));
 	}
 
 
@@ -132,7 +144,7 @@ class WarningCommand implements Runnable {
 		var result = new ArrayList<Warning>();
 		var packages = new HashMap<String, Integer>();
 
-		parent.getInformation().getElements(null, null, excludedPackages, false, false, "Method")
+		parent.getInformation().getElements(null, null, excludedPackages, CommonParameters.ElementsToUse.both, "Method")
 				.map(MethodObject.class::cast)
 				.filter(e -> e.getMethodCounters() != null)
 				.filter(e ->  e.getMethodTrainingData() == null || e.getCompileTrainingData().isEmpty())
@@ -153,7 +165,7 @@ class WarningCommand implements Runnable {
 		var result = new ArrayList<Warning>();
 		var packages = new HashMap<String, Integer>();
 
-		for (Element e : parent.getInformation().getExternalElements().values()) {
+		for (Element e : parent.getInformation().getExternalElements()) {
 			if (e instanceof ClassObject classObject) {
 				if (Arrays.stream(excludedPackages).noneMatch(p -> classObject.getPackageName().startsWith(p))) {
 					addToPackageList(classObject, packages);

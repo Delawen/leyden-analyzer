@@ -1,14 +1,14 @@
 package tooling.leyden.commands;
 
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import tooling.leyden.aotcache.ClassObject;
-import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.MethodObject;
 import tooling.leyden.commands.logparser.AOTMapParser;
 
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -16,11 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @QuarkusTest
 class ListCommandTest extends DefaultTest {
 
+	@Inject
+	AOTMapParser aotCacheParser;
+
 	@Test
+	@Transactional
 	void checkUsedAndNotTrained() {
-		final var loadFile = new LoadFileCommand();
-		loadFile.setParent(getDefaultCommand());
-		AOTMapParser aotCacheParser = new AOTMapParser(loadFile);
 
 		aotCacheParser.accept("0x0000000801711128: @@ Class             624 org.infinispan.xsite.NoOpBackupSender");
 		aotCacheParser.accept("0x00000008017113f0: @@ ConstantPoolCache 64 org.infinispan.xsite.NoOpBackupSender");
@@ -48,37 +49,35 @@ class ListCommandTest extends DefaultTest {
 		aotCacheParser.accept("0x0000000801711128: @@ Class             624 java.lang.UnsupportedOperationException");
 		aotCacheParser.accept("0x0000000801bb65c8: @@ KlassTrainingData 40 java.lang.UnsupportedOperationException");
 
-		ListCommand command = new ListCommand();
-		command.parent = getDefaultCommand();
-		command.run = false;
-		command.trained = false;
-		command.parameters = new CommonParameters();
-		assertEquals(21, command.findElements(new AtomicInteger()).count());
+		listCommand.run = false;
+		listCommand.trained = false;
+		listCommand.parameters = new CommonParameters();
+		assertEquals(21, listCommand.findElements(new AtomicInteger()).count());
 
 		var count = new AtomicInteger();
-		command.parameters.types = new String[]{ "Class" };
-		assertTrue(command.findElements(count).allMatch(e -> e instanceof ClassObject));
+		listCommand.parameters.types = new String[]{ "Class" };
+		assertTrue(listCommand.findElements(count).allMatch(e -> e instanceof ClassObject));
 		assertEquals(2, count.get());
 
 		count = new AtomicInteger();
-		command.parameters.types = new String[]{ "Class", "Method" };
-		assertTrue(command.findElements(count).allMatch(e -> e instanceof ClassObject || e instanceof MethodObject));
+		listCommand.parameters.types = new String[]{ "Class", "Method" };
+		assertTrue(listCommand.findElements(count).allMatch(e -> e instanceof ClassObject || e instanceof MethodObject));
 		assertEquals(6, count.get());
 
-		command.run = true;
-		command.parameters.types = null;
+		listCommand.run = true;
+		listCommand.parameters.types = null;
 		count = new AtomicInteger();
-		assertTrue(command.findElements(count).allMatch(e -> e.isTraineable()));
+		assertTrue(listCommand.findElements(count).allMatch(e -> e.isTraineable()));
 		assertEquals(2, count.get());
 
-		command.trained = true;
+		listCommand.trained = true;
 		count = new AtomicInteger();
-		assertTrue(command.findElements(count).allMatch(e -> e.isTrained()));
+		assertTrue(listCommand.findElements(count).allMatch(e -> e.isTrained()));
 		assertEquals(1, count.get());
 
-		command.run = false;
+		listCommand.run = false;
 		count = new AtomicInteger();
-		assertTrue(command.findElements(count).allMatch(e -> e.isTrained()));
+		assertTrue(listCommand.findElements(count).allMatch(e -> e.isTrained()));
 		assertEquals(2, count.get());
 	}
 }

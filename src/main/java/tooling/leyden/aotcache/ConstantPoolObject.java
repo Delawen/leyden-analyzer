@@ -1,5 +1,7 @@
 package tooling.leyden.aotcache;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.OneToOne;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
@@ -7,14 +9,19 @@ import org.jline.utils.AttributedStyle;
 /**
  * This element represents an Object of the ConstantPool(Cache) inside the AOT Cache.
  */
+@Entity
 public class ConstantPoolObject extends Element {
 	private String constantPoolCacheAddress;
+	@OneToOne(mappedBy = "constantPoolObject")
 	private ClassObject poolHolder;
-	private String key;
 
-	ConstantPoolObject(String key) {
-		this.key = key;
+	ConstantPoolObject(String identifier) {
+		this.setIdentifier(identifier);
 		this.setType("ConstantPool");
+	}
+
+	public ConstantPoolObject() {
+
 	}
 
 	public String getConstantPoolCacheAddress() {
@@ -31,12 +38,6 @@ public class ConstantPoolObject extends Element {
 
 	public void setPoolHolder(ClassObject poolHolder) {
 		this.poolHolder = poolHolder;
-		poolHolder.markAsReferenced(this);
-	}
-
-	@Override
-	public String getKey() {
-		return key;
 	}
 
 	@Override

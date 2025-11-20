@@ -1,5 +1,8 @@
 package tooling.leyden.commands;
 
+import io.quarkus.arc.Unremovable;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.TransactionScoped;
 import picocli.CommandLine;
 import tooling.leyden.commands.autocomplete.Identifiers;
 import tooling.leyden.commands.autocomplete.Packages;
@@ -41,12 +44,6 @@ public class CommonParameters {
 			paramLabel = "<id>",
 			completionCandidates = Identifiers.class)
 	private String name;
-
-	@CommandLine.Option(names = {"--useArrays"},
-			description = "Use array classes if true. True by default.",
-			defaultValue = "true",
-			arity = "0..1")
-	protected Boolean showArrays = true;
 
 	@CommandLine.Option(names = {"--use", "-u"},
 			description = "What type of elements to use on this command: cached during AOT, not cached, or both. " +

@@ -1,13 +1,13 @@
 package tooling.leyden.commands.logparser;
 
 import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.BeforeAll;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.Information;
 import tooling.leyden.aotcache.WarningType;
+import tooling.leyden.commands.CommonParameters;
 import tooling.leyden.commands.DefaultTest;
-import tooling.leyden.commands.LoadFileCommand;
 
 import java.util.Arrays;
 
@@ -20,14 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @QuarkusTest
 class ProductionLogParserTest extends DefaultTest {
 
-	static ProductionLogParser parser;
-
-	@BeforeAll
-	static void init() {
-		final var loadFile = new LoadFileCommand();
-		loadFile.setParent(getDefaultCommand());
-		parser = new ProductionLogParser(loadFile);
-	}
+	@Inject
+	ProductionLogParser parser;
 
 	@Test
 	void acceptGenericLine() {
@@ -79,18 +73,19 @@ class ProductionLogParserTest extends DefaultTest {
 				".StatusLogger$PropertiesUtilsDouble$$Lambda/0x0000000805001228 source: org.apache.logging.log4j" +
 				".status.StatusLogger$PropertiesUtilsDouble");
 
-		assertFalse(Information.getMyself().getStatistics().getKeys().isEmpty());
-		assertFalse(Information.getMyself().getAll().isEmpty());
-		assertFalse(Information.getMyself().getExternalElements().isEmpty());
+		Information information = getInformation();
+		assertFalse(information.getStatistics().getKeys().isEmpty());
+		assertFalse(information.getAll().isEmpty());
+		assertFalse(information.getExternalElements().isEmpty());
 
-		final int extClasses = Integer.parseInt(Information.getMyself().getStatistics().getValue("[LOG] Classes not loaded from AOT Cache").toString());
-		final int extLambdas = Integer.parseInt(Information.getMyself().getStatistics().getValue("[LOG] Lambda Methods not loaded from AOT Cache").toString());
-		final int classes = Integer.parseInt(Information.getMyself().getStatistics().getValue("[LOG] Classes loaded from AOT Cache").toString());
-		final int lambdas = Integer.parseInt(Information.getMyself().getStatistics().getValue("[LOG] Lambda Methods loaded from AOT Cache").toString());
+		final int extClasses = Integer.parseInt(information.getStatistics().getValue("[LOG] Classes not loaded from AOT Cache").toString());
+		final int extLambdas = Integer.parseInt(information.getStatistics().getValue("[LOG] Lambda Methods not loaded from AOT Cache").toString());
+		final int classes = Integer.parseInt(information.getStatistics().getValue("[LOG] Classes loaded from AOT Cache").toString());
+		final int lambdas = Integer.parseInt(information.getStatistics().getValue("[LOG] Lambda Methods loaded from AOT Cache").toString());
 
-		assertEquals(Information.getMyself().getExternalElements().size(), extClasses);
-		assertEquals(Information.getMyself().getElements(null, null, null, true, false, "Class").count(), classes);
-		assertEquals(Information.getMyself().getElements(null, null, null, true, true, "Class").count(), extClasses + classes);
+		assertEquals(information.getExternalElements().size(), extClasses);
+		assertEquals(information.getElements(null, null, null, CommonParameters.ElementsToUse.cached, "Class").count(), classes);
+		assertEquals(information.getElements(null, null, null, CommonParameters.ElementsToUse.both, "Class").count(), extClasses + classes);
 
 		assertEquals(8, extClasses);
 		assertEquals(6, extLambdas);
@@ -98,9 +93,9 @@ class ProductionLogParserTest extends DefaultTest {
 		assertEquals(4, lambdas);
 
 		//Now check individual values
-		for (Element e : Information.getMyself().getAll()) {
+		for (Element e : information.getAll()) {
 			assertNull(e.getAddress()); //Log doesn't provide this
-			assertNotNull(e.getKey());
+			assertNotNull(e.getIdentifier());
 			assertNull(e.getSize()); //Log doesn't provide this
 			assertEquals("Class", e.getType());
 			assertEquals(1, e.getWhereDoesItComeFrom().size());
@@ -110,7 +105,7 @@ class ProductionLogParserTest extends DefaultTest {
 		}
 
 		//Just check we didn't create something unexpectedly
-		assertTrue(Information.getMyself().getWarnings().isEmpty());
+		assertTrue(information.getWarnings().isEmpty());
 	}
 
 	@Test
@@ -119,9 +114,9 @@ class ProductionLogParserTest extends DefaultTest {
 		parser.accept("[warning][aot       ] Preload Warning: Verification failed for org.apache.logging.log4j.core" +
 				".async.AsyncLoggerContext");
 
-		assertEquals(2, Information.getMyself().getWarnings().size());
+		assertEquals(2, getInformation().getWarnings().size());
 
-		assertTrue(Information.getMyself().getWarnings().stream().noneMatch(w -> w.getType() == WarningType.CacheCreation));
+		assertTrue(getInformation().getWarnings().stream().noneMatch(w -> w.getType() == WarningType.CacheCreation));
 	}
 
 	@Test
@@ -133,17 +128,18 @@ class ProductionLogParserTest extends DefaultTest {
 		parser.accept("[debug][aot,codecache,init]   C2 Blobs: total=30");
 		parser.accept("[debug][aot,codecache,init]   AOT code cache size: 598432 bytes");
 
-		assertEquals("553", Information.getMyself().getStatistics()
+		Information information = getInformation();
+		assertEquals("553", information.getStatistics()
 				.getValue("[LOG] [CodeCache] Loaded AOT code entries"));
-		assertEquals("493", Information.getMyself().getStatistics()
+		assertEquals("493", information.getStatistics()
 				.getValue("[LOG] [CodeCache] Loaded Adapters"));
-		assertEquals("10", Information.getMyself().getStatistics()
+		assertEquals("10", information.getStatistics()
 				.getValue("[LOG] [CodeCache] Loaded Shared Blobs"));
-		assertEquals("20", Information.getMyself().getStatistics()
+		assertEquals("20", information.getStatistics()
 				.getValue("[LOG] [CodeCache] Loaded C1 Blobs"));
-		assertEquals("30", Information.getMyself().getStatistics()
+		assertEquals("30", information.getStatistics()
 				.getValue("[LOG] [CodeCache] Loaded C2 Blobs"));
-		assertEquals("598432 bytes", Information.getMyself().getStatistics()
+		assertEquals("598432 bytes", information.getStatistics()
 				.getValue("[LOG] [CodeCache] AOT code cache size"));
 	}
 

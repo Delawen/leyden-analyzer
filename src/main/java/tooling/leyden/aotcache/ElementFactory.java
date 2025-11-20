@@ -1,17 +1,25 @@
 package tooling.leyden.aotcache;
 
-import java.util.function.Supplier;
+import jakarta.enterprise.context.Dependent;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import tooling.leyden.commands.CommonParameters;
 
+@Dependent
 public class ElementFactory {
 
-	public static Element getOrCreate(String identifier, String type, String address) {
-		return Information.getMyself()
-				.getElements(identifier, null, null, true, true, type)
-				.findAny()
+	@Inject
+	Information information;
+
+	@Transactional
+	public Element getOrCreate(String identifier, String type, String address) {
+		System.out.println("getOrCreate(" + identifier + ", " + type + ")");
+		return information
+				.getElement(identifier, null, null, CommonParameters.ElementsToUse.both, type)
 				.orElseGet(() -> getElement(identifier, type, address));
 	}
 
-	private static Element getElement(String identifier, String type, String address) {
+	private Element getElement(String identifier, String type, String address) {
 		Element e;
 
 		switch (type) {
@@ -20,13 +28,39 @@ public class ElementFactory {
 			}
 			case "Method" -> {
 				e = new MethodObject(identifier);
+				e = information.addExternalElement(e);
+				String qualifiedName = identifier.substring(identifier.indexOf(" ") + 1);
+				if (qualifiedName.contains("(")) {
+					qualifiedName = qualifiedName.substring(0, qualifiedName.indexOf("("));
+				}
+				((MethodObject) e).setName(qualifiedName.substring(qualifiedName.lastIndexOf(".") + 1));
+
+				String className = qualifiedName.substring(0, qualifiedName.lastIndexOf("."));
+				this.fillReturnClass((MethodObject) e, identifier);
+				ClassObject classObject = (ClassObject) getOrCreate(className, "Class", null);
+				classObject.addMethod((MethodObject) e);
+				information.update(classObject);
+				procesParameters((MethodObject) e, identifier);
+
+				// Set identifier, for searching this element
+				StringBuilder sb = new StringBuilder(((MethodObject) e).getReturnType() + " ");
+				sb.append((((MethodObject) e).getClassObject() != null) ? ((MethodObject) e).getClassObject().getIdentifier() + "." + ((MethodObject) e).getName() : ((MethodObject) e).getName());
+				sb.append("(");
+				if (!((MethodObject) e).getParameters().isEmpty()) {
+					sb.append(String.join(", ", ((MethodObject) e).getParameters()));
+				}
+				sb.append(")");
+				e.setIdentifier(sb.toString());
 			}
 			case "ConstantPool" -> {
 				e = new ConstantPoolObject(identifier);
 			}
-			case "KlassTrainingData", "CompileTrainingData", "MethodData", "MethodCounters", "MethodTrainingData",
+			case "KlassTrainingData", "MethodData", "MethodCounters", "MethodTrainingData",
 				 "Symbol", "Object" -> {
 				e = new ReferencingElement(identifier, type);
+			}
+			case "CompileTrainingData" -> {
+				e = new CompileTrainingData(identifier);
 			}
 			default -> {
 				e = new BasicObject(identifier);
@@ -35,7 +69,7 @@ public class ElementFactory {
 		}
 
 		//By default, all elements go here
-		Information.getMyself().addExternalElement(e);
+		e = information.addExternalElement(e);
 		//When we mark them as saved in the cache, we will move them from here
 
 		if (address != null) {
@@ -44,4 +78,45 @@ public class ElementFactory {
 
 		return e;
 	}
+
+
+	private void procesParameters(MethodObject method, final String identifier) {
+		if (!identifier.contains("(") || !identifier.contains(")")) {
+			return;
+		}
+		//Get parameter classes to add as references
+//88 void java.util.Hashtable.reconstitutionPut(java.util.Hashtable$Entry[], java.lang.Object, java.lang.Object)
+		String parameters[] = identifier.substring(identifier.indexOf("(") + 1, identifier.indexOf(")"))
+				.split(", ");
+		for (String parameter : parameters) {
+			if (!parameter.isBlank()) {
+				var classes = information.getElements(parameter, null, null, CommonParameters.ElementsToUse.cached, "Class")
+						.map(ClassObject.class::cast)
+						.toList();
+				classes.forEach(method::addParameter);
+				if (classes.isEmpty()) {
+					method.addParameter(parameter);
+					//Maybe it was an array:
+					if (parameter.endsWith("[]")) {
+						parameter = parameter.substring(0, parameter.length() - 2);
+						information
+								.getElements(parameter, null, null, CommonParameters.ElementsToUse.cached, "Class")
+								.map(ClassObject.class::cast)
+								.forEachOrdered(method::addReference);
+					}
+				}
+			}
+		}
+	}
+
+	private void fillReturnClass(MethodObject method, String identifier) {
+		if (identifier.indexOf(" ") > 0) {
+			method.setReturnType(identifier.substring(0, identifier.indexOf(" ")));
+			information
+					.getElements(method.getReturnType(), null, null, CommonParameters.ElementsToUse.cached, "Class")
+					.map(ClassObject.class::cast)
+					.forEach(method::addReference);
+		}
+	}
+
 }

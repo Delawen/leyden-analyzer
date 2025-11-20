@@ -1,33 +1,43 @@
 package tooling.leyden.aotcache;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Transient;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class represents errors in storing or loading elements to/from the cache.
  */
+@Entity
 public class Warning {
 
-	private String id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	private Long id;
 
 	private WarningType type;
 
 	/**
 	 * Element that suffered the problem.
 	 */
+	@OneToMany
 	private List<Element> element;
 
 	/**
 	 * String ready to be printed regarding this error.
 	 */
+	@Transient
 	private AttributedString message;
 
-	private static AtomicInteger idGenerator = new AtomicInteger();
+	private Boolean auto;
 
 	public Warning(List<Element> e, AttributedString message, WarningType type) {
 		this.element = new ArrayList<>();
@@ -40,7 +50,6 @@ public class Warning {
 						.forEach(this.element::add));
 		this.type = type;
 		this.message = message;
-		this.setId(idGenerator.getAndIncrement());
 	}
 
 	public Warning(Element e, AttributedString message, WarningType type) {
@@ -55,12 +64,16 @@ public class Warning {
 		this(List.of(), new AttributedString(description), WarningType.Unknown);
 	}
 
-	public String getId() {
+	public Warning() {
+
+	}
+
+	public Long getId() {
 		return id;
 	}
 
-	public void setId(Integer id) {
-		this.id = String.format("%04d", id);
+	public void setId(Long id) {
+		this.id = id;
 	}
 
 	public WarningType getType() {
@@ -69,14 +82,14 @@ public class Warning {
 
 	public boolean affects(String id) {
 		return !this.element.isEmpty()
-				&& this.element.stream().anyMatch(element -> element.getKey().equalsIgnoreCase(id));
+				&& this.element.stream().anyMatch(element -> element.getIdentifier().equalsIgnoreCase(id));
 	}
 
 	public AttributedString getDescription() {
 
 		AttributedStringBuilder sb = new AttributedStringBuilder();
 		sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.CYAN));
-		sb.append(this.getId());
+		sb.append(String.format("%04d", id));
 		sb.style(AttributedStyle.DEFAULT);
 		sb.append(" [");
 		sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.YELLOW));
@@ -89,5 +102,13 @@ public class Warning {
 
 	public String toString() {
 		return message.toString();
+	}
+
+	public Boolean getAuto() {
+		return auto;
+	}
+
+	public void setAuto(Boolean auto) {
+		this.auto = auto;
 	}
 }

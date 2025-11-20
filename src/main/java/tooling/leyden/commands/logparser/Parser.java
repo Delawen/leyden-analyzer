@@ -1,9 +1,10 @@
 package tooling.leyden.commands.logparser;
 
+import jakarta.enterprise.context.Dependent;
+import jakarta.inject.Inject;
 import tooling.leyden.aotcache.Information;
 import tooling.leyden.commands.LoadFileCommand;
 
-import java.util.Arrays;
 import java.util.function.Consumer;
 
 /**
@@ -11,12 +12,10 @@ import java.util.function.Consumer;
  */
 public abstract class Parser implements Consumer<String> {
 
-	protected final Information information;
-	protected final LoadFileCommand loadFile;
+	@Inject
+	Information information;
 
-	public Parser(LoadFileCommand loadFile) {
-		this.information = loadFile.getParent().getInformation();
-		this.loadFile = loadFile;
+	public Parser() {
 	}
 
 	abstract String getSource();

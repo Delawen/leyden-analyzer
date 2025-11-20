@@ -1,5 +1,9 @@
 package tooling.leyden.commands;
 
+import io.quarkus.arc.Unremovable;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import tooling.leyden.aotcache.Element;
@@ -15,10 +19,6 @@ import java.util.stream.Stream;
 		description = {"List what is on the cache. By default, it lists everything on the cache."},
 		subcommands = {CommandLine.HelpCommand.class})
 class ListCommand implements Runnable {
-
-	@CommandLine.ParentCommand
-	DefaultCommand parent;
-
 	@CommandLine.Mixin
 	protected CommonParameters parameters;
 
@@ -35,6 +35,14 @@ class ListCommand implements Runnable {
 			arity = "0..1")
 	protected Boolean run;
 
+	@CommandLine.ParentCommand
+	DefaultCommand parent;
+
+
+	public ListCommand(DefaultCommand parent) {
+		this.parent = parent;
+	}
+
 	public void run() {
 		final var counter = new AtomicInteger();
 		final var elements = findElements(counter);
@@ -43,23 +51,10 @@ class ListCommand implements Runnable {
 		parent.getOut().println("Found " + counter.get() + " elements.");
 	}
 
+	@Transactional(Transactional.TxType.MANDATORY)
 	protected Stream<Element> findElements(AtomicInteger counter) {
-		Stream<Element> elements;
-
-		switch (parameters.use) {
-			case both -> elements = parent.getInformation().getElements(parameters.getName(), parameters.packageName,
-					parameters.excludePackageName, parameters.showArrays, true, parameters.types);
-			case notCached ->
-					elements = Information.getMyself().filterByParams(
-							parameters.packageName, parameters.excludePackageName, parameters.showArrays, parameters.types,
-							parent.getInformation().getExternalElements().entrySet().parallelStream()
-									.filter(keyElementEntry -> parameters.getName().isBlank()
-											|| keyElementEntry.getKey().identifier().equalsIgnoreCase(parameters.getName()))
-									.map(keyElementEntry -> keyElementEntry.getValue()));
-			default -> elements = parent.getInformation().getElements(parameters.getName(), parameters.packageName,
-					parameters.excludePackageName, parameters.showArrays, false, parameters.types);
-		}
-
+		Stream<Element> elements = parent.getInformation().getElements(parameters.getName(), parameters.packageName,
+					parameters.excludePackageName, parameters.use, parameters.types);
 
 		if (trained) {
 			elements = elements.filter(e -> e.isTraineable() && e.isTrained());
@@ -71,7 +66,7 @@ class ListCommand implements Runnable {
 					.filter(e -> ((MethodObject) e).getMethodCounters() != null);
 		}
 
-		elements = elements.sorted(Comparator.comparing(Element::getKey).thenComparing(Element::getType));
+		elements = elements.sorted(Comparator.comparing(Element::getIdentifier));
 		elements = elements.peek(item -> counter.incrementAndGet());
 
 		return elements;

@@ -1,6 +1,15 @@
 package tooling.leyden.aotcache;
 
 
+import jakarta.persistence.Cacheable;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.ManyToMany;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
@@ -11,22 +20,33 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Supplier;
 
 /**
  * Elements that can be found on the Information.
  **/
+@Entity
 public abstract class Element {
 
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	protected Long id;
+
+	private Boolean isCached = false;
 	private String type;
 	private Boolean isHeapRoot = false;
 	private List<String> whereDoesItComeFrom = new ArrayList<>();
 	private List<String> source = new ArrayList<>();
-	private Set<Element> whoReferencesMe = new HashSet<>();
+	protected String identifier;
+
+	@ManyToMany
+	private Set<ReferencingElement> whoReferencesMe = new HashSet<>();
 	/**
 	 * Address where an element can be found
 	 */
+	@Column(unique = true)
 	private String address;
+
+
 
 	public Boolean isHeapRoot() {
 		return isHeapRoot;
@@ -62,6 +82,13 @@ public abstract class Element {
 		this.type = type;
 	}
 
+	public final String getIdentifier() {
+		return identifier;
+	}
+
+	public final void setIdentifier(String identifier) {
+		this.identifier = identifier;
+	}
 	/**
 	 * When describing an element, this is the String we are going to use.
 	 *
@@ -74,7 +101,7 @@ public abstract class Element {
 		sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.YELLOW));
 		sb.append(getType());
 		sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.CYAN));
-		sb.append(" " + getKey());
+		sb.append(" " + getIdentifier());
 		sb.style(AttributedStyle.DEFAULT);
 		if (getAddress() != null) {
 			sb.append(" on address ");
@@ -123,22 +150,15 @@ public abstract class Element {
 		this.size = size;
 	}
 
-	public Collection<Element> getWhoReferencesMe() {
+	public Collection<ReferencingElement> getWhoReferencesMe() {
 		return whoReferencesMe;
 	}
 
-	public final void markAsReferenced(Element e) {
+	public final void markAsReferenced(ReferencingElement e) {
 		if (e != this) {
 			this.whoReferencesMe.add(e);
 		}
 	}
-
-	/**
-	 * Used to search for this element. For example, on classes this would be the full qualified name of the class.
-	 *
-	 * @return The key that identifies the element
-	 */
-	public abstract String getKey();
 
 
 	public void addSource(String source) {
@@ -174,6 +194,14 @@ public abstract class Element {
 		return false;
 	}
 
+	public Boolean isCached() {
+		return isCached;
+	}
+
+	public void setIsCached(Boolean isCached) {
+		this.isCached = isCached;
+	}
+
 	public AttributedString toAttributedString() {
 		AttributedStringBuilder sb = new AttributedStringBuilder();
 
@@ -189,19 +217,24 @@ public abstract class Element {
 		sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.YELLOW));
 		sb.append("[" + getType() + "] ");
 		sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.CYAN));
-		sb.append(getKey());
+		sb.append(getIdentifier());
 		return sb.toAttributedString();
 	}
 
 	@Override
 	public String toString() {
-		return toAttributedString().toString();
+		try {
+			return toAttributedString().toString();
+		} catch (Exception e) {
+			e.printStackTrace();
+			return "asdlfkj";
+		}
 	}
 
 	@Override
 	public int hashCode() {
 		int result = Objects.hashCode(getType());
-		result = 31 * result + Objects.hashCode(getKey());
+		result = 31 * result + Objects.hashCode(getIdentifier());
 		return result;
 	}
 
@@ -210,6 +243,6 @@ public abstract class Element {
 		if (!(o instanceof Element element))
 			return false;
 
-		return Objects.equals(getType(), element.getType()) && Objects.equals(getKey(), element.getKey());
+		return Objects.equals(getType(), element.getType()) && Objects.equals(getIdentifier(), element.getIdentifier());
 	}
 }

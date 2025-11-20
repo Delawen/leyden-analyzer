@@ -1,22 +1,23 @@
 package tooling.leyden.commands.logparser;
 
+import jakarta.enterprise.context.Dependent;
+import jakarta.inject.Inject;
 import org.jline.utils.AttributedString;
 import tooling.leyden.aotcache.ClassObject;
 import tooling.leyden.aotcache.Configuration;
-import tooling.leyden.aotcache.ConstantPoolObject;
 import tooling.leyden.aotcache.ElementFactory;
 import tooling.leyden.aotcache.ReferencingElement;
 import tooling.leyden.aotcache.Warning;
 import tooling.leyden.aotcache.WarningType;
-import tooling.leyden.commands.LoadFileCommand;
+import tooling.leyden.commands.CommonParameters;
 
 import java.util.List;
 
+@Dependent
 public class TrainingLogParser extends LogParser {
 
-	public TrainingLogParser(LoadFileCommand loadFile) {
-		super(loadFile);
-	}
+	@Inject
+	private ElementFactory elementFactory;
 
 	@Override
 	void processLine(Line line) {
@@ -71,7 +72,7 @@ public class TrainingLogParser extends LogParser {
 							List.of(parentSymbol, assignClassToSymbol(findSymbol(splitMessage[3]))),
 							new AttributedString(trimmedMessage), WarningType.CacheCreationRevertedKlass));
 			findOrCreateSymbolAndLinkToParent(parentSymbol,
-					"Used by " + parentSymbol.getKey() + ".", splitMessage[3]);
+					"Used by " + parentSymbol.getIdentifier() + ".", splitMessage[3]);
 		} else if (trimmedMessage.startsWith("reverted field")) {
 // reverted field  CP entry [ 45]: io/netty/channel/AbstractChannelHandlerContext => io/netty/channel/DefaultChannelPipeline.head:Lio/netty/channel/DefaultChannelPipeline$HeadContext;
 
@@ -129,7 +130,7 @@ public class TrainingLogParser extends LogParser {
 		if (trimmedMessage.startsWith("archived klass")) {
 //	archived klass  CP entry [  2]: org/infinispan/rest/framework/impl/InvocationImpl unreg => java/lang/Object boot
 			findOrCreateSymbolAndLinkToParent(parentSymbol,
-					"Used by " + parentSymbol.getKey() + " " + splitMessage[4] + ".", splitMessage[3]);
+					"Used by " + parentSymbol.getIdentifier() + " " + splitMessage[4] + ".", splitMessage[3]);
 		} else if (trimmedMessage.startsWith("archived field")) {
 // archived field  CP entry [ 20]: org/infinispan/rest/framework/impl/InvocationImpl => org/infinispan/rest/framework/impl/InvocationImpl.action:Ljava/lang/String;
 			final var names = splitMessage[2].split(":");
@@ -163,23 +164,22 @@ public class TrainingLogParser extends LogParser {
 		// If a class already exists with this Symbol, link it. If not, create it but don't add it to the cache yet
 		// We will do the heavy creation work on AOT Parser, if any is loaded
 		// because at this point, we don't know anything about the class... except the name
-		final var className = symbol.getKey().replaceAll("/", ".");
-		var classObj = information.getElements(className, null, null, true, true,
-				"Class").findAny();
+		final var className = symbol.getIdentifier().replaceAll("/", ".");
+		var classObj = information.getElement(className, null, null, CommonParameters.ElementsToUse.both,
+				"Class");
 		ClassObject classObject;
 		if (classObj.isPresent()) {
 			classObject = (ClassObject) classObj.get();
 		} else if (className.startsWith("L") && className.endsWith(";") && !className.contains("(")) {
-			classObj = this.information.getElements(className.substring(1, className.length() - 1),
+			classObj = this.information.getElement(className.substring(1, className.length() - 1),
 					null,
-					null, true,
-					true,
-					"Class").findAny();
+					null, CommonParameters.ElementsToUse.both,
+					"Class");
 
 			classObject = (ClassObject) classObj
-					.orElse(ElementFactory.getOrCreate(className, "Class", null));
+					.orElse(elementFactory.getOrCreate(className, "Class", null));
 		} else if (className.contains(".") && !className.contains("(")) {
-			classObject = (ClassObject) ElementFactory.getOrCreate(className, "Class", null);
+			classObject = (ClassObject) elementFactory.getOrCreate(className, "Class", null);
 		} else {
 			classObject = null;
 		}
@@ -199,18 +199,19 @@ public class TrainingLogParser extends LogParser {
 		// If a class already exists with this Symbol, link it. If not, ignore it.
 		// We will fill it when an AOT Cache loads, if it loads
 		// (maybe it is not even a class, so don't care if this fails)
-		var classObj = information.getElements(symbolName.replaceAll("/", "."), null, null, true, true,
-				"Class").findAny();
+		var classObj = information.getElement(
+				symbolName.replaceAll("/", "."), null, null,
+				CommonParameters.ElementsToUse.both,
+				"Class");
 		if (classObj.isPresent()) {
 			((ClassObject) classObj.get()).addSymbol(referencedSymbol);
 			referencedSymbol.addReference(classObj.get());
 		} else if (symbolName.startsWith("L") && symbolName.endsWith(";")) {
 			classObj =
-					this.information.getElements(symbolName.replaceAll("/", ".").substring(1, symbolName.length() - 1),
+					this.information.getElement(symbolName.replaceAll("/", ".").substring(1, symbolName.length() - 1),
 							null,
-							null, true,
-							true,
-							"Class").findAny();
+							null, CommonParameters.ElementsToUse.both,
+							"Class");
 			if (classObj.isPresent()) {
 				((ClassObject) classObj.get()).addSymbol(referencedSymbol);
 				referencedSymbol.addReference(classObj.get());
@@ -224,7 +225,7 @@ public class TrainingLogParser extends LogParser {
 	}
 
 	private ReferencingElement findSymbol(String symbolName) {
-		ReferencingElement referencedSymbol = (ReferencingElement) ElementFactory.getOrCreate(symbolName, "Symbol", null);
+		ReferencingElement referencedSymbol = (ReferencingElement) elementFactory.getOrCreate(symbolName, "Symbol", null);
 		referencedSymbol.addSource(getSource());
 		return referencedSymbol;
 	}
@@ -234,14 +235,17 @@ public class TrainingLogParser extends LogParser {
 	private void processSkipping(String message) {
 		String[] msg = message.trim().split("\\s+");
 		String className = msg[1].replace("/", ".").replace(":", "").trim();
-		information.addWarning(ElementFactory.getOrCreate(className, "Class", null), message, WarningType.CacheCreation);
+		information.addWarning(elementFactory.getOrCreate(className, "Class", null), message, WarningType.CacheCreation);
 	}
 
 
 	private void processWarning(String trimmedMessage) {
 		if (trimmedMessage.startsWith("Preload Warning: Verification failed for ")) {
 			var className = trimmedMessage.substring(trimmedMessage.indexOf("for ") + 4);
-			this.information.addWarning(ElementFactory.getOrCreate(className, "Class", null), trimmedMessage,
+			if (className.contains(" ")) {
+				className = className.substring(0, className.indexOf(" "));
+			}
+			this.information.addWarning(elementFactory.getOrCreate(className, "Class", null), trimmedMessage,
 					WarningType.CacheCreation);
 		} else {
 			//Very generic, but at least catch things
@@ -285,7 +289,7 @@ public class TrainingLogParser extends LogParser {
 		} else if (trimmedMessage.startsWith("JVM_StartThread() ignored:")) {
 //[info][aot       ] JVM_StartThread() ignored: java.lang.ref.Reference$ReferenceHandler
 			var className = trimmedMessage.substring(trimmedMessage.indexOf("ignored: ") + 9);
-			this.information.addWarning(ElementFactory.getOrCreate(className, "Class", null), trimmedMessage, WarningType.CacheCreation);
+			this.information.addWarning(elementFactory.getOrCreate(className, "Class", null), trimmedMessage, WarningType.CacheCreation);
 		}
 	}
 

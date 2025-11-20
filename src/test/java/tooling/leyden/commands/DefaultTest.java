@@ -1,6 +1,7 @@
 package tooling.leyden.commands;
 
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.jline.builtins.ConfigurationPath;
 import org.jline.console.SystemRegistry;
 import org.jline.console.impl.Builtins;
@@ -15,6 +16,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import picocli.CommandLine;
 import picocli.shell.jline3.PicocliCommands;
+import tooling.leyden.QuarkusPicocliLineApp;
+import tooling.leyden.aotcache.Information;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -24,59 +27,51 @@ import java.util.function.Supplier;
 
 @QuarkusTest
 public class DefaultTest {
+	@Inject
+	CommandLine.IFactory factory;
 
-	private static SystemRegistry systemRegistry;
+	@Inject
+	QuarkusPicocliLineApp app;
 
-	private static DefaultCommand defaultCommand;
+	DefaultCommand defaultCommand;
 
-	public static DefaultCommand getDefaultCommand() {
-		return defaultCommand;
-	}
+	@Inject
+	Information information;
 
-	public static SystemRegistry getSystemRegistry() {
-		return systemRegistry;
-	}
+	private CommandLine cmd;
+
+	protected CleanCommand cleanCommand;
+	protected DescribeCommand describeCommand;
+	protected InfoCommand infoCommand;
+	protected ListCommand listCommand;
+	protected LoadFileCommand loadFileCommand;
+	protected TreeCommand treeCommand;
+	protected WarningCommand warningCommand;
 
 	@BeforeEach
-	void clear() {
-		getDefaultCommand().getInformation().clear();
+	void clear() throws Exception {
+		cmd = new CommandLine(app, factory);
+
+		defaultCommand = cmd.getFactory().create(DefaultCommand.class);
+
+		cleanCommand = cmd.getFactory().create(CleanCommand.class);
+		describeCommand = cmd.getFactory().create(DescribeCommand.class);
+		infoCommand = cmd.getFactory().create(InfoCommand.class);
+		listCommand = cmd.getFactory().create(ListCommand.class);
+		loadFileCommand = cmd.getFactory().create(LoadFileCommand.class);
+		treeCommand = cmd.getFactory().create(TreeCommand.class);
+		warningCommand = cmd.getFactory().create(WarningCommand.class);
 	}
 
-	@BeforeAll
-	static void readLog() {
-
-		Supplier<Path> workDir = () -> Paths.get(System.getProperty("user.dir"));
-		// set up JLine built-in commands
-		Builtins builtins = new Builtins(workDir, new ConfigurationPath(workDir.get(), workDir.get()), null);
-		builtins.rename(Builtins.Command.TTOP, "top");
-
-		defaultCommand = new DefaultCommand();
-		PicocliCommands.PicocliCommandsFactory factory = new PicocliCommands.PicocliCommandsFactory();
-
-		CommandLine cmd = new CommandLine(defaultCommand, factory);
-		PicocliCommands picocliCommands = new PicocliCommands(cmd);
-
-		Parser parser = new DefaultParser();
-		try (Terminal terminal =
-					 TerminalBuilder.builder()
-							 .name("testTerminal")
-							 .encoding(StandardCharsets.UTF_8).build()) {
-			systemRegistry = new SystemRegistryImpl(parser, terminal, workDir, null);
-			systemRegistry.setCommandRegistries(builtins, picocliCommands);
-
-			LineReader reader = LineReaderBuilder.builder()
-					.terminal(terminal)
-					.completer(systemRegistry.completer())
-					.parser(parser)
-					.build();
-
-			builtins.setLineReader(reader);
-			defaultCommand.setReader(reader);
-			factory.setTerminal(terminal);
-
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+	protected void execute(String... args) {
+		cmd.execute(args);
 	}
 
+	public Information getInformation() {
+		return information;
+	}
+
+	public DefaultCommand getDefaultCommand() {
+		return defaultCommand;
+	}
 }

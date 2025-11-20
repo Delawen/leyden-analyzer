@@ -1,7 +1,9 @@
 package tooling.leyden.commands;
 
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tooling.leyden.aotcache.Warning;
 import tooling.leyden.commands.logparser.AOTMapParser;
@@ -15,19 +17,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @QuarkusTest
 class WarningCommandTest extends DefaultTest {
 
-	private static WarningCommand warningCommand;
-	private static AOTMapParser aotCacheParser;
-	private static TrainingLogParser trainingParser;
-
-	@BeforeAll
-	static void init() {
-		final var loadFile = new LoadFileCommand();
-		loadFile.setParent(getDefaultCommand());
-		trainingParser = new TrainingLogParser(loadFile);
-		aotCacheParser = new AOTMapParser(loadFile);
-		warningCommand = new WarningCommand();
-		warningCommand.parent = getDefaultCommand();
-	}
+	@Inject
+	private WarningCommand warningCommand;
+	@Inject
+	private AOTMapParser aotCacheParser;
+	@Inject
+	private TrainingLogParser trainingParser;
 
 	@Test
 	void checkUsedAndNotTrained() {

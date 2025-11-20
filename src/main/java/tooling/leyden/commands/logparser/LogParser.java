@@ -1,6 +1,6 @@
 package tooling.leyden.commands.logparser;
 
-import tooling.leyden.commands.LoadFileCommand;
+import jakarta.enterprise.context.Dependent;
 
 import java.util.Arrays;
 import java.util.regex.Matcher;
@@ -9,13 +9,10 @@ import java.util.regex.Pattern;
 /**
  * This class is capable of parsing (certain) Java logs.
  */
+@Dependent
 public abstract class LogParser extends Parser {
 	Pattern linePattern =
 			Pattern.compile("(?<timestamp>\\[(?:\\d|,)+s\\])?\\[(?<level>\\w+)\\s*\\]\\[(?<tags>(?:\\w+,?\\s*)+)\\](?<message>.*)");
-
-	public LogParser(LoadFileCommand loadFile) {
-		super(loadFile);
-	}
 
 	@Override
 	public void accept(String content) {

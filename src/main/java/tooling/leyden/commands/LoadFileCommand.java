@@ -1,5 +1,8 @@
 package tooling.leyden.commands;
 
+import io.quarkus.arc.Unremovable;
+import jakarta.enterprise.context.ApplicationScoped;
+
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStyle;
 import picocli.CommandLine;
@@ -27,8 +30,20 @@ public class LoadFileCommand implements Runnable {
 			"aot+resolve*=trace," +
 			"aot=warning:file=aot.log:level,tags";
 
+	AOTMapParser aotMapParser;
+	ProductionLogParser productionLogParser;
+	TrainingLogParser trainingLogParser;
+
 	@CommandLine.ParentCommand
 	DefaultCommand parent;
+
+	public LoadFileCommand(AOTMapParser aotMapParser, ProductionLogParser productionLogParser, TrainingLogParser trainingLogParser, DefaultCommand parent) {
+		this.aotMapParser = aotMapParser;
+		aotMapParser.setLoadFileCommand(this);
+		this.productionLogParser = productionLogParser;
+		this.trainingLogParser = trainingLogParser;
+		this.parent = parent;
+	}
 
 	@CommandLine.Option(names = {"--background"},
 			description = {"Run this load in the background.",
@@ -36,7 +51,7 @@ public class LoadFileCommand implements Runnable {
 			defaultValue = "false",
 			arity = "0..1",
 			scope = CommandLine.ScopeType.INHERIT)
-	protected Boolean background= false;
+	protected Boolean background = false;
 
 	public void run() {
 	}
@@ -110,7 +125,7 @@ public class LoadFileCommand implements Runnable {
 					arity = "1..*",
 					paramLabel = "<file>",
 					description = "files to load") Path[] files) {
-		load(new AOTMapParser(this), files);
+		load(aotMapParser, files);
 	}
 
 	@Command(
@@ -123,7 +138,7 @@ public class LoadFileCommand implements Runnable {
 					arity = "1..*",
 					paramLabel = "<file>",
 					description = "files to load") Path[] files) {
-		load(new ProductionLogParser(this), files);
+		load(productionLogParser, files);
 	}
 
 	@Command(
@@ -136,7 +151,7 @@ public class LoadFileCommand implements Runnable {
 					arity = "1..*",
 					paramLabel = "<file>",
 					description = "files to load") Path[] files) {
-		load(new TrainingLogParser(this), files);
+		load(trainingLogParser, files);
 	}
 
 	public DefaultCommand getParent() {

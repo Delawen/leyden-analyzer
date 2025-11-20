@@ -1,9 +1,9 @@
 package tooling.leyden.commands;
 
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import tooling.leyden.aotcache.Element;
-import tooling.leyden.aotcache.Information;
 import tooling.leyden.commands.logparser.AOTMapParser;
 import tooling.leyden.commands.logparser.TrainingLogParser;
 
@@ -17,22 +17,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TreeCommandTest extends DefaultTest {
 
+	@Inject
+	TrainingLogParser parser;
+
+	@Inject
+	AOTMapParser aotParser;
+
+	@Inject
+	TreeCommand command;
+
 	@Test
 	void getReferencedFromSymbolGraph() {
-		final var loadFile = new LoadFileCommand();
-		loadFile.setParent(getDefaultCommand());
-		final var parser = new TrainingLogParser(loadFile);
-		final var aotParser = new AOTMapParser(loadFile);
 
 		aotParser.accept("0x00000008018dfad0: @@ Class             696 org.infinispan.rest.framework.impl.InvocationImpl");
 		aotParser.accept("0x0000000800772850: @@ Class             528 java.lang.Object");
 		aotParser.accept("0x0000000800e6d478: @@ Class             592 org.infinispan.security.AuthorizationPermission");
 		aotParser.accept("0x000000080077e3b0: @@ Class             520 java.util.Set");
 		aotParser.accept("0x00000008003483b0: @@ Class             520 java.lang.String");
-		aotParser.accept("0x00000008003483b0: @@ Class             520 java.util.function.Function");
+		aotParser.accept("0x00000008003483b4: @@ Class             520 java.util.function.Function");
 		aotParser.accept("0x0000000801e022e8: @@ Symbol            24 org/infinispan/rest/framework/impl/InvocationImpl");
-		aotParser.accept("0x0000000801e022e8: @@ Symbol            24 Ljava/util/Set;");
-		aotParser.accept("0x0000000801e022e8: @@ Symbol            24 java/lang/Object");
+		aotParser.accept("0x0000000801e022e9: @@ Symbol            24 Ljava/util/Set;");
+		aotParser.accept("0x0000000801e02258: @@ Symbol            24 java/lang/Object");
 
 		parser.accept("[trace][aot,resolve              ] archived klass  CP entry [  2]: org/infinispan/rest/framework/impl/InvocationImpl unreg => java/lang/Object boot");
 		parser.accept("[trace][aot,resolve              ] archived klass  CP entry [  8]: org/infinispan/rest/framework/impl/InvocationImpl unreg => org/infinispan/rest/framework/impl/InvocationImpl unreg");
@@ -49,7 +54,6 @@ class TreeCommandTest extends DefaultTest {
 		aotParser.accept("0x0000000801e022e8: @@ Symbol            24 java/lang/String");
 		aotParser.accept("0x0000000800e6d478: @@ Symbol            592 org/infinispan/security/AuthorizationPermission");
 
-		TreeCommand command = new TreeCommand();
 		command.parent = getDefaultCommand();
 		command.parameters = new CommonParameters();
 		command.parameters.types = new String[]{"Class", "Object"};
@@ -57,15 +61,15 @@ class TreeCommandTest extends DefaultTest {
 		command.level = 2;
 		command.max = 100;
 
-		Element root = Information.getMyself()
-				.getElements("org.infinispan.rest.framework.impl.InvocationImpl", null, null, true, true, "Class")
+		Element root = getInformation()
+				.getElements("org.infinispan.rest.framework.impl.InvocationImpl", null, null, CommonParameters.ElementsToUse.both, "Class")
 				.findAny().get();
 		Set<Element> elements = command.getElementsReferencingThisOne(root, new HashSet<>());
 		assertEquals(4, elements.size());
 		elements.stream().allMatch(e -> e.getType().equalsIgnoreCase("Class") || e.getType().equalsIgnoreCase("Object"));
 
-		Element reversedRoot = Information.getMyself()
-				.getElements("java.util.Set", null, null, true, true, "Class")
+		Element reversedRoot = getInformation()
+				.getElements("java.util.Set", null, null, CommonParameters.ElementsToUse.both, "Class")
 				.findAny().get();
 		command.reverse = true;
 		elements = command.getElementsReferencingThisOne(reversedRoot, new HashSet<>());
@@ -78,7 +82,7 @@ class TreeCommandTest extends DefaultTest {
 		elements = command.getElementsReferencingThisOne(root, new HashSet<>());
 		assertEquals(1, elements.size());
 		elements.stream().allMatch(e -> e.getType().equalsIgnoreCase("Symbol"));
-		elements.stream().allMatch(e -> e.getKey().equalsIgnoreCase("org/infinispan/rest/framework/impl/InvocationImpl"));
+		elements.stream().allMatch(e -> e.getIdentifier().equalsIgnoreCase("org/infinispan/rest/framework/impl/InvocationImpl"));
 
 		//Next level (based on Symbol)
 		elements = command.getElementsReferencingThisOne(elements.iterator().next(), new HashSet<>());
@@ -89,7 +93,7 @@ class TreeCommandTest extends DefaultTest {
 		elements = command.getElementsReferencingThisOne(reversedRoot, new HashSet<>());
 		assertEquals(1, elements.size());
 		elements.stream().allMatch(e -> e.getType().equalsIgnoreCase("Symbol"));
-		elements.stream().allMatch(e -> e.getKey().equalsIgnoreCase("java/util/Set"));
+		elements.stream().allMatch(e -> e.getIdentifier().equalsIgnoreCase("java/util/Set"));
 
 		//Next level (based on Symbol)
 		elements = command.getElementsReferencingThisOne(elements.iterator().next(), new HashSet<>());

@@ -1,95 +1,65 @@
 package tooling.leyden.aotcache;
 
+import jakarta.enterprise.context.Dependent;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.transaction.Transactional;
+import tooling.leyden.commands.CommonParameters;
+
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.ConcurrentModificationException;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+@Dependent
 public class Information {
 
-	//This represents the AOT Cache
-	private Map<Key, Element> elements = new ConcurrentHashMap<>();
-
-	//This represents elements that were loaded in the app
-	//from a different source, not the AOT Cache.
-	//Useful to detect if there are elements that should have been cached.
-	private Map<Key, Element> elementsNotInTheCache = new ConcurrentHashMap<>();
-
-	//List of warnings and incidents that may be useful to check
-	private List<Warning> warnings = new ArrayList<>();
-	//Auto-generated warnings by `warning check` command
-	private List<Warning> autoWarnings = new ArrayList<>();
+	@PersistenceContext
+	EntityManager em;
 
 	//Store information extracted and inferred
 	private Configuration configuration = new Configuration();
 	private Configuration statistics = new Configuration();
 
-	//To pre-calculate auto-completion
-	private List<String> identifiers = new ArrayList<>();
-	//To search by address
-	private Map<String, Element> elementsByAddress = new ConcurrentHashMap<>();
 	//To find Heap Roots
 	private Set<String> heapRootAddresses = Collections.synchronizedSet(new HashSet<>());
 	private ReferencingElement heapRoot = null;
 
-	//Singletonish
-	private static Information myself;
-
-	public static Information getMyself() {
-		return myself;
-	}
-
-
 	public Information() {
-		myself = this;
+
 	}
 
-	public void addAOTCacheElement(Element e, String source) {
+	@Transactional
+	public Element addAOTCacheElement(Element e, String source) {
 		e.addSource(source);
-		final var key = new Key(e.getKey(), e.getType());
-		elements.put(key, e);
+		e.setIsCached(true);
 
-		// Due to weird ordering in logfiles, sometimes a method gets
-		// referenced before the class it belongs to gets referenced.
-		// So we have to make sure elements are not repeated both in
-		// this.elements and this.elementsNotInTheCache
-		if (elementsNotInTheCache.containsKey(key)) {
-			elementsNotInTheCache.remove(key);
-		}
-
-		if (e.getAddress() != null) {
-			elementsByAddress.putIfAbsent(e.getAddress(), e);
-			if (heapRootAddresses.contains(e.getAddress())) {
-				e.setHeapRoot(true);
-				heapRootAddresses.remove(e.getAddress());
-				if (heapRoot != null) {
-					heapRoot.addReference(e);
-				}
+		if (heapRootAddresses.contains(e.getAddress())) {
+			e.setHeapRoot(true);
+			heapRootAddresses.remove(e.getAddress());
+			if (heapRoot != null) {
+				heapRoot.addReference(e);
 			}
 		}
 
-		// Pre-calculate auto-completions
-		if (e.getType().equalsIgnoreCase("Class") && !identifiers.contains(e.getKey())) {
-			identifiers.add(e.getKey());
-		}
+		return em.merge(e);
 	}
 
-	public void addExternalElement(Element e) {
-		elementsNotInTheCache.put(new Key(e.getKey(), e.getType()), e);
-		if (e.getAddress() != null) {
-			elementsByAddress.putIfAbsent(e.getAddress(), e);
-		}
+	@Transactional
+	public Element addExternalElement(Element e) {
+		e.setIsCached(false);
+		return em.merge(e);
 	}
 
-	public Map<Key, Element> getExternalElements() {
-		return this.elementsNotInTheCache;
+	@Transactional
+	public Element update(Element e) {
+		return em.merge(e);
 	}
 
 	public void addHeapRoot(String address) {
@@ -100,180 +70,162 @@ public class Information {
 		this.heapRoot = e;
 	}
 
+	@Transactional
 	public void addWarning(Element element, String reason, WarningType warningType) {
-		this.warnings.add(new Warning(element, reason, warningType));
+		em.persist(new Warning(element, reason, warningType));
 	}
 
 	public void clear() {
-		elements.clear();
-		elementsNotInTheCache.clear();
-		warnings.clear();
-		autoWarnings.clear();
 		statistics.clear();
 		configuration.clear();
-		identifiers.clear();
-		elementsByAddress.clear();
 		heapRootAddresses.clear();
 		heapRoot = null;
+		//TODO clean database
 	}
 
-	public boolean cacheContains(Element e) {
-		return getElements(e.getKey(), null, null, true, false, e.getType()).count() > 0;
-	}
 
+	@Transactional
 	public Element getByAddress(String address) {
-		return elementsByAddress.getOrDefault(address, null);
+		return em.createQuery("SELECT e FROM Element e WHERE e.address LIKE :address", Element.class)
+				.setParameter("address", address)
+				.setMaxResults(1)
+				.getSingleResultOrNull();
 	}
 
+	@Transactional
+	public Optional<Element> getElement(String key, String[] packageName, String[] excludePackageName,
+										CommonParameters.ElementsToUse source, String... type) {
+		return getElements(key, packageName, excludePackageName, source, type).findAny();
+	}
+
+	@Transactional(Transactional.TxType.MANDATORY)
 	public Stream<Element> getElements(String key, String[] packageName, String[] excludePackageName,
-									   Boolean includeArrays, Boolean includeExternalElements, String... type) {
+									   CommonParameters.ElementsToUse source, String... type) {
+		var cb = em.getCriteriaBuilder();
+		var cr = cb.createQuery(Element.class);
 
-		if (key != null && !key.isBlank() && type != null && type.length > 0) {
-			//This is trivial, don't search through all elements
-			var result = new ArrayList<Element>();
-			for (String t : type) {
-				Element e = elements.get(new Key(key, t));
-				if (e != null) {
-					result.add(e);
-				} else if (includeExternalElements) {
-					e = elementsNotInTheCache.get(new Key(key, t));
-					if (e != null) {
-						result.add(e);
-					}
-				}
-			}
-			return result.parallelStream();
-		}
+		Root<Element> root = cr.from(Element.class);
 
-		var tmp = new HashSet<Map.Entry<Key, Element>>();
-		tmp.addAll(elements.entrySet());
-		if (includeExternalElements) {
-			tmp.addAll(elementsNotInTheCache.entrySet());
-		}
-		var result = tmp.parallelStream();
+		List<Predicate> predicates = new ArrayList<>();
 
 		if (key != null && !key.isBlank()) {
-			result = result.filter(keyElementEntry -> keyElementEntry.getKey().identifier().equalsIgnoreCase(key));
-		}
-
-		return filterByParams(packageName, excludePackageName, includeArrays, type,
-				result.map(keyElementEntry -> keyElementEntry.getValue()));
-	}
-
-	public static Stream<Element> filterByParams(String[] packageName,
-												 String[] excludePackageName,
-												 Boolean addArrays,
-												 String[] type,
-												 Stream<Element> result) {
-		if (packageName != null && packageName.length > 0) {
-			result = result.filter(e -> {
-				if (e instanceof ClassObject classObject) {
-					return Arrays.stream(packageName).anyMatch(p -> classObject.getPackageName().startsWith(p));
-				}
-				if (e instanceof MethodObject methodObject) {
-					if (methodObject.getClassObject() != null) {
-						return Arrays.stream(packageName).anyMatch(p ->
-								methodObject.getClassObject().getPackageName().startsWith(p));
-					}
-					return Arrays.stream(packageName).anyMatch(p -> methodObject.getName().startsWith(p));
-				}
-				if (e.getType().equals("Object")
-						|| e.getType().startsWith("ConstantPool")) {
-					return Arrays.stream(packageName)
-							.anyMatch(p -> e.getKey().startsWith(p));
-				}
-				if (e.getType().endsWith("TrainingData")
-						|| e.getType().equalsIgnoreCase("MethodData")
-						|| e.getType().equalsIgnoreCase("MethodCounters")) {
-					return Arrays.stream(packageName)
-							.anyMatch(p -> ((ReferencingElement) e).getReferences().stream()
-									.anyMatch(r -> {
-										if (r instanceof ClassObject classObject) {
-											return classObject.getPackageName().startsWith(p);
-										} else if (r instanceof MethodObject methodObject) {
-											return methodObject.getClassObject().getPackageName().startsWith(p);
-										}
-										return false;
-									}));
-				}
-				return false;
-			});
-		}
-
-		if (excludePackageName != null && excludePackageName.length > 0) {
-			result = result.filter(e -> {
-				if (e instanceof ClassObject classObject) {
-					return Arrays.stream(excludePackageName).noneMatch(p -> classObject.getPackageName().startsWith(p));
-				}
-				if (e instanceof MethodObject methodObject) {
-					if (methodObject.getClassObject() != null) {
-						return Arrays.stream(excludePackageName).noneMatch(p ->
-								methodObject.getClassObject().getPackageName().startsWith(p));
-					}
-					return Arrays.stream(excludePackageName).noneMatch(p -> methodObject.getName().startsWith(p));
-				}
-				if (e.getType().equals("Object") || e.getType().startsWith("ConstantPool")) {
-
-					return Arrays.stream(excludePackageName).noneMatch(p -> e.getKey().startsWith(p));
-				}
-				return false;
-			});
+			predicates.add(cb.like(root.get("identifier"), key));
 		}
 
 		if (type != null && type.length > 0) {
-			result = result.filter(e -> Arrays.stream(type).anyMatch(t -> t.equalsIgnoreCase(e.getType()))
-			);
+			predicates.add(root.get("type").in(type));
 		}
 
-		if (!addArrays) {
-			result = result.filter(e -> {
-				if (e instanceof ClassObject classObject) {
-					return !classObject.isArray();
-				}
-				return true;
-			});
+		if (source.equals(CommonParameters.ElementsToUse.cached)) {
+			predicates.add(cb.equal(root.get("isCached"), true));
+		} else if (source.equals(CommonParameters.ElementsToUse.notCached)) {
+			predicates.add(cb.equal(root.get("isCached"), false));
 		}
-		return result;
+
+		if (packageName != null && packageName.length > 0) {
+			predicates.add(root.get("packageName").in(packageName));
+		}
+
+		if (excludePackageName != null && excludePackageName.length > 0) {
+			predicates.add(cb.not(root.get("packageName").in(excludePackageName)));
+		}
+
+		if (excludePackageName != null && excludePackageName.length > 0) {
+			predicates.add(cb.not(root.get("packageName").in(excludePackageName)));
+		}
+
+		cr = cr.where(predicates);
+
+		cr = cr.select(root);
+
+		var query = em.createQuery(cr);
+		return query.getResultStream();
 	}
 
+	@Transactional
 	public List<Warning> getWarnings() {
-		return warnings;
+		var cb = em.getCriteriaBuilder();
+		var cr = cb.createQuery(Warning.class);
+
+		Root<Warning> root = cr.from(Warning.class);
+		cr = cr.where(cb.equal(root.get("auto"), false));
+		cr = cr.select(root);
+
+		return em.createQuery(cr).getResultList();
 	}
 
+	@Transactional
 	public List<Warning> getAutoWarnings() {
-		return autoWarnings;
+		var cb = em.getCriteriaBuilder();
+		var cr = cb.createQuery(Warning.class);
+
+		Root<Warning> root = cr.from(Warning.class);
+		cr = cr.where(cb.equal(root.get("auto"), true));
+		cr = cr.select(root);
+
+		return em.createQuery(cr).getResultList();
 	}
 
+	@Transactional
 	public Collection<Element> getAll() {
-		return elements.values();
+		var cr = em.getCriteriaBuilder().createQuery(Element.class);
+		cr = cr.select(cr.from(Element.class));
+		return em.createQuery(cr).getResultList();
 	}
 
+	@Transactional
+	public Collection<Element> getExternalElements() {
+		var cb = em.getCriteriaBuilder();
+		var cr = cb.createQuery(Element.class);
+
+		Root<Element> root = cr.from(Element.class);
+		cr = cr.where(cb.equal(root.get("isCached"), false));
+		cr = cr.select(root);
+
+		var query = em.createQuery(cr);
+		return query.getResultList();
+	}
+
+	@Transactional
 	public Configuration getConfiguration() {
 		return configuration;
 	}
 
+	@Transactional
 	public Configuration getStatistics() {
 		return statistics;
 	}
 
+	@Transactional
 	public List<String> getAllTypes() {
-		return this.elements.keySet()
-				.parallelStream().map(key -> key.type).distinct().toList();
+		var cb = em.getCriteriaBuilder();
+		var cr = cb.createQuery(String.class);
+
+		Root<Element> root = cr.from(Element.class);
+		cr = cr.select(root.get("type")).distinct(true);
+
+		return em.createQuery(cr).getResultList();
 	}
 
+	@Transactional
 	public List<String> getAllPackages() {
-		return this.elements.entrySet()
-				.parallelStream()
-				.filter((entry) -> entry.getValue() instanceof ClassObject)
-				.map(entry -> ((ClassObject) entry.getValue()).getPackageName())
-				.distinct()
-				.toList();
+		var cb = em.getCriteriaBuilder();
+		var cr = cb.createQuery(String.class);
+
+		Root<Element> root = cr.from(Element.class);
+		cr = cr.select(root.get("packageName")).distinct(true);
+
+		return em.createQuery(cr).getResultList();
 	}
 
+	@Transactional
 	public List<String> getIdentifiers() {
-		return List.copyOf(identifiers);
-	}
+		var cb = em.getCriteriaBuilder();
+		var cr = cb.createQuery(String.class);
 
-	public record Key(String identifier, String type) {
+		Root<Element> root = cr.from(Element.class);
+		cr = cr.select(root.get("identifier")).distinct(true);
+
+		return em.createQuery(cr).getResultList();
 	}
 }

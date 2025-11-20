@@ -1,16 +1,18 @@
 package tooling.leyden.commands.logparser;
 
+import jakarta.enterprise.context.Dependent;
+import jakarta.inject.Inject;
 import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.ElementFactory;
 import tooling.leyden.aotcache.Warning;
 import tooling.leyden.aotcache.WarningType;
-import tooling.leyden.commands.LoadFileCommand;
+import tooling.leyden.commands.CommonParameters;
 
+@Dependent
 public class ProductionLogParser extends LogParser {
 
-	public ProductionLogParser(LoadFileCommand loadFile) {
-		super(loadFile);
-	}
+	@Inject
+	private ElementFactory elementFactory;
 
 	@Override
 	protected void processLine(Line line) {
@@ -60,12 +62,12 @@ public class ProductionLogParser extends LogParser {
 			String className = line.message().substring(0, line.message().indexOf("source: ")).trim();
 			Element e;
 			if (line.message().indexOf("source: shared objects file") > 0) {
-				var classes = information.getElements(className, null, null, true, true, "Class").findAny();
+				var classes = information.getElements(className, null, null, CommonParameters.ElementsToUse.both, "Class").findAny();
 				if (classes.isEmpty()) {
 					//WARNING: this should be covered by the aot map file
 					//we are assuming no aot map file was loaded at this point
 					//so we create a basic placeholder
-					e =  ElementFactory.getOrCreate(className, "Class", null);
+					e = elementFactory.getOrCreate(className, "Class", null);
 				} else {
 					e = classes.get();
 				}
@@ -77,7 +79,7 @@ public class ProductionLogParser extends LogParser {
 				information.addAOTCacheElement(e, getSource());
 
 			} else {
-				e = ElementFactory.getOrCreate(className, "Class", null);
+				e = elementFactory.getOrCreate(className, "Class", null);
 				e.addSource(getSource());
 				information.addExternalElement(e);
 				// else this wasn't loaded from the aot cache
