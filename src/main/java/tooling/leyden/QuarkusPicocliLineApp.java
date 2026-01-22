@@ -86,6 +86,9 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
 
 			Parser parser = new DefaultParser();
 			try (Terminal terminal = TerminalBuilder.builder().build()) {
+				// Display banner
+				printBanner(terminal);
+
 				SystemRegistry systemRegistry = new SystemRegistryImpl(parser, terminal, workDir, null);
 				systemRegistry.setCommandRegistries(builtins, picocliCommands);
 				systemRegistry.register("help", picocliCommands);
@@ -143,6 +146,19 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
 		} finally {
 			AnsiConsole.systemUninstall();
 		}
+	}
+
+	private void printBanner(Terminal terminal) {
+		AttributedStringBuilder builder = new AttributedStringBuilder();
+		builder.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.CYAN).bold())
+				.append("\n")
+				.append("◢◤ Leyden Analyzer ")
+				.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BLUE))
+				.append("__________________________________________")
+				.append("\n\n");
+
+		terminal.writer().println(builder.toAnsi());
+		terminal.flush();
 	}
 
 	@Override
