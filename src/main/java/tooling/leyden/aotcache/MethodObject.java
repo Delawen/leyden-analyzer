@@ -188,7 +188,7 @@ public class MethodObject extends ReferencingElement {
 			if (tips) {
 				sb.append(AttributedString.NEWLINE);
 				sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
-				sb.append(leftPadding + "  ℹ\uFE0F  If this is a key method in your app, you should have this asset.");
+				sb.append(leftPadding + "  \uD83D\uDCA1  If this is a key method in your app, you should have this asset.");
 			}
 			sb.style(AttributedStyle.DEFAULT);
 		}
@@ -212,7 +212,7 @@ public class MethodObject extends ReferencingElement {
 			if (tips) {
 				sb.append(AttributedString.NEWLINE);
 				sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
-				sb.append(leftPadding + "  ℹ\uFE0F  Key methods should aim for compilation 3 or above.");
+				sb.append(leftPadding + "  \uD83D\uDCA1  Key methods should aim for compilation 3 or above.");
 			}
 			sb.style(AttributedStyle.DEFAULT);
 		} else {
@@ -244,7 +244,7 @@ public class MethodObject extends ReferencingElement {
 		if (tips) {
 			sb.append(AttributedString.NEWLINE);
 			sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
-			sb.append(leftPadding + "  ℹ\uFE0F  If you think the training for this method is not good enough, make sure your " +
+			sb.append(leftPadding + "  \uD83D\uDCA1  If you think the training for this method is not good enough, make sure your " +
 					"training run use it more, as it would on a long production run.");
 		}
 
