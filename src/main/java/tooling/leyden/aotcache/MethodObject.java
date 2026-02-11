@@ -204,20 +204,28 @@ public class MethodObject extends ReferencingElement {
 			for (Integer level : this.compileTrainingData.keySet()) {
 				sb.append(" " + level);
 			}
+			if (verbose) {
+				sb.append(AttributedString.NEWLINE);
+				sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT));
+				sb.append(leftPadding + "  ℹ\uFE0F  Higher compilation levels mean a more optimized compilation.");
+			}
+			if (tips) {
+				sb.append(AttributedString.NEWLINE);
+				sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
+				sb.append(leftPadding + "  ℹ\uFE0F  Key methods should aim for compilation 3 or above.");
+			}
 			sb.style(AttributedStyle.DEFAULT);
-			sb.append(AttributedString.NEWLINE);
-			sb.append(leftPadding + "Higher compilation levels mean a more optimized compilation.");
-			sb.append(AttributedString.NEWLINE);
-			sb.append(leftPadding + "Key methods should aim for compilation 3 or above.");
 		} else {
 			sb.append(leftPadding + "It has no ");
 			sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
 			sb.append("CompileTrainingData");
 			sb.style(AttributedStyle.DEFAULT);
 			sb.append(" associated to it.");
-			sb.append(AttributedString.NEWLINE);
-			sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.MAGENTA));
-			sb.append(leftPadding + "This method was not considered for optimization during training run.");
+			if (verbose) {
+				sb.append(AttributedString.NEWLINE);
+				sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT));
+				sb.append(leftPadding + "  ℹ\uFE0F  This method was not considered for optimization during training run.");
+			}
 			sb.style(AttributedStyle.DEFAULT);
 		}
 		sb.append(AttributedString.NEWLINE);
@@ -233,11 +241,12 @@ public class MethodObject extends ReferencingElement {
 		sb.style(AttributedStyle.DEFAULT);
 		sb.append(" associated to it.");
 
-		sb.append(AttributedString.NEWLINE);
-		sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.MAGENTA));
-		sb.append(leftPadding + "If you think the training for this method is not good enough, make sure your " +
-				"training run use it more, as it would on a long production run.");
-
+		if (tips) {
+			sb.append(AttributedString.NEWLINE);
+			sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
+			sb.append(leftPadding + "  ℹ\uFE0F  If you think the training for this method is not good enough, make sure your " +
+					"training run use it more, as it would on a long production run.");
+		}
 
 		return sb.toAttributedString();
 	}
