@@ -180,10 +180,11 @@ public class ClassObject extends ReferencingElement {
 		} else {
 			sb.style(AttributedStyle.DEFAULT.bold());
 			sb.append(leftPadding + "This class doesn't seem to have training data. ");
-			sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
 			if (trained == 0 && tips) {
-				sb.append(leftPadding + "  \uD83D\uDCA1  If you think this class and its methods should be part of the training, " +
-						"make sure your training run use them several times.");
+				sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
+				sb.append(AttributedString.NEWLINE);
+				sb.append(leftPadding + "  \uD83D\uDCA1  If you think this class should be part of the training, " +
+						"make sure your training run use its methods more.");
 			}
 			sb.style(AttributedStyle.DEFAULT);
 		}
