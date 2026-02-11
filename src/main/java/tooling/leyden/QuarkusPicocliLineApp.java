@@ -198,6 +198,12 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
 		builder.append("Use 'help' to learn more commands.")
 				.append(AttributedString.NEWLINE);
 
+		builder.append("If you want to know more about the information shown, use the '-v' verbose argument.")
+				.append(AttributedString.NEWLINE);
+
+		builder.append("If you want to know how to use the information shown, use the '-hints' argument.")
+				.append(AttributedString.NEWLINE);
+
 		builder.toAttributedString().println(terminal);
 	}
 
