@@ -7,7 +7,6 @@ import picocli.CommandLine.Command;
 import tooling.leyden.aotcache.Configuration;
 import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.MethodObject;
-import tooling.leyden.aotcache.ReferencingElement;
 import tooling.leyden.commands.autocomplete.InfoCommandTypes;
 import tooling.leyden.commands.autocomplete.WhichRun;
 
@@ -39,11 +38,11 @@ class InfoCommand implements Runnable {
 			defaultValue = "false")
 	private Boolean verbose;
 
-	@CommandLine.Option(names = {"-tips"},
+	@CommandLine.Option(names = {"-hints"},
 			arity = "0..1",
-			description = "Display tips on how to explore each element.",
+			description = "Display hints on how to explore further.",
 			defaultValue = "false")
-	private Boolean tips;
+	private Boolean hints;
 
 
 	private NumberFormat intFormat = NumberFormat.getIntegerInstance();
@@ -382,7 +381,7 @@ class InfoCommand implements Runnable {
 		}
 	}
 	private void printVerboseTip(String info) {
-		if (tips) {
+		if (hints) {
 			(new AttributedString("  \uD83D\uDCA1  " + info, tipFormat)).println(parent.getTerminal());
 		}
 	}

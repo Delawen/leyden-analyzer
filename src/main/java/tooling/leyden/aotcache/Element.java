@@ -67,7 +67,7 @@ public abstract class Element {
 	 *
 	 * @return A complete description of this element.
 	 */
-	public AttributedString getDescription(String leftPadding) {
+	public AttributedString getDescription(String leftPadding, Boolean verbose, Boolean tips) {
 
 		AttributedStringBuilder sb = new AttributedStringBuilder();
 		sb.append(leftPadding);
@@ -194,10 +194,22 @@ public abstract class Element {
 	public AttributedString toAttributedString() {
 		AttributedStringBuilder sb = new AttributedStringBuilder();
 
+		String padding = "";
+
+		if (Information.getMyself().cacheContains(this)) {
+			sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
+			sb.append("[Cached]");
+			padding += "  ";
+		} else {
+			sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
+			sb.append("[Uncached]");
+		}
+
 		if (isTraineable()) {
 			if (isTrained()) {
 				sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
 				sb.append("[Trained]");
+				padding += "  ";
 			} else {
 				sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
 				sb.append("[Untrained]");
@@ -207,6 +219,7 @@ public abstract class Element {
 		sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.YELLOW));
 		sb.append("[" + getType() + "] ");
 		sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.CYAN));
+		sb.append(padding);
 		sb.append(getKey());
 		return sb.toAttributedString();
 	}

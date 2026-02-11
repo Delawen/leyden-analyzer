@@ -128,9 +128,9 @@ public class MethodObject extends ReferencingElement {
 	}
 
 	@Override
-	public AttributedString getDescription(String leftPadding) {
+	public AttributedString getDescription(String leftPadding, Boolean verbose, Boolean tips) {
 		AttributedStringBuilder sb = new AttributedStringBuilder();
-		sb.append(super.getDescription(leftPadding));
+		sb.append(super.getDescription(leftPadding, verbose, tips));
 		sb.append(AttributedString.NEWLINE);
 		sb.append(leftPadding + "Training Information: ");
 		sb.append(AttributedString.NEWLINE);
@@ -142,8 +142,11 @@ public class MethodObject extends ReferencingElement {
 			sb.append("MethodCounters");
 			sb.style(AttributedStyle.DEFAULT);
 			sb.append(" associated to it.");
-			sb.append(AttributedString.NEWLINE);
-			sb.append(leftPadding + "This means it was called significantly during training run.");
+			if (verbose) {
+				sb.append(AttributedString.NEWLINE);
+				sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT));
+				sb.append(leftPadding + "  ℹ\uFE0F  This means it was called significantly during training run.");
+			}
 			sb.style(AttributedStyle.DEFAULT);
 		} else {
 			sb.append(leftPadding + "It has no ");
@@ -151,9 +154,11 @@ public class MethodObject extends ReferencingElement {
 			sb.append("MethodCounters");
 			sb.style(AttributedStyle.DEFAULT);
 			sb.append(" associated to it.");
-			sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.MAGENTA));
-			sb.append(AttributedString.NEWLINE);
-			sb.append(leftPadding + "This method doesn't seem to have been called significantly during training run.");
+			if (verbose) {
+				sb.append(AttributedString.NEWLINE);
+				sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT));
+				sb.append(leftPadding + "  ℹ\uFE0F  This method doesn't seem to have been called significantly during training run.");
+			}
 			sb.style(AttributedStyle.DEFAULT);
 		}
 		sb.append(AttributedString.NEWLINE);
@@ -164,20 +169,27 @@ public class MethodObject extends ReferencingElement {
 			sb.append("MethodData");
 			sb.style(AttributedStyle.DEFAULT);
 			sb.append(" associated to it.");
-			sb.append(AttributedString.NEWLINE);
-			sb.append(leftPadding + "This means it is highly profiled.");
+			if (verbose) {
+				sb.append(AttributedString.NEWLINE);
+				sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT));
+				sb.append(leftPadding + "  ℹ\uFE0F  This means it is highly profiled.");
+			}
 		} else {
 			sb.append(leftPadding + "It has no ");
 			sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
 			sb.append("MethodData");
 			sb.style(AttributedStyle.DEFAULT);
 			sb.append(" associated to it.");
-			sb.append(AttributedString.NEWLINE);
-			sb.append(leftPadding + "This means it may be profiled, but not ready to be compiled on a high " +
-					"level.");
-			sb.append(AttributedString.NEWLINE);
-			sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.MAGENTA));
-			sb.append(leftPadding + "If this is a key method in your app, you should have this asset.");
+			if (verbose) {
+				sb.append(AttributedString.NEWLINE);
+				sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT));
+				sb.append(leftPadding + "  ℹ\uFE0F  This means it may be profiled, but not ready to be compiled on a high level.");
+			}
+			if (tips) {
+				sb.append(AttributedString.NEWLINE);
+				sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
+				sb.append(leftPadding + "  ℹ\uFE0F  If this is a key method in your app, you should have this asset.");
+			}
 			sb.style(AttributedStyle.DEFAULT);
 		}
 		sb.append(AttributedString.NEWLINE);

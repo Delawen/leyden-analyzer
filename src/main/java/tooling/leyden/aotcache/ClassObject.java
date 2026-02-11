@@ -125,9 +125,9 @@ public class ClassObject extends ReferencingElement {
 	}
 
 	@Override
-	public AttributedString getDescription(String leftPadding) {
+	public AttributedString getDescription(String leftPadding, Boolean verbose, Boolean tips) {
 		AttributedStringBuilder sb = new AttributedStringBuilder();
-		sb.append(super.getDescription(leftPadding));
+		sb.append(super.getDescription(leftPadding, verbose, tips));
 		sb.append(AttributedString.NEWLINE);
 		sb.append(leftPadding + "This class is ");
 		if (!Information.getMyself().cacheContains(this)) {
@@ -141,7 +141,7 @@ public class ClassObject extends ReferencingElement {
 		}
 		sb.append(" in the AOT cache.");
 
-		if (isClassLoader()) {
+		if (isClassLoader() && verbose) {
 			sb.append(AttributedString.NEWLINE);
 			sb.style(AttributedStyle.DEFAULT.bold());
 			sb.append(leftPadding + "This class is a class loader.");
@@ -180,12 +180,12 @@ public class ClassObject extends ReferencingElement {
 		} else {
 			sb.style(AttributedStyle.DEFAULT.bold());
 			sb.append(leftPadding + "This class doesn't seem to have training data. ");
-			sb.style(AttributedStyle.DEFAULT);
-			if (trained == 0) {
-				sb.append(AttributedString.NEWLINE);
-				sb.append(leftPadding + "If you think this class and its methods should be part of the training, " +
+			sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
+			if (trained == 0 && tips) {
+				sb.append(leftPadding + "  \uD83D\uDCA1  If you think this class and its methods should be part of the training, " +
 						"make sure your training run use them several times.");
 			}
+			sb.style(AttributedStyle.DEFAULT);
 		}
 
 

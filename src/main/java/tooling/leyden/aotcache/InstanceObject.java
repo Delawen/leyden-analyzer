@@ -26,10 +26,11 @@ public class InstanceObject extends ReferencingElement{
      *
      * @return A complete description of this element.
      */
-    public AttributedString getDescription(String leftPadding) {
+    @Override
+    public AttributedString getDescription(String leftPadding, Boolean verbose, Boolean tips) {
 
         AttributedStringBuilder sb = new AttributedStringBuilder();
-        sb.append(super.getDescription(leftPadding));
+        sb.append(super.getDescription(leftPadding, verbose, tips));
         sb.append(AttributedString.NEWLINE);
         sb.append(leftPadding + "This instance object is ");
 

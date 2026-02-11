@@ -121,6 +121,18 @@ public class CommonParameters {
 			description = "If true, shows only aot-inited objects. If false, shows only non-aot-inited objects.")
 	protected Boolean showAOTInited = null;
 
+	@CommandLine.Option(names = {"-v", "--verbose"},
+			arity = "0..1",
+			description = "Display more information.",
+			defaultValue = "false")
+    protected Boolean verbose;
+
+	@CommandLine.Option(names = {"-hints"},
+			arity = "0..1",
+			description = "Display hints on how to explore further.",
+			defaultValue = "false")
+	protected Boolean hints;
+
 	public String getName() {
 		return cleanQuotes(this.name);
 	}

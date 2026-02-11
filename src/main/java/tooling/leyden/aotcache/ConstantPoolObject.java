@@ -40,9 +40,9 @@ public class ConstantPoolObject extends Element {
 	}
 
 	@Override
-	public AttributedString getDescription(String leftPadding) {
+	public AttributedString getDescription(String leftPadding, Boolean verbose, Boolean tips) {
 		AttributedStringBuilder sb = new AttributedStringBuilder();
-		sb.append(super.getDescription(leftPadding));
+		sb.append(super.getDescription(leftPadding, verbose, tips));
 		sb.append(AttributedString.NEWLINE);
 		sb.append(leftPadding + "ConstantPoolCache on address ");
 		sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.CYAN));
