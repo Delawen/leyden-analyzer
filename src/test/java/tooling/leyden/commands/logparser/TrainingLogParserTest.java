@@ -3,16 +3,13 @@ package tooling.leyden.commands.logparser;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import tooling.leyden.aotcache.ClassObject;
-import tooling.leyden.aotcache.ConstantPoolObject;
-import tooling.leyden.aotcache.Information;
-import tooling.leyden.aotcache.ReferencingElement;
-import tooling.leyden.aotcache.WarningType;
+import tooling.leyden.aotcache.*;
 import tooling.leyden.commands.DefaultTest;
 import tooling.leyden.commands.LoadFileCommand;
 
 import java.io.BufferedReader;
 import java.io.StringReader;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -277,5 +274,35 @@ class TrainingLogParserTest extends DefaultTest {
 		assertEquals(2257.0, statistics.getValue("[CodeCache] Nmethod Tier 5"));
 		assertEquals("31332312 bytes, max entry's size: 136328 bytes", statistics.getValue("[CodeCache] Cache Size"));
 		assertEquals(9870.0, statistics.getValue("[CodeCache] AOT Code Entries"));
+	}
+
+
+
+
+
+	@Test
+	void rejectionReasons() {
+		String log =
+				"""
+[warning][aot] class org/postgresql/util/LazyCleanerImpl$CleanableWrapper cannot be archived because it was not defined from /home/delawen/git/leyden-perf-test/builds/gqaot/quarkus-hibernate-orm-spacefox/quarkus-hibernate-orm-spacefox/lib/main/org.postgresql.postgresql-42.7.9.jar as claimed
+[trace][aot,resolve] java/time/format/TextStyle CP entry [ 26] => method [Ljava/time/format/TextStyle;.clone:()Ljava/lang/Object; can't be archived because its resolution is not deterministic.
+			""";
+
+		BufferedReader reader = new BufferedReader(new StringReader(log));
+		reader.lines().forEach(parser::accept);
+		parser.postProcessing();
+
+		List<Warning> warnings = Information.getMyself().getWarnings();
+		assertEquals(2, warnings.size());
+
+		Warning w = warnings.getFirst();
+		assertEquals(WarningType.CacheCreationRevertedKlass, w.getType());
+		assertTrue(w.affects("org/postgresql/util/LazyCleanerImpl$CleanableWrapper"));
+		assertTrue(w.affects("org.postgresql.util.LazyCleanerImpl$CleanableWrapper"));
+
+		w = warnings.getLast();
+		assertEquals(WarningType.CacheCreationRevertedMethod, w.getType());
+		assertTrue(w.affects("java.time.format.TextStyle"));
+		assertTrue(w.affects("java/time/format/TextStyle"));
 	}
 }
