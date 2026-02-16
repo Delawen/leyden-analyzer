@@ -3,7 +3,6 @@ package tooling.leyden.commands.logparser;
 import org.jline.utils.AttributedString;
 import tooling.leyden.aotcache.ClassObject;
 import tooling.leyden.aotcache.Configuration;
-import tooling.leyden.aotcache.ConstantPoolObject;
 import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.ElementFactory;
 import tooling.leyden.aotcache.ReferencingElement;
@@ -43,7 +42,9 @@ public class TrainingLogParser extends LogParser {
     private void processAOT(Line line) {
         if (containsTags(line.tags(), "resolve")) {
             if (line.level().equals("trace")) {
-                if (line.trimmedMessage().startsWith("archived")) {
+                if (line.trimmedMessage().contains("t be archived because")) {
+                    processAotProblemBecause(line.trimmedMessage());
+                } else if (line.trimmedMessage().startsWith("archived")) {
                     processAotTraceResolve(line.trimmedMessage());
                 } else if (line.trimmedMessage().startsWith("reverted")) {
                     processAOTReverted(line.trimmedMessage());
@@ -131,6 +132,59 @@ public class TrainingLogParser extends LogParser {
         }
     }
 
+
+
+    private void processAotProblemBecause(String trimmedMessage) {
+        final var splitMessage = trimmedMessage.trim().split("\\s+");
+
+        if (trimmedMessage.contains("cannot be archived because")) {
+//	class org/postgresql/util/LazyCleanerImpl$CleanableWrapper cannot be archived because it was not defined from /home/delawen/git/leyden-perf-test/builds/gqaot/quarkus-hibernate-orm-simple/quarkus-hibernate-orm-simple/lib/main/org.postgresql.postgresql-42.7.9.jar as claimed
+            //First we find the Symbol related to
+            final var parentClassName = splitMessage[1];
+            ReferencingElement parentSymbol = findSymbol(parentClassName);
+            parentSymbol.addSource(trimmedMessage);
+            assignClassToSymbol(parentSymbol);
+
+            information.getWarnings().add(
+                    new Warning(
+                            List.of(parentSymbol),
+                            new AttributedString(trimmedMessage), WarningType.CacheCreationRevertedKlass));
+        } else if (trimmedMessage.contains("can't be archived because")) {
+// jdk/internal/util/OperatingSystem CP entry [ 20] => method [Ljdk/internal/util/OperatingSystem;.clone:()Ljava/lang/Object; can't be archived because its resolution is not deterministic.
+            final var parentClassName = splitMessage[0];
+            ReferencingElement parentSymbol = findSymbol(parentClassName);
+            parentSymbol.addSource(trimmedMessage);
+            assignClassToSymbol(parentSymbol);
+
+            String symbol = "";
+            String type = "";
+            for (int i = 0; i < splitMessage.length; i++) {
+                if (splitMessage[i].equals("=>")) {
+                    type = splitMessage[i + 1];
+                    symbol = splitMessage[i + 2];
+                    break;
+                }
+            }
+
+            if (!symbol.isBlank()) {
+                findOrCreateSymbolAndLinkToParent(parentSymbol, trimmedMessage, symbol, trimmedMessage);
+
+                var warningType = WarningType.CacheCreation;
+                if (type.equals("method")) {
+                    warningType = WarningType.CacheCreationRevertedMethod;
+                } else if (type.equals("field")) {
+                    warningType = WarningType.CacheCreationRevertedField;
+                } else if (type.equals("indy")) {
+                    warningType = WarningType.CacheCreationRevertedIndy;
+                }
+
+                    information.getWarnings().add(
+                        new Warning(
+                                List.of(parentSymbol, assignClassToSymbol(findSymbol(symbol))),
+                                new AttributedString(trimmedMessage), warningType));
+            }
+        }
+    }
 
     private void processAotTraceResolve(String trimmedMessage) {
         final var splitMessage = trimmedMessage.substring(trimmedMessage.indexOf("]: ") + 2).trim().split("\\s+");
@@ -268,6 +322,8 @@ public class TrainingLogParser extends LogParser {
             final var aClass = ElementFactory.getOrCreate(className, "Class", null);
             aClass.addSource(getSource());
             this.information.addWarning(aClass, trimmedMessage, WarningType.CacheCreation);
+        } else if (trimmedMessage.contains("t be archived because")) {
+            processAotProblemBecause(trimmedMessage);
         } else {
             //Very generic, but at least catch things
             information.getWarnings().add(new Warning(trimmedMessage));
