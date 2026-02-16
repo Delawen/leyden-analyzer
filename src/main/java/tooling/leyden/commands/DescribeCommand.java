@@ -103,7 +103,7 @@ class DescribeCommand extends BaseCommand {
             }
         } else {
 			sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
-			sb.append("ERROR: Element not found. Try looking for it with ls.");
+			sb.append("ERROR: Element '" + parameters.getName() + "' not found. Try looking for it with ls.");
 		}
 		sb.toAttributedString().println(parent.getTerminal());
 	}

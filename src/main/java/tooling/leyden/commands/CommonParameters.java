@@ -142,21 +142,11 @@ public class CommonParameters {
 	protected Boolean hints;
 
 	public String getName() {
-		return cleanQuotes(this.name);
+		return this.name;
 	}
 
 	public void setName(String name) {
 		this.name = name;
-	}
-
-	private String cleanQuotes(String string) {
-		if(string != null
-				&& string.length() > 1
-				&& ((string.startsWith("'") && string.endsWith("'"))
-				|| (string.startsWith("\"") && string.endsWith("\"")))) {
-			string = string.substring(1, string.length() - 1);
-		}
-		return string;
 	}
 
 	public Boolean useArrays() {

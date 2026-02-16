@@ -93,6 +93,7 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
 			PicocliCommandsFactory factory = new PicocliCommandsFactory();
 
 			CommandLine cmd = new CommandLine(commands, factory);
+			cmd.setTrimQuotes(true);
 			PicocliCommands picocliCommands = new PicocliCommands(cmd);
 
 			Parser parser = new DefaultParser();
