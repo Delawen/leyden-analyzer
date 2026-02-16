@@ -23,7 +23,7 @@ import java.util.Map;
 		version = "1.0",
 		description = {"Help detect and clarify warnings found. By default, it lists incidents detected on the logs."},
 		subcommands = {CommandLine.HelpCommand.class})
-class WarningCommand implements Runnable {
+class WarningCommand extends BaseCommand {
 
 	@CommandLine.ParentCommand
 	DefaultCommand parent;
@@ -57,7 +57,7 @@ class WarningCommand implements Runnable {
 	// so we skip them on our auto checks
 	private String[] excludedPackages = new String[]{"java", "jdk", "sun", "com.sun"};
 
-	public void run() {
+	public void execution() {
 		printWarnings();
 	}
 
@@ -113,14 +113,24 @@ class WarningCommand implements Runnable {
 					"It is up to the developer to decide that."
 			})
 	public void check() {
+		setupHandle();
 
 		parent.getOut().println("Trying to detect problems...");
 
 		List<Warning> warnings = parent.getInformation().getAutoWarnings();
 		warnings.clear();
 
+		if (!isRunning()) {
+			return;
+		}
 		warnings.addAll(getTopPackagesNotCached());
+		if (!isRunning()) {
+			return;
+		}
 		warnings.addAll(getTopPackagesUsedAndNotTrained());
+		if (!isRunning()) {
+			return;
+		}
 
 		printWarnings();
 		parent.getOut().println("The auto-detected issues may or may not be problematic.");

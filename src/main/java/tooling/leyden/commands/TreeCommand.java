@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 				"This means, elements that refer to/use the root element. ",
 				"Blue italic elements have already been shown and will not be expanded."},
 		subcommands = {CommandLine.HelpCommand.class})
-class TreeCommand implements Runnable {
+class TreeCommand extends BaseCommand {
 
 	@CommandLine.ParentCommand
 	DefaultCommand parent;
@@ -59,7 +59,7 @@ class TreeCommand implements Runnable {
 			paramLabel = "<true>")
 	Boolean reverse;
 
-	public void run() {
+	public void execution() {
 
 		if (parameters.getName() == null || parameters.getName().isBlank()) {
 			(new AttributedString("ERROR: You must specify the name of the class to build the graph.",
@@ -122,6 +122,10 @@ class TreeCommand implements Runnable {
 			return;
 		level++;
 
+		if (!isRunning()) {
+			return;
+		}
+
 		boolean isFirst = true;
 		for (Element refer : getElementsReferencingThisOne(root, Collections.synchronizedSet(new HashSet<>()))) {
 			AttributedStringBuilder asb = new AttributedStringBuilder();
@@ -157,7 +161,7 @@ class TreeCommand implements Runnable {
 	}
 
 	Set<Element> getElementsReferencingThisOne(Element element, Set<Element> walkedBy) {
-		if (walkedBy.contains(element)) {
+		if (walkedBy.contains(element) || !isRunning()) {
 			// We have already been here, stop!
 			return Set.of();
 		}
@@ -168,8 +172,11 @@ class TreeCommand implements Runnable {
 		if (reverse) {
 			referenced.addAll(element.getWhoReferencesMe());
 			if (element.getType().equalsIgnoreCase("Object")) {
-				((ReferencingElement)element).getReferences().stream()
-						.filter(e -> e instanceof ClassObject).forEach(referenced::add);
+				var classes = ((ReferencingElement)element).getReferences().stream()
+						.filter(e -> e instanceof ClassObject).iterator();
+				while(isRunning() && classes.hasNext()) {
+					referenced.add(classes.next());
+				}
 			}
 		} else {
 			if (element instanceof ClassObject classObject) {
@@ -191,16 +198,29 @@ class TreeCommand implements Runnable {
 
 		final Set<Element> elements = Collections.synchronizedSet(new HashSet<>());
 
+		if (!isRunning()) {
+			return Set.of();
+		}
+
 		Set<Element> tmp = new HashSet<>();
 		// If we are showing these elements (in parameters.type), add them to result:
-		referenced.parallelStream()
+		var referencedIterator = referenced.parallelStream()
 				.filter(e -> Arrays.stream(parameters.types).anyMatch(t -> t.equalsIgnoreCase(e.getType())))
-				.forEach(tmp::add);
+				.iterator();
+		while(referencedIterator.hasNext() && isRunning()) {
+			tmp.add(referencedIterator.next());
+		}
 		//filter in case we have more constraints from packages or something
-		filter(tmp.stream()).forEach(elements::add);
+		var filteredIterator = filter(tmp.stream()).iterator();
+		while(filteredIterator.hasNext() && isRunning()) {
+			elements.add(filteredIterator.next());
+		}
 		//remove parent node, if it is there
 		elements.remove(element);
 		walkedBy.addAll(elements);
+		if (!isRunning()) {
+			return Set.of();
+		}
 
 		if (max > 0 && max < elements.size()) {
 			// Do not continue looping recursively, this is already enough
@@ -209,17 +229,21 @@ class TreeCommand implements Runnable {
 		}
 
 		// If we are not showing these elements (not in parameters.type), traverse them recursively:
-		referenced.parallelStream()
+		var traversedIterator = referenced.parallelStream()
 				.filter(e -> Arrays.stream(parameters.types).noneMatch(t -> t.equalsIgnoreCase(e.getType())))
 				//Do not loop infinitely
 				.filter(e -> !walkedBy.contains(e))
-				.forEach(e -> elements.addAll(getElementsReferencingThisOne(e, walkedBy))
-				);
-
+				.iterator();
+		while(traversedIterator.hasNext() && isRunning()) {
+			elements.addAll(getElementsReferencingThisOne(traversedIterator.next(), walkedBy));
+		}
 
 		//remove parent node, again, if it is there
 		//(it is usually there, because when traversing elements we usually find circular references)
 		elements.remove(element);
+		if (!isRunning()) {
+			return Set.of();
+		}
 
 		return filter(elements.stream()).collect(Collectors.toSet());
 	}

@@ -50,6 +50,7 @@ public class CommonParameters {
 	@CommandLine.Option(names = {"--showArrays"},
 			description = "Display array classes if true. True by default.",
 			defaultValue = "true",
+			negatable = true,
 			arity = "0..1")
 	protected Boolean arrays = true;
 
@@ -72,6 +73,7 @@ public class CommonParameters {
 	@CommandLine.Option(
 			names = {"-hr", "--showHeapRoot"},
 			arity = "0..1",
+			negatable = true,
 			paramLabel = "<isHeapRoot>",
 			description = "If true, shows only heapRoot elements. If false, shows only non-heapRoot elements.")
 	protected Boolean isHeapRoot = null;
@@ -99,36 +101,42 @@ public class CommonParameters {
 			description = {"Only displays elements with training information.",
 					"This may restrict the types of elements shown, along with what was passed as parameters."},
 			defaultValue = "false",
+			negatable = true,
 			arity = "0..1")
 	protected Boolean trained = false;
 
 	@CommandLine.Option(names = {"--lambdas"},
 			description = {"Display lambda classes too. Useful to hide lambda classes."},
 			defaultValue = "true",
+			negatable = true,
 			arity = "0..1")
 	protected Boolean lambdas = true;
 
 	@CommandLine.Option(names = {"--innerClasses"},
 			description = {"Display inner classes too. Useful to hide inner classes."},
 			defaultValue = "true",
+			negatable = true,
 			arity = "0..1")
 	protected Boolean innerClasses = true;
 
 	@CommandLine.Option(
 			names = {"--showAOTInited"},
 			arity = "0..1",
+			negatable = true,
 			paramLabel = "<aot-inited>",
 			description = "If true, shows only aot-inited objects. If false, shows only non-aot-inited objects.")
 	protected Boolean showAOTInited = null;
 
 	@CommandLine.Option(names = {"-v", "--verbose"},
 			arity = "0..1",
+			negatable = true,
 			description = "Display more information.",
 			defaultValue = "false")
     protected Boolean verbose;
 
 	@CommandLine.Option(names = {"-hints"},
 			arity = "0..1",
+			negatable = true,
 			description = "Display hints on how to explore further.",
 			defaultValue = "false")
 	protected Boolean hints;

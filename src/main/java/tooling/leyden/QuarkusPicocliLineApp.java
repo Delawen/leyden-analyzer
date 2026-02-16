@@ -27,7 +27,6 @@ import picocli.shell.jline3.PicocliCommands;
 import picocli.shell.jline3.PicocliCommands.PicocliCommandsFactory;
 import tooling.leyden.aotcache.Information;
 import tooling.leyden.commands.DefaultCommand;
-import tooling.leyden.commands.LoadFileCommand;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -149,7 +148,7 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
 					} catch (UserInterruptException e) {
 						// Ignore
 					} catch (EndOfFileException e) {
-						return;
+						break;
 					} catch (Exception e) {
 						systemRegistry.trace(e);
 					}

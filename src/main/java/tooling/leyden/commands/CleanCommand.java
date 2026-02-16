@@ -7,12 +7,12 @@ import picocli.CommandLine.Command;
 		version = "1.0",
 		description = { "Empties the information loaded." },
 		subcommands = { CommandLine.HelpCommand.class })
-class CleanCommand implements Runnable {
+class CleanCommand extends BaseCommand {
 
 	@CommandLine.ParentCommand
 	DefaultCommand parent;
 
-	public void run() {
+	public void execution() {
 		parent.getInformation().clear();
 		parent.getOut().println("Cleaned the elements. Load again files to start a new analysis.");
 	}

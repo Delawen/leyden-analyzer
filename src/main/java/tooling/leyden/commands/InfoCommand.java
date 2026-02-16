@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 		version = "1.0",
 		description = {"Show information and statistics on the AOT Cache based on the information we have loaded."},
 		subcommands = {CommandLine.HelpCommand.class})
-class InfoCommand implements Runnable {
+class InfoCommand extends BaseCommand{
 
 	@CommandLine.ParentCommand
 	DefaultCommand parent;
@@ -57,7 +57,7 @@ class InfoCommand implements Runnable {
 	private AttributedStyle tipFormat =
 			AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW);
 
-	public void run() {
+	public void execution() {
 		if (shouldShow(InfoCommandTypes.Types.Configuration.name()))
 			print(InfoCommandTypes.Types.Configuration.name(), parent.getInformation().getConfiguration());
 		if (shouldShow(InfoCommandTypes.Types.Summary.name())) {

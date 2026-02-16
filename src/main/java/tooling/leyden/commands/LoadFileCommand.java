@@ -31,7 +31,7 @@ import java.util.stream.Stream;
 		version = "1.0",
 		description = {"Load a file to extract information."},
 		subcommands = {CommandLine.HelpCommand.class})
-public class LoadFileCommand implements Runnable {
+public class LoadFileCommand extends BaseCommand {
 
 	final private String logParameters = "-Xlog:class+load,aot+training=trace,aot+codecache*=trace," +
 			"aot+resolve*=trace,aot=warning:file=aot.log:level,tags";
@@ -49,9 +49,8 @@ public class LoadFileCommand implements Runnable {
 
 	private Thread.Builder builder = Thread.ofVirtual().name("loading-file-", 0);
 
-	public void run() {
+	public void execution() {
 		parent.getOut().println(new CommandLine(this).getUsageMessage());
-
 	}
 
 	private void load(Parser consumer, Path... files) {
@@ -129,7 +128,7 @@ public class LoadFileCommand implements Runnable {
         }
 
         try (Scanner scanner = new Scanner(Files.newInputStream(path), StandardCharsets.UTF_8)) {
-            while (scanner.hasNextLine()) {
+            while (scanner.hasNextLine() && (background || isRunning())) {
                 try {
                     consumer.accept(scanner.nextLine());
                 } catch (Exception e) {
@@ -158,6 +157,7 @@ public class LoadFileCommand implements Runnable {
 					arity = "1..*",
 					paramLabel = "<file>",
 					description = "files to load") Path[] files) {
+		setupHandle();
 		load(new AOTMapParser(this), files);
 	}
 
@@ -171,6 +171,7 @@ public class LoadFileCommand implements Runnable {
 					arity = "1..*",
 					paramLabel = "<file>",
 					description = "files to load") Path[] files) {
+		setupHandle();
 		load(new ProductionLogParser(this), files);
 	}
 
@@ -184,6 +185,7 @@ public class LoadFileCommand implements Runnable {
 					arity = "1..*",
 					paramLabel = "<file>",
 					description = "files to load") Path[] files) {
+		setupHandle();
 		load(new TrainingLogParser(this), files);
 	}
 
