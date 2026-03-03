@@ -4,6 +4,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import tooling.leyden.aotcache.*;
+import tooling.leyden.commands.CommonParameters;
 import tooling.leyden.commands.DefaultTest;
 import tooling.leyden.commands.LoadFileCommand;
 
@@ -652,4 +653,59 @@ class AOTCacheParserTest extends DefaultTest {
 		assertEquals(parameters, parsedData.toString());
 	}
 
-}
+
+	@Test
+	void test_jdk_8374549() {
+		String mapfile =
+				"""
+0x0000000800e78dd8: @@ CArray            24
+0x0000000800eaab70: @@ GrowableArray     16 15 (15)
+0x0000000800d13580: @@ PackageEntry      48 jdk.jlink - jdk/tools/jimage
+0x00000008001188c8: @@ ModuleEntry       80 unnamed module
+0x0000000800336a58: @@ ModuleEntry       80 java.base
+				""";
+
+		BufferedReader reader = new BufferedReader(new StringReader(mapfile));
+		reader.lines().forEach(aotCacheParser::accept);
+		aotCacheParser.postProcessing();
+
+		CommonParameters param = new CommonParameters();
+		param.setTypes(new String[]{"CArray"});
+		assertEquals(1, information.getElements(param).count());
+		param.setTypes(new String[]{"GrowableArray"});
+		assertEquals(1, information.getElements(param).count());
+		param.setTypes(new String[]{"PackageEntry"});
+		assertEquals(1, information.getElements(param).count());
+		param.setTypes(new String[]{"ModuleEntry"});
+		assertEquals(2, information.getElements(param).count());
+
+		Element e = information.getByAddress("0x0000000800e78dd8");
+		assertEquals("CArray", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertEquals(24, e.getSize());
+
+		e = information.getByAddress("0x0000000800eaab70");
+		assertEquals("GrowableArray", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertEquals(16, e.getSize());
+
+		e = information.getByAddress("0x0000000800d13580");
+		assertEquals("PackageEntry", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertEquals(48, e.getSize());
+		assertEquals("jdk.jlink - jdk/tools/jimage", e.getKey());
+
+		e = information.getByAddress("0x00000008001188c8");
+		assertEquals("ModuleEntry", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertEquals(80, e.getSize());
+		assertEquals("0x00000008001188c8", e.getKey());
+
+		e = information.getByAddress("0x0000000800336a58");
+		assertEquals("ModuleEntry", e.getType());
+		assertFalse(e.isHeapRoot());
+		assertEquals(80, e.getSize());
+		assertEquals("java.base", e.getKey());
+	}
+
+	}
