@@ -74,10 +74,12 @@ class InfoCommand extends BaseCommand{
 		Stream<Element> elements = parent.getInformation().getElements(params);
 		final var counts = new HashMap<String, AtomicInteger>();
 
-		elements.forEach(item -> {
-			counts.putIfAbsent(item.getType(), new AtomicInteger());
-			counts.get(item.getType()).incrementAndGet();
-		});
+		for (Element item : elements.toList()) {
+			var value = counts.putIfAbsent(item.getType(), new AtomicInteger(1));
+			if (value != null) {
+				value.incrementAndGet();
+			}
+		}
 
 		counts.entrySet().
 				stream().
