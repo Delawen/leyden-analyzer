@@ -338,6 +338,20 @@ public class AOTMapParser extends Parser {
 				//java.lang.Class instances (they have been pre-created by <clinit> method:
 //				0x00000000ffef4720: @@ Object (0xffef4720) java.lang.Class Lsun/util/locale/BaseLocale$1;
 				element = processObject(identifier, miniaddress, address);
+			} else if (type.equalsIgnoreCase("ModuleEntry")) {
+				//0x0000000802309870: @@ ModuleEntry       80 jdk.jpackage
+				//0x00000008001188c8: @@ ModuleEntry       80 unnamed module
+				element = ElementFactory.getOrCreate(
+						(identifier.equalsIgnoreCase("unnamed module") ? address : identifier), type, address);
+			} else if (type.equalsIgnoreCase("PackageEntry")) {
+				//0x0000000800d13358: @@ PackageEntry      48 jdk.jlink - jdk/tools/jmod
+				element = ElementFactory.getOrCreate(identifier, type, address);
+			} else if (type.equalsIgnoreCase("GrowableArray")) {
+				//0x0000000800eaab70: @@ GrowableArray     16 15 (15)
+				element = ElementFactory.getOrCreate(address, type, address);
+			}  else if (type.equalsIgnoreCase("CArray")) {
+				//0x0000000800439bb8: @@ CArray            24
+				element = ElementFactory.getOrCreate(address, type, address);
 			} else {
 				loadFile.getParent().getOut().println("Unidentified: " + type + " at address " + address);
 				element = ElementFactory.getOrCreate(address, type, address);
