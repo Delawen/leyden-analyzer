@@ -41,7 +41,7 @@ class AOTCacheParserTest extends DefaultTest {
     void accept() throws Exception {
         File file = new File(getClass().getResource("aot.map").getPath());
         final var aotCache = getDefaultCommand().getInformation();
-        getSystemRegistry().execute("load aotCache " + file.getAbsolutePath());
+        getSystemRegistry().execute("load aotCache " + file.getAbsolutePath().replace('\\', '/'));
         assertTrue(aotCache.getAll().size() > 0);
         assertEquals(0, aotCache.getWarnings().size());
 
