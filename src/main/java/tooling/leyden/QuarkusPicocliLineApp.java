@@ -1,18 +1,8 @@
 package tooling.leyden;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.function.Supplier;
-
+import io.quarkus.runtime.QuarkusApplication;
+import io.quarkus.runtime.annotations.QuarkusMain;
 import jakarta.inject.Inject;
-
-import org.fusesource.jansi.AnsiConsole;
 import org.jline.builtins.ConfigurationPath;
 import org.jline.console.SystemRegistry;
 import org.jline.console.impl.Builtins;
@@ -31,14 +21,21 @@ import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 import org.jline.utils.Status;
-
-import io.quarkus.runtime.QuarkusApplication;
-import io.quarkus.runtime.annotations.QuarkusMain;
 import picocli.CommandLine;
 import picocli.shell.jline3.PicocliCommands;
 import picocli.shell.jline3.PicocliCommands.PicocliCommandsFactory;
 import tooling.leyden.aotcache.Information;
 import tooling.leyden.commands.DefaultCommand;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.function.Supplier;
+
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 @QuarkusMain
 @CommandLine.Command(name = "leyden-analyzer", mixinStandardHelpOptions = true)
@@ -83,7 +80,6 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
 
     @Override
     public void run() {
-        AnsiConsole.systemInstall();
         try {
             Supplier<Path> workDir = () -> Paths.get(System.getProperty("user.dir"));
             // set up JLine built-in commands
@@ -120,7 +116,7 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
                         .history(new DefaultHistory())
                         .variable(LineReader.HISTORY_FILE,
                                 Paths.get(workDir.get().resolve(
-                                        historyFileName).toAbsolutePath().toString(),
+                                                historyFileName).toAbsolutePath().toString(),
                                         historyFileName))
                         .variable(LineReader.HISTORY_SIZE, 500) // Maximum entries in memory
                         .variable(LineReader.HISTORY_FILE_SIZE, 1000) // Maximum entries in file
@@ -157,8 +153,6 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
             }
         } catch (Throwable t) {
             t.printStackTrace();
-        } finally {
-            AnsiConsole.systemUninstall();
         }
     }
 
@@ -174,14 +168,14 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
                             ██║     ██╔══╝    ╚██╔╝  ██║  ██║██╔══╝  ██║╚██╗██║          \s
                             ███████╗███████╗   ██║   ██████╔╝███████╗██║ ╚████║          \s
                             ╚══════╝╚══════╝   ╚═╝   ╚═════╝ ╚══════╝╚═╝  ╚═══╝          \s
-
+                
                  █████╗  ██████╗ ████████╗     ██████╗ █████╗  ██████╗██╗  ██╗███████╗   \s
                 ██╔══██╗██╔═══██╗╚══██╔══╝    ██╔════╝██╔══██╗██╔════╝██║  ██║██╔════╝   \s
                 ███████║██║   ██║   ██║       ██║     ███████║██║     ███████║█████╗     \s
                 ██╔══██║██║   ██║   ██║       ██║     ██╔══██║██║     ██╔══██║██╔══╝     \s
                 ██║  ██║╚██████╔╝   ██║       ╚██████╗██║  ██║╚██████╗██║  ██║███████╗   \s
                 ╚═╝  ╚═╝ ╚═════╝    ╚═╝        ╚═════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝   \s
-
+                
                      █████╗ ███╗   ██╗ █████╗ ██╗  ██╗   ██╗███████╗███████╗██████╗      \s
                     ██╔══██╗████╗  ██║██╔══██╗██║  ╚██╗ ██╔╝╚══███╔╝██╔════╝██╔══██╗     \s
                     ███████║██╔██╗ ██║███████║██║   ╚████╔╝   ███╔╝ █████╗  ██████╔╝     \s
