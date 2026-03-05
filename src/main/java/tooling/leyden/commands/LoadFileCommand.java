@@ -1,8 +1,17 @@
 package tooling.leyden.commands;
 
-import io.quarkus.runtime.Quarkus;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.util.Scanner;
+import java.util.stream.Stream;
+
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStyle;
+
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import tooling.leyden.QuarkusPicocliLineApp;
@@ -12,77 +21,57 @@ import tooling.leyden.commands.logparser.Parser;
 import tooling.leyden.commands.logparser.ProductionLogParser;
 import tooling.leyden.commands.logparser.TrainingLogParser;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Scanner;
-import java.util.stream.Stream;
-
 /**
  * Commands to load information about the AOT Cache into memory. This can be for example in the form of logs.
  */
-@Command(name = "load", mixinStandardHelpOptions = true,
-		version = "1.0",
-		description = {"Load a file to extract information."},
-		subcommands = {CommandLine.HelpCommand.class})
+@Command(name = "load", mixinStandardHelpOptions = true, version = "1.0", description = {
+        "Load a file to extract information." }, subcommands = { CommandLine.HelpCommand.class })
 public class LoadFileCommand extends BaseCommand {
 
-	final private String logParameters = "-Xlog:class+load,aot+training=trace,aot+codecache*=trace," +
-			"aot+resolve*=trace,aot=warning:file=aot.log:level,tags";
+    final private String logParameters = "-Xlog:class+load,aot+training=trace,aot+codecache*=trace," +
+            "aot+resolve*=trace,aot=warning:file=aot.log:level,tags";
 
-	@CommandLine.ParentCommand
-	DefaultCommand parent;
+    @CommandLine.ParentCommand
+    DefaultCommand parent;
 
-	@CommandLine.Option(names = {"--background"},
-			description = {"Run this load in the background.",
-					"This allows you to continue working while the file gets parsed."},
-			defaultValue = "false",
-			arity = "0..1",
-			scope = CommandLine.ScopeType.INHERIT)
-	protected Boolean background = false;
+    @CommandLine.Option(names = { "--background" }, description = { "Run this load in the background.",
+            "This allows you to continue working while the file gets parsed." }, defaultValue = "false", arity = "0..1", scope = CommandLine.ScopeType.INHERIT)
+    protected Boolean background = false;
 
-	private Thread.Builder builder = Thread.ofVirtual().name("loading-file-", 0);
+    private Thread.Builder builder = Thread.ofVirtual().name("loading-file-", 0);
 
-	public void execution() {
-		parent.getOut().println(new CommandLine(this).getUsageMessage());
-	}
+    public void execution() {
+        parent.getOut().println(new CommandLine(this).getUsageMessage());
+    }
 
-	private void load(Parser consumer, Path... files) {
+    private void load(Parser consumer, Path... files) {
 
+        if (files != null) {
+            for (Path file : files) {
+                var filePath = file.toString();
+                if (filePath.contains("*")) {
+                    final var fileSeparator = System.getProperty("file.separator");
+                    //Are we sure there is no better way to do this??
+                    var startPath = "";
+                    if (!filePath.startsWith(fileSeparator)) {
+                        startPath = Paths.get(System.getProperty("user.dir")).toString();
+                    }
+                    // Now, we don't want to get ALL the files in the startPath folder
+                    // That may trigger access privilege exceptions
+                    // and it can be stupidly long
+                    while (filePath.indexOf(fileSeparator) >= 0
+                            && filePath.indexOf("*") > filePath.indexOf(fileSeparator,
+                                    filePath.indexOf(fileSeparator))) {
+                        var nextFolder = filePath.substring(0, filePath.indexOf(fileSeparator));
+                        startPath += (startPath.equals(fileSeparator) ? "" : fileSeparator) + nextFolder;
+                        filePath = filePath.substring(filePath.indexOf(fileSeparator) + 1);
+                    }
 
-		if (files != null) {
-			for (Path file : files) {
-				var filePath = file.toString();
-				if (filePath.contains("*")) {
-					final var fileSeparator = System.getProperty("file.separator");
-					//Are we sure there is no better way to do this??
-					var startPath = "";
-					if (!filePath.startsWith(fileSeparator)) {
-						startPath = Paths.get(System.getProperty("user.dir")).toString();
-					}
-					// Now, we don't want to get ALL the files in the startPath folder
-					// That may trigger access privilege exceptions
-					// and it can be stupidly long
-					while (filePath.indexOf(fileSeparator) >= 0
-							&& filePath.indexOf("*") > filePath.indexOf(fileSeparator,
-							filePath.indexOf(fileSeparator))) {
-						var nextFolder = filePath.substring(0, filePath.indexOf(fileSeparator));
-						startPath += (startPath.equals(fileSeparator) ? "" : fileSeparator) + nextFolder;
-						filePath = filePath.substring(filePath.indexOf(fileSeparator) + 1);
-					}
+                    if (!startPath.endsWith(fileSeparator) && !filePath.startsWith(fileSeparator)) {
+                        startPath += fileSeparator;
+                    }
 
-					if (!startPath.endsWith(fileSeparator) && !filePath.startsWith(fileSeparator)) {
-						startPath += fileSeparator;
-					}
-
-                    PathMatcher pathMatcher =
-                            FileSystems.getDefault().getPathMatcher("glob:" + startPath + filePath);
+                    PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + startPath + filePath);
                     try (Stream<Path> pathStream = Files.find(Path.of(startPath), Integer.MAX_VALUE,
                             (path, f) -> pathMatcher.matches(path))) {
                         pathStream.forEach(p -> loadWithBackground(consumer, p));
@@ -92,20 +81,20 @@ public class LoadFileCommand extends BaseCommand {
                                         AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED))));
                     }
 
-				} else {
-					loadWithBackground(consumer, file);
-				}
-			}
-		}
-	}
+                } else {
+                    loadWithBackground(consumer, file);
+                }
+            }
+        }
+    }
 
-	private void loadWithBackground(Parser consumer, Path p) {
-		if (background) {
-			builder.start(() -> load(p, consumer));
+    private void loadWithBackground(Parser consumer, Path p) {
+        if (background) {
+            builder.start(() -> load(p, consumer));
         } else {
-			load(p, consumer);
-		}
-	}
+            load(p, consumer);
+        }
+    }
 
     private void load(Path path, Parser consumer) {
         long time = System.currentTimeMillis();
@@ -148,52 +137,35 @@ public class LoadFileCommand extends BaseCommand {
         }
     }
 
-	@Command(
-			version = "1.0",
-			subcommands = {CommandLine.HelpCommand.class},
-			description = "Load an AOT Cache map file generated with -Xlog:aot+map=trace:file=aot.map:none:filesize=0")
-	public void aotCache(
-			@CommandLine.Parameters(
-					arity = "1..*",
-					paramLabel = "<file>",
-					description = "files to load") Path[] files) {
-		setupHandle();
-		load(new AOTMapParser(this), files);
-	}
+    @Command(version = "1.0", subcommands = {
+            CommandLine.HelpCommand.class }, description = "Load an AOT Cache map file generated with -Xlog:aot+map=trace:file=aot.map:none:filesize=0")
+    public void aotCache(
+            @CommandLine.Parameters(arity = "1..*", paramLabel = "<file>", description = "files to load") Path[] files) {
+        setupHandle();
+        load(new AOTMapParser(this), files);
+    }
 
-	@Command(
-			version = "1.0",
-			subcommands = {CommandLine.HelpCommand.class},
-			description = "Load a production log generated with " + logParameters
-	)
-	public void productionLog(
-			@CommandLine.Parameters(
-					arity = "1..*",
-					paramLabel = "<file>",
-					description = "files to load") Path[] files) {
-		setupHandle();
-		load(new ProductionLogParser(this), files);
-	}
+    @Command(version = "1.0", subcommands = {
+            CommandLine.HelpCommand.class }, description = "Load a production log generated with " + logParameters)
+    public void productionLog(
+            @CommandLine.Parameters(arity = "1..*", paramLabel = "<file>", description = "files to load") Path[] files) {
+        setupHandle();
+        load(new ProductionLogParser(this), files);
+    }
 
-	@Command(
-			version = "1.0",
-			subcommands = {CommandLine.HelpCommand.class},
-			description = "Load a training (and assembly) log generated with " + logParameters
-	)
-	public void trainingLog(
-			@CommandLine.Parameters(
-					arity = "1..*",
-					paramLabel = "<file>",
-					description = "files to load") Path[] files) {
-		setupHandle();
-		load(new TrainingLogParser(this), files);
-	}
+    @Command(version = "1.0", subcommands = {
+            CommandLine.HelpCommand.class }, description = "Load a training (and assembly) log generated with " + logParameters)
+    public void trainingLog(
+            @CommandLine.Parameters(arity = "1..*", paramLabel = "<file>", description = "files to load") Path[] files) {
+        setupHandle();
+        load(new TrainingLogParser(this), files);
+    }
 
-	public DefaultCommand getParent() {
-		return parent;
-	}
+    public DefaultCommand getParent() {
+        return parent;
+    }
 
-	public void setParent(DefaultCommand parent) {
-		this.parent = parent;
-	}
+    public void setParent(DefaultCommand parent) {
+        this.parent = parent;
+    }
 }

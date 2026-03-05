@@ -1,10 +1,10 @@
 package tooling.leyden.commands;
 
-import sun.misc.Signal;
-
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public abstract class BaseCommand  implements Runnable {
+import sun.misc.Signal;
+
+public abstract class BaseCommand implements Runnable {
 
     private static AtomicBoolean running = new AtomicBoolean(true);
 

@@ -1,38 +1,37 @@
 package tooling.leyden.commands;
 
+import java.util.Comparator;
+import java.util.List;
+
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
+
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.ReferencingElement;
 
-import java.util.Comparator;
-import java.util.List;
-
-@Command(name = "describe", mixinStandardHelpOptions = true,
-		version = "1.0",
-		description = {"Describe an asset, showing all related info."},
-		subcommands = {CommandLine.HelpCommand.class})
+@Command(name = "describe", mixinStandardHelpOptions = true, version = "1.0", description = {
+        "Describe an asset, showing all related info." }, subcommands = { CommandLine.HelpCommand.class })
 class DescribeCommand extends BaseCommand {
 
-	@CommandLine.ParentCommand
-	DefaultCommand parent;
+    @CommandLine.ParentCommand
+    DefaultCommand parent;
 
-	@CommandLine.Mixin
-	private CommonParameters parameters;
+    @CommandLine.Mixin
+    private CommonParameters parameters;
 
-	public void execution() {
+    public void execution() {
 
-		List<Element> elements = parent.getInformation().getElements(parameters).toList();
+        List<Element> elements = parent.getInformation().getElements(parameters).toList();
 
-		AttributedStringBuilder sb = new AttributedStringBuilder();
-		if (!elements.isEmpty()) {
+        AttributedStringBuilder sb = new AttributedStringBuilder();
+        if (!elements.isEmpty()) {
             for (Element e : elements) {
-				if (!isRunning()) {
-					break;
-				}
+                if (!isRunning()) {
+                    break;
+                }
                 var leftPadding = "  ";
                 sb.append("-----");
                 sb.append(AttributedString.NEWLINE);
@@ -102,20 +101,20 @@ class DescribeCommand extends BaseCommand {
                 sb.append(AttributedString.NEWLINE);
             }
         } else {
-			sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
-			sb.append("ERROR: Element '" + parameters.getName() + "' not found. Try looking for it with ls.");
-		}
-		sb.toAttributedString().println(parent.getTerminal());
-	}
+            sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
+            sb.append("ERROR: Element '" + parameters.getName() + "' not found. Try looking for it with ls.");
+        }
+        sb.toAttributedString().println(parent.getTerminal());
+    }
 
-	protected List<Element> getElementsReferencingThisOne(Element element) {
-		if (!isRunning()) {
-			return List.of();
-		}
-		return parent.getInformation().getAll().parallelStream()
-				.filter(e -> (e instanceof ReferencingElement))
-				.filter(e -> ((ReferencingElement) e).getReferences().contains(element))
-				.sorted(Comparator.comparing(Element::getType))
-				.toList();
-	}
+    protected List<Element> getElementsReferencingThisOne(Element element) {
+        if (!isRunning()) {
+            return List.of();
+        }
+        return parent.getInformation().getAll().parallelStream()
+                .filter(e -> (e instanceof ReferencingElement))
+                .filter(e -> ((ReferencingElement) e).getReferences().contains(element))
+                .sorted(Comparator.comparing(Element::getType))
+                .toList();
+    }
 }

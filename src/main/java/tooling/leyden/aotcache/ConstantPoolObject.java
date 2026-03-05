@@ -8,46 +8,46 @@ import org.jline.utils.AttributedStyle;
  * This element represents an Object of the ConstantPool(Cache) inside the AOT Cache.
  */
 public class ConstantPoolObject extends Element {
-	private String constantPoolCacheAddress;
-	private ClassObject poolHolder;
-	private String key;
+    private String constantPoolCacheAddress;
+    private ClassObject poolHolder;
+    private String key;
 
-	ConstantPoolObject(String key) {
-		this.key = key;
-		this.setType("ConstantPool");
-	}
+    ConstantPoolObject(String key) {
+        this.key = key;
+        this.setType("ConstantPool");
+    }
 
-	public String getConstantPoolCacheAddress() {
-		return constantPoolCacheAddress;
-	}
+    public String getConstantPoolCacheAddress() {
+        return constantPoolCacheAddress;
+    }
 
-	public void setConstantPoolCacheAddress(String constantPoolCacheAddress) {
-		this.constantPoolCacheAddress = constantPoolCacheAddress;
-	}
+    public void setConstantPoolCacheAddress(String constantPoolCacheAddress) {
+        this.constantPoolCacheAddress = constantPoolCacheAddress;
+    }
 
-	public ClassObject getPoolHolder() {
-		return poolHolder;
-	}
+    public ClassObject getPoolHolder() {
+        return poolHolder;
+    }
 
-	public void setPoolHolder(ClassObject poolHolder) {
-		this.poolHolder = poolHolder;
-		poolHolder.markAsReferenced(this);
-	}
+    public void setPoolHolder(ClassObject poolHolder) {
+        this.poolHolder = poolHolder;
+        poolHolder.markAsReferenced(this);
+    }
 
-	@Override
-	public String getKey() {
-		return key;
-	}
+    @Override
+    public String getKey() {
+        return key;
+    }
 
-	@Override
-	public AttributedString getDescription(String leftPadding, Boolean verbose, Boolean tips) {
-		AttributedStringBuilder sb = new AttributedStringBuilder();
-		sb.append(super.getDescription(leftPadding, verbose, tips));
-		sb.append(AttributedString.NEWLINE);
-		sb.append(leftPadding + "ConstantPoolCache on address ");
-		sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.CYAN));
-		sb.append(getConstantPoolCacheAddress());
-		sb.style(AttributedStyle.DEFAULT);
-		return sb.toAttributedString();
-	}
+    @Override
+    public AttributedString getDescription(String leftPadding, Boolean verbose, Boolean tips) {
+        AttributedStringBuilder sb = new AttributedStringBuilder();
+        sb.append(super.getDescription(leftPadding, verbose, tips));
+        sb.append(AttributedString.NEWLINE);
+        sb.append(leftPadding + "ConstantPoolCache on address ");
+        sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.CYAN));
+        sb.append(getConstantPoolCacheAddress());
+        sb.style(AttributedStyle.DEFAULT);
+        return sb.toAttributedString();
+    }
 }
