@@ -4,7 +4,7 @@ import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 
-public class InstanceObject extends ReferencingElement{
+public class InstanceObject extends ReferencingElement {
     private Boolean isAOTinited = false;
     private ClassObject instanceOf;
 
@@ -19,7 +19,6 @@ public class InstanceObject extends ReferencingElement{
     public void setAOTinited(Boolean AOTinited) {
         isAOTinited = AOTinited;
     }
-
 
     /**
      * When describing an element, this is the String we are going to use.

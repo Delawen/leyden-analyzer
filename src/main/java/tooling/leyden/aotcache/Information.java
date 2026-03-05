@@ -1,7 +1,5 @@
 package tooling.leyden.aotcache;
 
-import tooling.leyden.commands.CommonParameters;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -15,6 +13,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Stream;
+
+import tooling.leyden.commands.CommonParameters;
 
 public class Information {
 
@@ -51,7 +51,6 @@ public class Information {
     public static Information getMyself() {
         return myself;
     }
-
 
     public Information() {
         myself = this;
@@ -126,7 +125,7 @@ public class Information {
     public boolean cacheContains(Element e) {
         CommonParameters parameters = new CommonParameters();
         parameters.setName(e.getKey());
-        parameters.setTypes(new String[]{e.getType()});
+        parameters.setTypes(new String[] { e.getType() });
         parameters.setUse(CommonParameters.ElementsToUse.cached);
         return getElements(parameters).count() > 0;
     }
@@ -135,9 +134,8 @@ public class Information {
         return elementsByAddress.getOrDefault(address, null);
     }
 
-
     public Stream<Element> getElements(String key, String[] packageName, String[] excludePackageName,
-                                       Boolean includeArrays, Boolean includeExternalElements, String... type) {
+            Boolean includeArrays, Boolean includeExternalElements, String... type) {
 
         CommonParameters parameters = new CommonParameters();
         parameters.setName(key);
@@ -145,8 +143,8 @@ public class Information {
         parameters.setExcludePackageName(excludePackageName);
         parameters.setUseArrays(includeArrays);
         parameters.setTypes(type);
-        parameters.setUse(includeExternalElements ?
-                CommonParameters.ElementsToUse.both : CommonParameters.ElementsToUse.cached);
+        parameters
+                .setUse(includeExternalElements ? CommonParameters.ElementsToUse.both : CommonParameters.ElementsToUse.cached);
 
         return getElements(parameters);
     }
@@ -166,7 +164,7 @@ public class Information {
                 var k = new Key(key, t);
                 if (parameters.getUse() != CommonParameters.ElementsToUse.notCached
                         && elements.containsKey(k)) {
-                        result.add(elements.get(k));
+                    result.add(elements.get(k));
                 }
                 if (parameters.getUse() != CommonParameters.ElementsToUse.cached
                         && elementsNotInTheCache.containsKey(k)) {
@@ -197,13 +195,12 @@ public class Information {
         return filterByParams(parameters, result.map(keyElementEntry -> keyElementEntry.getValue()));
     }
 
-
     public static Stream<Element> filterByParams(String[] packageName,
-                                                 String[] excludePackageName,
-                                                 Boolean addArrays,
-                                                 String[] types,
-                                                 Boolean showOnlyHeapRoots,
-                                                 Stream<Element> result) {
+            String[] excludePackageName,
+            Boolean addArrays,
+            String[] types,
+            Boolean showOnlyHeapRoots,
+            Stream<Element> result) {
 
         CommonParameters parameters = new CommonParameters();
         parameters.setPackageName(packageName);
@@ -220,7 +217,6 @@ public class Information {
         var packageName = parameters.getPackageName();
         var excludePackageName = parameters.getExcludePackageName();
 
-
         if (packageName != null && packageName.length > 0) {
             result = result.filter(e -> {
                 if (e instanceof ClassObject classObject) {
@@ -228,8 +224,8 @@ public class Information {
                 }
                 if (e instanceof MethodObject methodObject) {
                     if (methodObject.getClassObject() != null) {
-                        return Arrays.stream(packageName).anyMatch(p ->
-                                methodObject.getClassObject().getPackageName().startsWith(p));
+                        return Arrays.stream(packageName)
+                                .anyMatch(p -> methodObject.getClassObject().getPackageName().startsWith(p));
                     }
                     return Arrays.stream(packageName).anyMatch(p -> methodObject.getName().startsWith(p));
                 }
@@ -263,8 +259,8 @@ public class Information {
                 }
                 if (e instanceof MethodObject methodObject) {
                     if (methodObject.getClassObject() != null) {
-                        return Arrays.stream(excludePackageName).noneMatch(p ->
-                                methodObject.getClassObject().getPackageName().startsWith(p));
+                        return Arrays.stream(excludePackageName)
+                                .noneMatch(p -> methodObject.getClassObject().getPackageName().startsWith(p));
                     }
                     return Arrays.stream(excludePackageName).noneMatch(p -> methodObject.getName().startsWith(p));
                 }
@@ -293,8 +289,7 @@ public class Information {
         if (parameters.getTypes() != null && parameters.getTypes().length > 0) {
             result = result.filter(
                     e -> Arrays.stream(parameters.getTypes())
-                    .anyMatch(t -> t.equalsIgnoreCase(e.getType()))
-            );
+                            .anyMatch(t -> t.equalsIgnoreCase(e.getType())));
         }
 
         if (parameters.isHeapRoot() != null) {
@@ -319,7 +314,6 @@ public class Information {
                 return true;
             });
         }
-
 
         if (parameters.getTrained()) {
             result = result.filter(e -> e.isTraineable() && e.isTrained());
@@ -368,10 +362,9 @@ public class Information {
         }
 
         switch (parameters.getLoaded()) {
-            case training -> result =
-                    result.filter(e -> e.getType().equalsIgnoreCase("Class")
-                            && e.wasLoaded().equals(Element.WhichRun.Training)
-                            && !((ClassObject) e).isArray());
+            case training -> result = result.filter(e -> e.getType().equalsIgnoreCase("Class")
+                    && e.wasLoaded().equals(Element.WhichRun.Training)
+                    && !((ClassObject) e).isArray());
             case production -> result = result.filter(e -> e.getType().equalsIgnoreCase("Class") &&
                     e.wasLoaded().equals(Element.WhichRun.Production));
             case both -> result = result.filter(e -> e.getType().equalsIgnoreCase("Class") &&
