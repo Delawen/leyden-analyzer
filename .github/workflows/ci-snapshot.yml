@@ -1,6 +1,6 @@
 # This workflow will build a snapshot release daily
 # and remove older releases
-name: ci-snapshot
+name: Nightly Snapshot
 
 on:
   schedule:
@@ -27,7 +27,7 @@ jobs:
         cache: maven
 
     - name: Build
-      run: mvn -B package -Dquarkus.package.jar.type=uber-jar --file pom.xml
+      run: mvn -B package --file pom.xml
 
     - name: set release name
       id: set-release-name
@@ -37,7 +37,7 @@ jobs:
     - name: Publish Snapshot
       uses: softprops/action-gh-release@v2
       with:
-        files: target/*-runner.jar
+        files: target/*.jar
         prerelease: true
         make_latest: true
         generate_release_notes: false

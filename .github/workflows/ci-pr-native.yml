@@ -1,4 +1,4 @@
-name: ci-pr-native
+name: Native Support
 
 on:
   pull_request:
