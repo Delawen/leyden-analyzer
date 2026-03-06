@@ -31,7 +31,7 @@ jobs:
         cache: maven
 
     - name: Build
-      run: mvn -B package -DskipTests --file pom.xml
+      run:  ./mvnw verify
 
     - name: Release
       uses: softprops/action-gh-release@v2

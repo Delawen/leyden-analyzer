@@ -26,7 +26,7 @@ jobs:
         cache: maven
 
     - name: Build
-      run: mvn -B package --file pom.xml
+      run:  ./mvnw verify
 
     - name: Upload
       uses: actions/upload-artifact@v7
