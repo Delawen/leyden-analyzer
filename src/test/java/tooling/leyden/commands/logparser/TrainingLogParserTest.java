@@ -301,25 +301,34 @@ class TrainingLogParserTest extends DefaultTest {
     @Test
     void rejectionReasons() {
         String log = """
-                [warning][aot] class org/postgresql/util/LazyCleanerImpl$CleanableWrapper cannot be archived because it was not defined from /home/delawen/git/leyden-perf-test/builds/gqaot/quarkus-hibernate-orm-spacefox/quarkus-hibernate-orm-spacefox/lib/main/org.postgresql.postgresql-42.7.9.jar as claimed
-                [trace][aot,resolve] java/time/format/TextStyle CP entry [ 26] => method [Ljava/time/format/TextStyle;.clone:()Ljava/lang/Object; can't be archived because its resolution is not deterministic.
-                			""";
+        [warning][aot] class org/postgresql/util/LazyCleanerImpl$CleanableWrapper cannot be archived because it was not defined from /home/delawen/git/leyden-perf-test/builds/gqaot/quarkus-hibernate-orm-spacefox/quarkus-hibernate-orm-spacefox/lib/main/org.postgresql.postgresql-42.7.9.jar as claimed
+        [trace][aot,resolve] reverted klass  CP entry [131]: io/vertx/core/impl/VertxImpl$1$1 app => java/lang/invoke/LambdaMetafactory
+        [trace][aot,resolve] reverted indy   CP entry [ 17]: io/vertx/core/impl/VertxImpl$1$1 (0)    java/lang/invoke/LambdaMetafactory.metafactory:(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite; (resolution is not deterministic)
+        [trace][aot,resolve] reverted field  CP entry [  1]: io/vertx/core/impl/VertxImpl$1$1 => io/vertx/core/impl/VertxImpl$1$1.this$1:Lio/vertx/core/impl/VertxImpl$1; (resolution is not deterministic)
+        			""";
 
         BufferedReader reader = new BufferedReader(new StringReader(log));
         reader.lines().forEach(parser::accept);
         parser.postProcessing();
 
         List<Warning> warnings = Information.getMyself().getWarnings();
-        assertEquals(2, warnings.size());
+        assertEquals(4, warnings.size());
 
         Warning w = warnings.getFirst();
         assertEquals(WarningType.CacheCreationRevertedKlass, w.getType());
         assertTrue(w.affects("org/postgresql/util/LazyCleanerImpl$CleanableWrapper"));
         assertTrue(w.affects("org.postgresql.util.LazyCleanerImpl$CleanableWrapper"));
 
-        w = warnings.getLast();
-        assertEquals(WarningType.CacheCreationRevertedMethod, w.getType());
-        assertTrue(w.affects("java.time.format.TextStyle"));
-        assertTrue(w.affects("java/time/format/TextStyle"));
+        w = warnings.stream().filter(warning -> warning.affects("java/lang/invoke/LambdaMetafactory")
+                && warning.getType() == WarningType.CacheCreationRevertedKlass).findFirst().get();
+        assertNotNull(w);
+        assertTrue(w.affects("io.vertx.core.impl.VertxImpl$1$1"));
+
+        assertTrue(warnings.stream().anyMatch(warning -> warning.affects("io/vertx/core/impl/VertxImpl$1$1")
+                && warning.getType() == WarningType.CacheCreationRevertedIndy));
+
+        assertTrue(warnings.stream().anyMatch(warning -> warning.affects("io.vertx.core.impl.VertxImpl$1$1")
+                && warning.getType() == WarningType.CacheCreationRevertedField));
+
     }
 }
