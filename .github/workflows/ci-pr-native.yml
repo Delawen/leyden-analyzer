@@ -8,6 +8,8 @@ on:
 
 jobs:
   native-build-and-test:
+    permissions:
+      contents: read
     name: Native (${{ matrix.os }}, Java ${{ matrix.mandrel.java }})
     runs-on: ${{ matrix.os }}
     strategy:
