@@ -29,7 +29,7 @@ jobs:
       run: mvn -B package --file pom.xml
 
     - name: Upload
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: leyden-analyzer-jar
         path: target/*.jar
