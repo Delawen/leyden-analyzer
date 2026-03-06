@@ -1,5 +1,5 @@
 # This workflow will build and upload a runner jar to keep around for 7 days
-name: ci-build
+name: Tests
 
 on:
   pull_request:
@@ -26,11 +26,11 @@ jobs:
         cache: maven
 
     - name: Build
-      run: mvn -B package -Dquarkus.package.jar.type=uber-jar --file pom.xml
+      run: mvn -B package --file pom.xml
 
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        name: leyden-analyzer-runner
-        path: target/*-runner.jar
+        name: leyden-analyzer-jar
+        path: target/*.jar
         retention-days: 7
