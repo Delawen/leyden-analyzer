@@ -11,7 +11,7 @@ import tooling.leyden.commands.LoadFileCommand;
  */
 public abstract class LogParser extends Parser {
     Pattern linePattern = Pattern
-            .compile("(?<timestamp>\\[(?:\\d|,)+s\\])?\\[(?<level>\\w+)\\s*\\]\\[(?<tags>(?:\\w+,?\\s*)+)\\](?<message>.*)");
+            .compile("(?<timestamp>\\[(?:\\d|,)+s\\])?\\[(?<level>\\w+)\\s*\\]\\[(?<tags>[^,\\]\\s]+(,[^,\\]\\s]+)*)\\s*\\](?<message>.*)");
 
     public LogParser(LoadFileCommand loadFile) {
         super(loadFile);
@@ -35,7 +35,7 @@ public abstract class LogParser extends Parser {
             message = m.group("message");
             tags = m.group("tags")
                     .trim()
-                    .split("\\s*,\\s*");
+                    .split(",");
         }
 
         return new Line(content, tags, level, message, message.trim());
