@@ -1,0 +1,25 @@
+name: "PR mandatory checks"
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+
+jobs:
+  publish:
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: peternied/check-pull-request-description-checklist@v1.1
+        with:
+          checklist-items: |
+                  This is not AI slop
+                  I have performed a self-review of my code
+                  I have commented my code, particularly in hard-to-understand areas
+                  I have made corresponding changes to the documentation
+                  My changes generate no new warnings
+                  I have added tests that prove my fix is effective or that my feature works
+                  New and existing unit tests pass locally with my changes
+                  Any dependent changes have been merged and published in downstream modules
