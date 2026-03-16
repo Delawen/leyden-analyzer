@@ -1,5 +1,7 @@
 package tooling.leyden.commands;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
@@ -11,6 +13,7 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.ReferencingElement;
+import tooling.leyden.aotcache.Warning;
 
 @Command(name = "describe", mixinStandardHelpOptions = true, version = "1.0", description = {
         "Describe an asset, showing all related info." }, subcommands = { CommandLine.HelpCommand.class })
@@ -86,7 +89,6 @@ class DescribeCommand extends BaseCommand {
                     }
 
                     if (!e.getSources().isEmpty()) {
-                        sb.append(leftPadding);
                         sb.append(AttributedString.NEWLINE);
                         sb.append(leftPadding + "This information comes from: ");
                         sb.append(AttributedString.NEWLINE);
@@ -95,6 +97,27 @@ class DescribeCommand extends BaseCommand {
                             sb.append(s);
                             sb.append(AttributedString.NEWLINE);
                         });
+                    }
+
+
+                    List<Warning> wa = new ArrayList<>();
+                    wa.addAll(parent.getInformation().getWarnings());
+                    wa.addAll(parent.getInformation().getAutoWarnings());
+                    wa.removeIf(w -> !w.affects(e.getKey()));
+
+                    if (!wa.isEmpty()) {
+                        sb.append(AttributedString.NEWLINE);
+                        sb.append(leftPadding + "This element has the following warnings: ");
+                        sb.append(AttributedString.NEWLINE);
+                        wa.forEach(s -> {
+                            sb.append(leftPadding + "  > ");
+                            sb.append(s.getDescription());
+                            sb.append(AttributedString.NEWLINE);
+                        });
+                    } else {
+                        sb.append(AttributedString.NEWLINE);
+                        sb.append(leftPadding + "This element has no warnings.");
+                        sb.append(AttributedString.NEWLINE);
                     }
                 }
                 sb.append("-----");
