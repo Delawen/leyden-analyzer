@@ -26,7 +26,7 @@ jobs:
                   New and existing unit tests pass locally with my changes
                   Any dependent changes have been merged and published in downstream modules
   whoami:
-    name: "Dependabot does not need a codeql scan"
+    name: "PR Mandatory Checks"
     if:  github.event.pull_request.user.id == 49699333
     permissions:
       pull-requests: read
