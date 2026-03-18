@@ -25,3 +25,18 @@ jobs:
                   I have added tests that prove my fix is effective or that my feature works
                   New and existing unit tests pass locally with my changes
                   Any dependent changes have been merged and published in downstream modules
+  whoami:
+    name: "What is dependabot called?"
+    permissions:
+      pull-requests: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Who am I
+        shell: bash
+        run: |
+          echo "USER: $USER"
+          echo "NAME: $NAME"
+        env:
+          USER: ${{ github.event.pull_request.user }}
+          NAME: ${{ github.event.pull_request.user.name }}
+
