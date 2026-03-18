@@ -8,6 +8,8 @@ on:
 
 jobs:
   publish:
+    name: "PR Mandatory Checks"
+    if:  github.event.pull_request.user.name != 'dependabot[bot]'
     permissions:
       pull-requests: write
     runs-on: ubuntu-latest
