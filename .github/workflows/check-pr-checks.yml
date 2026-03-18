@@ -9,7 +9,7 @@ on:
 jobs:
   publish:
     name: "PR Mandatory Checks"
-    if:  github.event.pull_request.user.name != 'dependabot[bot]'
+    if:  github.event.pull_request.user.id != 49699333
     permissions:
       pull-requests: write
     runs-on: ubuntu-latest
@@ -26,15 +26,13 @@ jobs:
                   New and existing unit tests pass locally with my changes
                   Any dependent changes have been merged and published in downstream modules
   whoami:
-    name: "What is dependabot called?"
+    name: "Dependabot does not need a codeql scan"
+    if:  github.event.pull_request.user.id == 49699333
     permissions:
       pull-requests: read
     runs-on: ubuntu-latest
     steps:
       - name: Who am I
         shell: bash
-        run: |
-          echo "USER: ${{ github.event.pull_request.user }}"
-          echo "ID: ${{ github.event.pull_request.user.id }}"
-          echo "NAME: ${{ github.event.pull_request.user.name }}"
+        run: echo "Skip!"
 
