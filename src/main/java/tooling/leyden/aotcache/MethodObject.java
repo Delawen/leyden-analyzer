@@ -132,6 +132,17 @@ public class MethodObject extends ReferencingElement {
         AttributedStringBuilder sb = new AttributedStringBuilder();
         sb.append(super.getDescription(leftPadding, verbose, tips));
         sb.append(AttributedString.NEWLINE);
+        if (verbose) {
+            if (this.getName().equals("<init>()")) {
+                sb.append(leftPadding + "  ℹ\uFE0F  This method is "
+                        + (this.parameters.isEmpty() ? "the default" : "an")
+                        + " instance initialization method (constructor).");
+                sb.append(AttributedString.NEWLINE);
+            } else if (getName().equals("<clinit>")) {
+                sb.append(leftPadding + "  ℹ\uFE0F  This method is a static initialization method.");
+                sb.append(AttributedString.NEWLINE);
+            }
+        }
         sb.append(leftPadding + "Training Information: ");
         sb.append(AttributedString.NEWLINE);
         leftPadding = "  " + leftPadding;
