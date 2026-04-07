@@ -19,7 +19,7 @@
         <jandex-plugin.version>3.5.3</jandex-plugin.version>
 
         <picocli-jline.version>4.7.7</picocli-jline.version>
-        <jline.version>4.0.10</jline.version>
+        <jline.version>4.0.11</jline.version>
         <juniversalchardet.version>1.0.3</juniversalchardet.version>
     </properties>
 
