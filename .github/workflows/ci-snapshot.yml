@@ -35,7 +35,7 @@ jobs:
         echo "RELEASE_DATE=$(date +"%Y.%m.%d")" >> $GITHUB_OUTPUT
 
     - name: Publish Snapshot
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         files: target/*.jar
         prerelease: true
