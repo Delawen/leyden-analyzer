@@ -34,7 +34,7 @@ jobs:
       run:  ./mvnw verify
 
     - name: Release
-      uses: softprops/action-gh-release@v3
+      uses: softprops/action-gh-release@v2
       with:
         files: target/*.jar
         make_latest: true
