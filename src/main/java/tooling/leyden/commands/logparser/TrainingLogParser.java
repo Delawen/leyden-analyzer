@@ -416,7 +416,7 @@ public class TrainingLogParser extends LogParser {
             } else if (line.trimmedMessage().startsWith("Tier ")) {
                 //[debug  ][aot,codecache,exit]     Tier 0: total=5
                 information.getStatistics().addValue(
-                        "[CodeCache] Nmethod Tier " + line.trimmedMessage().substring(5, 6),
+                        "[CodeCache] Nmethod Tier " + line.trimmedMessage().charAt(5),
                         Double.valueOf(line.trimmedMessage().substring(14)));
             } else if (line.trimmedMessage().startsWith("AOT code cache size: ")) {
                 //[debug  ][aot,codecache,exit]   AOT code cache size: 31332312 bytes, max entry's size: 136328 bytes

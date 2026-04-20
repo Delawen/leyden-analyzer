@@ -284,7 +284,6 @@ public class AOTMapParser extends Parser {
             } else if (type.equalsIgnoreCase("ConstantPoolCache")) {
                 //					0x0000000800ec7408: @@ ConstantPoolCache 64 javax.naming.spi.ObjectFactory
                 element = processConstantPoolCache(identifier, address);
-                type = "ConstantPool";
             } else if (type.equalsIgnoreCase("ConstantPool")) {
                 element = processConstantPool(identifier, address);
             } else if (type.equalsIgnoreCase("KlassTrainingData")) {
