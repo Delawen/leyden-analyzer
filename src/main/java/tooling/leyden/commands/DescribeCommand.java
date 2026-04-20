@@ -42,47 +42,47 @@ class DescribeCommand extends BaseCommand {
                 sb.append(AttributedString.NEWLINE);
                 if (parameters.verbose) {
                     sb.append(AttributedString.NEWLINE);
-                    sb.append(leftPadding + "References: ");
+                    sb.append(leftPadding).append("References: ");
                     var customLeftPadding = "  " + leftPadding;
                     if (e instanceof ReferencingElement re) {
                         if (!re.getReferences().isEmpty()) {
                             sb.append(AttributedString.NEWLINE);
-                            sb.append(customLeftPadding + "Assets referenced from this asset: ");
+                            sb.append(customLeftPadding).append("Assets referenced from this asset: ");
                             sb.append(AttributedString.NEWLINE);
                             re.getReferences().forEach(refer -> {
-                                sb.append(customLeftPadding + "   ");
+                                sb.append(customLeftPadding).append("   ");
                                 sb.append(refer.toAttributedString());
                                 sb.append(AttributedString.NEWLINE);
                             });
                         } else {
                             sb.append(AttributedString.NEWLINE);
-                            sb.append(customLeftPadding + "There are no assets referenced from this one.");
+                            sb.append(customLeftPadding).append("There are no assets referenced from this one.");
                             sb.append(AttributedString.NEWLINE);
                         }
                     }
 
                     var referring = getElementsReferencingThisOne(e);
                     if (!referring.isEmpty()) {
-                        sb.append(customLeftPadding + "Assets that refer to this one: ");
+                        sb.append(customLeftPadding).append("Assets that refer to this one: ");
                         sb.append(AttributedString.NEWLINE);
                         referring.forEach(refer -> {
-                            sb.append(customLeftPadding + "   ");
+                            sb.append(customLeftPadding).append("   ");
                             sb.append(refer.toAttributedString());
                             sb.append(AttributedString.NEWLINE);
                         });
                     } else {
                         sb.append(AttributedString.NEWLINE);
-                        sb.append(customLeftPadding + "There are no assets that refer to this one.");
+                        sb.append(customLeftPadding).append("There are no assets that refer to this one.");
                         sb.append(AttributedString.NEWLINE);
                     }
 
                     if (!e.getWhereDoesItComeFrom().isEmpty()) {
                         sb.append(leftPadding);
                         sb.append(AttributedString.NEWLINE);
-                        sb.append(leftPadding + "Where does this element come from: ");
+                        sb.append(leftPadding).append("Where does this element come from: ");
                         sb.append(AttributedString.NEWLINE);
                         e.getWhereDoesItComeFrom().forEach(s -> {
-                            sb.append(leftPadding + "  > ");
+                            sb.append(leftPadding).append("  > ");
                             sb.append(s);
                             sb.append(AttributedString.NEWLINE);
                         });
@@ -90,10 +90,10 @@ class DescribeCommand extends BaseCommand {
 
                     if (!e.getSources().isEmpty()) {
                         sb.append(AttributedString.NEWLINE);
-                        sb.append(leftPadding + "This information comes from: ");
+                        sb.append(leftPadding).append("This information comes from: ");
                         sb.append(AttributedString.NEWLINE);
                         e.getSources().forEach(s -> {
-                            sb.append(leftPadding + "  > ");
+                            sb.append(leftPadding).append("  > ");
                             sb.append(s);
                             sb.append(AttributedString.NEWLINE);
                         });
@@ -107,16 +107,16 @@ class DescribeCommand extends BaseCommand {
 
                     if (!wa.isEmpty()) {
                         sb.append(AttributedString.NEWLINE);
-                        sb.append(leftPadding + "This element has the following warnings: ");
+                        sb.append(leftPadding).append("This element has the following warnings: ");
                         sb.append(AttributedString.NEWLINE);
                         wa.forEach(s -> {
-                            sb.append(leftPadding + "  > ");
+                            sb.append(leftPadding).append("  > ");
                             sb.append(s.getDescription());
                             sb.append(AttributedString.NEWLINE);
                         });
                     } else {
                         sb.append(AttributedString.NEWLINE);
-                        sb.append(leftPadding + "This element has no warnings.");
+                        sb.append(leftPadding).append("This element has no warnings.");
                         sb.append(AttributedString.NEWLINE);
                     }
                 }
@@ -125,7 +125,7 @@ class DescribeCommand extends BaseCommand {
             }
         } else {
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
-            sb.append("ERROR: Element '" + parameters.getName() + "' not found. Try looking for it with ls.");
+            sb.append("ERROR: Element '").append(parameters.getName()).append("' not found. Try looking for it with ls.");
         }
         sb.toAttributedString().println(parent.getTerminal());
     }

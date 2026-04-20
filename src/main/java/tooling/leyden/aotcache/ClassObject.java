@@ -128,7 +128,7 @@ public class ClassObject extends ReferencingElement {
         AttributedStringBuilder sb = new AttributedStringBuilder();
         sb.append(super.getDescription(leftPadding, verbose, tips));
         sb.append(AttributedString.NEWLINE);
-        sb.append(leftPadding + "This class is ");
+        sb.append(leftPadding).append("This class is ");
         if (!Information.getMyself().cacheContains(this)) {
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
             sb.append("NOT included");
@@ -143,14 +143,14 @@ public class ClassObject extends ReferencingElement {
         if (isClassLoader() && verbose) {
             sb.append(AttributedString.NEWLINE);
             sb.style(AttributedStyle.DEFAULT.bold());
-            sb.append(leftPadding + "This class is a class loader.");
+            sb.append(leftPadding).append("This class is a class loader.");
             sb.style(AttributedStyle.DEFAULT);
         }
 
         int trained = 0;
         if (!this.getMethods().isEmpty()) {
             sb.append(AttributedString.NEWLINE);
-            sb.append(leftPadding + "This class has ");
+            sb.append(leftPadding).append("This class has ");
             sb.style(AttributedStyle.DEFAULT.bold());
             sb.append(Integer.toString(this.getMethods().size()));
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.YELLOW));
@@ -164,26 +164,25 @@ public class ClassObject extends ReferencingElement {
                 }
             }
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
-            sb.append(" " + trained);
+            sb.append(" ").append(String.valueOf(trained));
             sb.style(AttributedStyle.DEFAULT);
             sb.append(" have been trained.");
         }
         sb.append(AttributedString.NEWLINE);
 
         if (this.klassTrainingData != null) {
-            sb.append(leftPadding + "It has a ");
+            sb.append(leftPadding).append("It has a ");
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
             sb.append("KlassTrainingData");
             sb.style(AttributedStyle.DEFAULT);
             sb.append(" associated to it, which means it has profiling associated to its methods.");
         } else {
             sb.style(AttributedStyle.DEFAULT.bold());
-            sb.append(leftPadding + "This class doesn't seem to have training data. ");
+            sb.append(leftPadding).append("This class doesn't seem to have training data. ");
             if (trained == 0 && tips) {
                 sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
                 sb.append(AttributedString.NEWLINE);
-                sb.append(leftPadding + "  \uD83D\uDCA1  If you think this class should be part of the training, " +
-                        "make sure your training run use its methods more.");
+                sb.append(leftPadding).append("  \uD83D\uDCA1  If you think this class should be part of the training, ").append("make sure your training run use its methods more.");
             }
             sb.style(AttributedStyle.DEFAULT);
         }

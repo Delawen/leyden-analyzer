@@ -73,7 +73,7 @@ public abstract class Element {
         sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.YELLOW));
         sb.append(getType());
         sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.CYAN));
-        sb.append(" " + getKey());
+        sb.append(" ").append(getKey());
         sb.style(AttributedStyle.DEFAULT);
         if (getAddress() != null) {
             sb.append(" on address ");
@@ -90,7 +90,7 @@ public abstract class Element {
         sb.append(".");
         if (isHeapRoot()) {
             sb.append(AttributedString.NEWLINE);
-            sb.append(leftPadding + "This is a ");
+            sb.append(leftPadding).append("This is a ");
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
             sb.append("HEAP ROOT");
             sb.style(AttributedStyle.DEFAULT);
@@ -99,7 +99,7 @@ public abstract class Element {
 
         if (wasLoaded() != WhichRun.None) {
             sb.append(AttributedString.NEWLINE);
-            sb.append(leftPadding + "This asset was loaded into memory for usage during");
+            sb.append(leftPadding).append("This asset was loaded into memory for usage during");
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
             switch (wasLoaded()) {
                 case Training -> sb.append(" training run");
@@ -215,7 +215,7 @@ public abstract class Element {
         }
 
         sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.YELLOW));
-        sb.append("[" + getType() + "] ");
+        sb.append("[").append(getType()).append("] ");
         sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.CYAN));
         sb.append(padding);
         sb.append(getKey());

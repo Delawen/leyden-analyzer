@@ -63,16 +63,16 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
         AttributedStringBuilder asb = new AttributedStringBuilder();
         asb.append("Playground contains: ");
         asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
-                .append(information.getAll().size() + " assets");
+                .append(String.valueOf(information.getAll().size())).append(" assets");
         asb.style(AttributedStyle.DEFAULT).append(" | ");
         asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
-                .append(information.getAllPackages().size() + " packages");
+                .append(String.valueOf(information.getAllPackages().size())).append(" packages");
         asb.style(AttributedStyle.DEFAULT).append(" | ");
         asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
-                .append(information.getAllTypes().size() + " asset types");
+                .append(String.valueOf(information.getAllTypes().size())).append(" asset types");
         asb.style(AttributedStyle.DEFAULT).append(" | ");
         asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.RED))
-                .append(information.getWarnings().size() + " warnings")
+                .append(String.valueOf(information.getWarnings().size())).append(" warnings")
                 .toAttributedString();
         statusList.add(asb.toAttributedString());
         status.update(statusList, true);
