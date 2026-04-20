@@ -267,7 +267,7 @@ public class MethodObject extends ReferencingElement {
         }
         //Get parameter classes to add as references
         //88 void java.util.Hashtable.reconstitutionPut(java.util.Hashtable$Entry[], java.lang.Object, java.lang.Object)
-        String parameters[] = identifier.substring(identifier.indexOf("(") + 1, identifier.indexOf(")"))
+        String[] parameters = identifier.substring(identifier.indexOf("(") + 1, identifier.indexOf(")"))
                 .split(", ");
         for (String parameter : parameters) {
             if (!parameter.isBlank()) {
