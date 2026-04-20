@@ -44,8 +44,7 @@ public class ReferencingElement extends Element {
     }
 
     public void resolvePlaceholders() {
-        List<Element> refs = new ArrayList<>();
-        refs.addAll(references);
+        List<Element> refs = new ArrayList<>(references);
         refs.replaceAll(
                 element -> (element instanceof PlaceHolderElement) ? Information.getMyself().getByAddress(element.getAddress())
                         : element);
