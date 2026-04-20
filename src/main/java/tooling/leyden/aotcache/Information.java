@@ -65,9 +65,7 @@ public class Information {
         // referenced before the class it belongs to gets referenced.
         // So we have to make sure elements are not repeated both in
         // this.elements and this.elementsNotInTheCache
-        if (elementsNotInTheCache.containsKey(key)) {
-            elementsNotInTheCache.remove(key);
-        }
+        elementsNotInTheCache.remove(key);
 
         if (e.getAddress() != null) {
             elementsByAddress.putIfAbsent(e.getAddress(), e);
