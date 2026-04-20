@@ -1,6 +1,7 @@
 package tooling.leyden.commands.logparser;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -42,7 +43,7 @@ public abstract class LogParser extends Parser {
     }
 
     protected boolean containsTags(String[] tags, String... wantedTags) {
-        return Arrays.asList(tags).containsAll(Arrays.asList(wantedTags));
+        return new HashSet<>(Arrays.asList(tags)).containsAll(Arrays.asList(wantedTags));
     }
 
     protected record Line(String content, String[] tags, String level, String message, String trimmedMessage) {
