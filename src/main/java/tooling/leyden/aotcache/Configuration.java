@@ -12,7 +12,7 @@ import tooling.leyden.StatusMessage;
 
 public class Configuration {
 
-    private Map<String, Object> configuration = new ConcurrentHashMap<>();
+    private final Map<String, Object> configuration = new ConcurrentHashMap<>();
 
     public void addValue(String key, Object value) {
         if (configuration.containsKey(key) && !configuration.get(key).equals(value)) {

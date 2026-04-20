@@ -15,10 +15,10 @@ public class ClassObject extends ReferencingElement {
 
     private String name;
     private String packageName = "";
-    private List<MethodObject> methods = new ArrayList<>();
+    private final List<MethodObject> methods = new ArrayList<>();
     private String arrayPrefix = "";
     private Element klassTrainingData;
-    private List<ReferencingElement> symbols = new ArrayList<>();
+    private final List<ReferencingElement> symbols = new ArrayList<>();
     private Boolean isClassLoader = false;
 
     ClassObject(String identifier) {

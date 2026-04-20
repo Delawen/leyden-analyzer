@@ -6,7 +6,7 @@ import sun.misc.Signal;
 
 public abstract class BaseCommand implements Runnable {
 
-    private static AtomicBoolean running = new AtomicBoolean(true);
+    private static final AtomicBoolean running = new AtomicBoolean(true);
 
     public final void run() {
         setupHandle();

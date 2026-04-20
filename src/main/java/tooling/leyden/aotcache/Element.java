@@ -19,9 +19,9 @@ public abstract class Element {
     private String type;
     private Boolean isHeapRoot = false;
     private WhichRun loaded = WhichRun.None;
-    private List<String> whereDoesItComeFrom = new ArrayList<>();
-    private List<String> source = new ArrayList<>();
-    private Set<Element> whoReferencesMe = new HashSet<>();
+    private final List<String> whereDoesItComeFrom = new ArrayList<>();
+    private final List<String> source = new ArrayList<>();
+    private final Set<Element> whoReferencesMe = new HashSet<>();
     /**
      * Address where an element can be found
      */

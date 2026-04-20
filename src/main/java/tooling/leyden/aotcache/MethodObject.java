@@ -19,10 +19,10 @@ public class MethodObject extends ReferencingElement {
     private Element methodData;
     private Element methodCounters;
     private Element methodTrainingData;
-    private Map<Integer, Element> compileTrainingData = new HashMap<>();
+    private final Map<Integer, Element> compileTrainingData = new HashMap<>();
 
     private String returnType;
-    private List<String> parameters = new ArrayList<>();
+    private final List<String> parameters = new ArrayList<>();
 
     MethodObject(String identifier) {
         super(identifier, "Method");

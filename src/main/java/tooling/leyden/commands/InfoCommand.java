@@ -37,12 +37,12 @@ class InfoCommand extends BaseCommand {
             "-hints" }, arity = "0..1", description = "Display hints on how to explore further.", defaultValue = "false")
     private Boolean hints;
 
-    private NumberFormat intFormat = NumberFormat.getIntegerInstance();
-    private AttributedStyle greenFormat = AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN);
-    private AttributedStyle blueFormat = AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.BLUE);
-    private AttributedStyle redFormat = AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED);
-    private AttributedStyle infoFormat = AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT);
-    private AttributedStyle tipFormat = AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW);
+    private final NumberFormat intFormat = NumberFormat.getIntegerInstance();
+    private final AttributedStyle greenFormat = AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN);
+    private final AttributedStyle blueFormat = AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.BLUE);
+    private final AttributedStyle redFormat = AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED);
+    private final AttributedStyle infoFormat = AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT);
+    private final AttributedStyle tipFormat = AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW);
 
     public void execution() {
         if (shouldShow(InfoCommandTypes.Types.Configuration.name()))

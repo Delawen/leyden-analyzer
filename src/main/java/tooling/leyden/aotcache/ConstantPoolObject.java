@@ -10,7 +10,7 @@ import org.jline.utils.AttributedStyle;
 public class ConstantPoolObject extends Element {
     private String constantPoolCacheAddress;
     private ClassObject poolHolder;
-    private String key;
+    private final String key;
 
     ConstantPoolObject(String key) {
         this.key = key;

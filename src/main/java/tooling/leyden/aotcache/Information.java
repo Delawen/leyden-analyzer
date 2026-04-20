@@ -19,31 +19,31 @@ import tooling.leyden.commands.CommonParameters;
 public class Information {
 
     //This represents the AOT Cache
-    private Map<Key, Element> elements = new ConcurrentHashMap<>();
+    private final Map<Key, Element> elements = new ConcurrentHashMap<>();
 
     //This represents elements that were loaded in the app
     //from a different source, not the AOT Cache.
     //Useful to detect if there are elements that should have been cached.
-    private Map<Key, Element> elementsNotInTheCache = new ConcurrentHashMap<>();
+    private final Map<Key, Element> elementsNotInTheCache = new ConcurrentHashMap<>();
 
     //List of warnings and incidents that may be useful to check
-    private List<Warning> warnings = new ArrayList<>();
+    private final List<Warning> warnings = new ArrayList<>();
     //Auto-generated warnings by `warning check` command
-    private List<Warning> autoWarnings = new ArrayList<>();
+    private final List<Warning> autoWarnings = new ArrayList<>();
 
     //Store information extracted and inferred
-    private Configuration configuration = new Configuration();
-    private Configuration statistics = new Configuration();
+    private final Configuration configuration = new Configuration();
+    private final Configuration statistics = new Configuration();
 
     //To pre-calculate auto-completion
-    private List<String> identifiers = new ArrayList<>();
+    private final List<String> identifiers = new ArrayList<>();
     //To search by address
-    private Map<String, Element> elementsByAddress = new ConcurrentHashMap<>();
+    private final Map<String, Element> elementsByAddress = new ConcurrentHashMap<>();
     //To find Heap Roots
-    private Set<String> heapRootAddresses = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> heapRootAddresses = Collections.synchronizedSet(new HashSet<>());
     private ReferencingElement heapRoot = null;
 
-    private ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
+    private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
 
     //Singletonish
     private static Information myself;

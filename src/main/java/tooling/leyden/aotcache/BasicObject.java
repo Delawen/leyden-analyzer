@@ -6,7 +6,7 @@ package tooling.leyden.aotcache;
  *
  */
 public class BasicObject extends Element {
-    private String key;
+    private final String key;
 
     @Override
     public String getKey() {
