@@ -1,5 +1,6 @@
 package tooling.leyden.commands;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -50,7 +51,7 @@ public class LoadFileCommand extends BaseCommand {
             for (Path file : files) {
                 var filePath = file.toString();
                 if (filePath.contains("*")) {
-                    final var fileSeparator = System.getProperty("file.separator");
+                    final var fileSeparator = File.separator;
                     //Are we sure there is no better way to do this??
                     var startPath = "";
                     if (!filePath.startsWith(fileSeparator)) {
