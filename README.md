@@ -6,8 +6,8 @@ This is a work-in-progress and there is no stable interface, commands change as 
 
 To be able to run this analyzer, you need to:
 1. Train your app to generate an AOT cache and log using the arguments `-XX:AOTCacheOutput=${FOLDER}/app.aot -Xlog:aot+map=trace,aot+map+oops=trace,aot=warning:file=${FOLDER}/aot.map:none:filesize=0 -Xlog:aot+resolve*=trace,aot+codecache+exit=debug:file=${FOLDER}/training.log:level,tags`
-1. Run your app to generate a production log using the arguments `-XX:AOTCache=${FOLDER}/app.aot -Xlog:class+load=info,aot+codecache=debug:file=${FOLDER}/production.log:level,tags`
-2. Use the previously generated files in `${FOLDER}` on this application as described below
+2. Run your app to generate a production log using the arguments `-XX:AOTCache=${FOLDER}/app.aot -Xlog:class+load=info,aot+codecache=debug:file=${FOLDER}/production.log:level,tags`
+3. Use the previously generated files in `${FOLDER}` on this application as described below
 
 ## Running the application
 
