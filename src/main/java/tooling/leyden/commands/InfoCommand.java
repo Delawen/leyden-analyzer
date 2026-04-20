@@ -76,7 +76,7 @@ class InfoCommand extends BaseCommand {
 
     private boolean shouldShow(String s) {
         return this.whatToShow.length == 0
-                || Arrays.stream(this.whatToShow).anyMatch(wts -> wts.equals(s));
+                || Arrays.asList(this.whatToShow).contains(s);
     }
 
     private void print(String title, Configuration configuration) {

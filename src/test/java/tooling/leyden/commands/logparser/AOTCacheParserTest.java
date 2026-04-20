@@ -196,7 +196,7 @@ class AOTCacheParserTest extends DefaultTest {
 
         assertEquals(3 + 1, information.getElements(null, null, null, true, false, "Class").count());
         information.getElements(null, null, null, true, false, "Class")
-                .allMatch(c -> !((ClassObject) c).getSymbols().isEmpty());
+                .noneMatch(c -> ((ClassObject) c).getSymbols().isEmpty());
 
         //Make sure we didn'0t create unexpected assets in the cache:
         assertEquals(2 + 20 + 8 + 3 + 1, information.getAll().size());
