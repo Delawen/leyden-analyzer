@@ -61,14 +61,10 @@ public class ProductionLogParser extends LogParser {
             Element e;
             if (line.message().indexOf("source: shared objects file") > 0) {
                 var classes = information.getElements(className, null, null, true, true, "Class").findAny();
-                if (classes.isEmpty()) {
-                    //WARNING: this should be covered by the aot map file
-                    //we are assuming no aot map file was loaded at this point
-                    //so we create a basic placeholder
-                    e = ElementFactory.getOrCreate(className, "Class", null);
-                } else {
-                    e = classes.get();
-                }
+                //WARNING: create should be covered by the aot map file
+                //we are assuming no aot map file was loaded at this point
+                //so we create a basic placeholder
+                e = classes.orElseGet(() -> ElementFactory.getOrCreate(className, "Class", null));
                 this.information.getStatistics().incrementValue("[LOG] Classes loaded from AOT Cache");
                 if (className.contains("$$Lambda/")) {
                     //This is a lambda
