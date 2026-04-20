@@ -13,22 +13,12 @@ public class ElementFactory {
         Element e;
 
         switch (type) {
-            case "Class" -> {
-                e = new ClassObject(identifier);
-            }
-            case "Method" -> {
-                e = new MethodObject(identifier);
-            }
-            case "ConstantPool" -> {
-                e = new ConstantPoolObject(identifier);
-            }
+            case "Class" -> e = new ClassObject(identifier);
+            case "Method" -> e = new MethodObject(identifier);
+            case "ConstantPool" -> e = new ConstantPoolObject(identifier);
             case "KlassTrainingData", "CompileTrainingData", "MethodData", "MethodCounters", "MethodTrainingData",
-                    "Symbol" -> {
-                e = new ReferencingElement(identifier, type);
-            }
-            case "Object" -> {
-                e = new InstanceObject(identifier);
-            }
+                    "Symbol" -> e = new ReferencingElement(identifier, type);
+            case "Object" -> e = new InstanceObject(identifier);
             default -> {
                 e = new BasicObject(identifier);
                 e.setType(type);
