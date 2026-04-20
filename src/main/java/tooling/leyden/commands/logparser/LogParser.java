@@ -11,7 +11,7 @@ import tooling.leyden.commands.LoadFileCommand;
  * This class is capable of parsing (certain) Java logs.
  */
 public abstract class LogParser extends Parser {
-    Pattern linePattern = Pattern
+    final Pattern linePattern = Pattern
             .compile("(?<timestamp>\\[(?:\\d|,)+s\\])?\\[(?<level>\\w+)\\s*\\]\\[(?<tags>[^,\\]\\s]+(,[^,\\]\\s]+)*)\\s*\\](?<message>.*)");
 
     public LogParser(LoadFileCommand loadFile) {
