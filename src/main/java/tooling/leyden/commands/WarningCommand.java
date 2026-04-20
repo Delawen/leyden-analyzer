@@ -203,7 +203,7 @@ class WarningCommand extends BaseCommand {
     static class Types implements Iterable<String> {
         @Override
         public Iterator<String> iterator() {
-            return Arrays.stream(WarningType.values()).map(warningType -> warningType.name()).iterator();
+            return Arrays.stream(WarningType.values()).map(Enum::name).iterator();
         }
     }
 }

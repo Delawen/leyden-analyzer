@@ -103,7 +103,7 @@ public class AOTMapParser extends Parser {
         information.getAll().stream()
                 .filter(e -> e instanceof ReferencingElement)
                 .map(ReferencingElement.class::cast)
-                .forEach(e -> e.resolvePlaceholders());
+                .forEach(ReferencingElement::resolvePlaceholders);
     }
 
     @Override
@@ -444,9 +444,7 @@ public class AOTMapParser extends Parser {
                 while (m.find()) {
                     this.information.getElements(convertSymbolSignatureToClassQualifiedName(m.group("class")), null,
                             null, true, true, "Class")
-                            .findAny().ifPresent(classObj -> {
-                                ((ReferencingElement) element).addReference(classObj);
-                            });
+                            .findAny().ifPresent(classObj -> ((ReferencingElement) element).addReference(classObj));
                 }
             } else {
                 //else 0x0000000803be1968: @@ Symbol            56 java/lang/invoke/LambdaForm$DMH+0x8000000ed

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.junit.QuarkusTest;
 import tooling.leyden.aotcache.ClassObject;
+import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.MethodObject;
 import tooling.leyden.commands.autocomplete.WhichRun;
 import tooling.leyden.commands.logparser.AOTMapParser;
@@ -78,12 +79,12 @@ class ListCommandTest extends DefaultTest {
 
         command.parameters.types = new String[] { "Method" };
         count = new AtomicInteger();
-        assertTrue(command.findElements(count).allMatch(e -> e.isTraineable()));
+        assertTrue(command.findElements(count).allMatch(Element::isTraineable));
         assertEquals(4, count.get());
 
         command.parameters.trained = true;
         count = new AtomicInteger();
-        assertTrue(command.findElements(count).allMatch(e -> e.isTrained()));
+        assertTrue(command.findElements(count).allMatch(Element::isTrained));
         assertEquals(1, count.get());
     }
 
