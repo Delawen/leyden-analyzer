@@ -15,19 +15,19 @@ public class Warning {
 
     private String id;
 
-    private WarningType type;
+    private final WarningType type;
 
     /**
      * Element that suffered the problem.
      */
-    private List<Element> element;
+    private final List<Element> element;
 
     /**
      * String ready to be printed regarding this error.
      */
-    private AttributedString message;
+    private final AttributedString message;
 
-    private static AtomicInteger idGenerator = new AtomicInteger();
+    private final static AtomicInteger idGenerator = new AtomicInteger();
 
     public Warning(List<Element> e, AttributedString message, WarningType type) {
         this.element = new ArrayList<>();

@@ -47,7 +47,7 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
     private static Status status;
     private static Information information;
 
-    private static List<StatusMessage> statusMessages = Collections.synchronizedList(new ArrayList<>());
+    private final static List<StatusMessage> statusMessages = Collections.synchronizedList(new ArrayList<>());
 
     public static void addStatusMessage(StatusMessage sm) {
         statusMessages.add(sm);

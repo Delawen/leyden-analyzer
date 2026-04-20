@@ -12,7 +12,7 @@ public class InfoCommandTypes implements Iterable<String> {
         Summary;
     }
 
-    private List<String> names = Arrays.stream(Types.values()).map(Enum::name).toList();
+    private final List<String> names = Arrays.stream(Types.values()).map(Enum::name).toList();
 
     @Override
     public Iterator<String> iterator() {

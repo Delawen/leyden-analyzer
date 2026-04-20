@@ -39,7 +39,7 @@ public class LoadFileCommand extends BaseCommand {
             "This allows you to continue working while the file gets parsed." }, defaultValue = "false", arity = "0..1", scope = CommandLine.ScopeType.INHERIT)
     protected Boolean background = false;
 
-    private Thread.Builder builder = Thread.ofVirtual().name("loading-file-", 0);
+    private final Thread.Builder builder = Thread.ofVirtual().name("loading-file-", 0);
 
     public void execution() {
         parent.getOut().println(new CommandLine(this).getUsageMessage());

@@ -26,7 +26,7 @@ import tooling.leyden.aotcache.Information;
                         CommandLine.HelpCommand.class })
 public class DefaultCommand implements Runnable {
     private PrintWriter out;
-    private Information information = new Information();
+    private final Information information = new Information();
     private Terminal terminal;
 
     public DefaultCommand() {

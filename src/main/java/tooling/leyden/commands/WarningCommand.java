@@ -42,7 +42,7 @@ class WarningCommand extends BaseCommand {
 
     // Packages that are usually not part of the user application
     // so we skip them on our auto checks
-    private String[] excludedPackages = new String[] { "java", "jdk", "sun", "com.sun" };
+    private final String[] excludedPackages = new String[] { "java", "jdk", "sun", "com.sun" };
 
     public void execution() {
         printWarnings();

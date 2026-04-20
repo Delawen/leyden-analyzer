@@ -11,7 +11,7 @@ import java.util.Set;
  * class, which is defined and loaded on the Information independently.
  **/
 public class ReferencingElement extends Element {
-    private Set<Element> references = new HashSet<>();
+    private final Set<Element> references = new HashSet<>();
     private String name;
 
     public ReferencingElement(String name, String type) {
