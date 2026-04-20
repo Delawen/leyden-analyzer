@@ -106,9 +106,8 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
 
                 status = Status.getStatus(terminal);
                 status.setBorder(true);
-                try (var executor = Executors.newSingleThreadScheduledExecutor()) {
-                    executor.scheduleWithFixedDelay(QuarkusPicocliLineApp::updateStatus, 0, 1, SECONDS);
-                }
+                Executors.newSingleThreadScheduledExecutor()
+                        .scheduleWithFixedDelay(QuarkusPicocliLineApp::updateStatus, 0, 1, SECONDS);
 
                 final var historyFileName = ".leyden-analyzer.history";
                 LineReader reader = LineReaderBuilder.builder()
