@@ -273,7 +273,7 @@ class TrainingLogParserTest extends DefaultTest {
                 [debug  ][aot,codecache,exit]     Tier 5: total=2257
                 [debug  ][aot,codecache,exit]   AOT code cache size: 31332312 bytes, max entry's size: 136328 bytes
                 [info   ][aot,codecache,exit] Wrote 9870 AOT code entries to AOT Code Cache
-                			""";
+                """;
 
         BufferedReader reader = new BufferedReader(new StringReader(log));
         reader.lines().forEach(parser::accept);
@@ -303,7 +303,7 @@ class TrainingLogParserTest extends DefaultTest {
         String log = """
                 [warning][aot] class org/postgresql/util/LazyCleanerImpl$CleanableWrapper cannot be archived because it was not defined from /home/delawen/git/leyden-perf-test/builds/gqaot/quarkus-hibernate-orm-spacefox/quarkus-hibernate-orm-spacefox/lib/main/org.postgresql.postgresql-42.7.9.jar as claimed
                 [trace][aot,resolve] java/time/format/TextStyle CP entry [ 26] => method [Ljava/time/format/TextStyle;.clone:()Ljava/lang/Object; can't be archived because its resolution is not deterministic.
-                			""";
+                """;
 
         BufferedReader reader = new BufferedReader(new StringReader(log));
         reader.lines().forEach(parser::accept);
