@@ -27,11 +27,10 @@ class AOTCacheParserTest extends DefaultTest {
 
     private static AOTMapParser aotCacheParser;
     private static Information information;
-    private static LoadFileCommand loadFile;
 
     @BeforeAll
     static void init() {
-        loadFile = new LoadFileCommand();
+        LoadFileCommand loadFile = new LoadFileCommand();
         loadFile.setParent(getDefaultCommand());
         information = loadFile.getParent().getInformation();
         aotCacheParser = new AOTMapParser(loadFile);
