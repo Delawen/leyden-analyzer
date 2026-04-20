@@ -44,7 +44,7 @@ public class ConstantPoolObject extends Element {
         AttributedStringBuilder sb = new AttributedStringBuilder();
         sb.append(super.getDescription(leftPadding, verbose, tips));
         sb.append(AttributedString.NEWLINE);
-        sb.append(leftPadding + "ConstantPoolCache on address ");
+        sb.append(leftPadding).append("ConstantPoolCache on address ");
         sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.CYAN));
         sb.append(getConstantPoolCacheAddress());
         sb.style(AttributedStyle.DEFAULT);

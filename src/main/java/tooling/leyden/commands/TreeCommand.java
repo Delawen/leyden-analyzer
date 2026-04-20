@@ -119,18 +119,19 @@ class TreeCommand extends BaseCommand {
             AttributedStringBuilder asb = new AttributedStringBuilder();
 
             if (isFirst) {
-                asb.append(leftPadding.substring(0, leftPadding.length() - 1) + '\\');
+                asb.append(leftPadding.substring(0, leftPadding.length() - 1))
+                        .append(String.valueOf('\\'));
                 asb.append(AttributedString.NEWLINE);
             } else {
-                asb.append(leftPadding + '|');
+                asb.append(leftPadding).append(String.valueOf('|'));
                 asb.append(AttributedString.NEWLINE);
             }
 
             if (travelled.contains(refer)) {
                 asb.style(AttributedStyle.DEFAULT.bold().italic().foreground(AttributedStyle.BLUE));
-                asb.append(leftPadding + "- ");
+                asb.append(leftPadding).append("- ");
             } else {
-                asb.append(leftPadding + "+ ");
+                asb.append(leftPadding).append("+ ");
             }
 
             asb.append(refer.toAttributedString());

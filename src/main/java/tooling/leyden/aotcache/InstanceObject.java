@@ -31,7 +31,7 @@ public class InstanceObject extends ReferencingElement {
         AttributedStringBuilder sb = new AttributedStringBuilder();
         sb.append(super.getDescription(leftPadding, verbose, tips));
         sb.append(AttributedString.NEWLINE);
-        sb.append(leftPadding + "This instance object is ");
+        sb.append(leftPadding).append("This instance object is ");
 
         if (isAOTinited()) {
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));

@@ -134,21 +134,21 @@ public class MethodObject extends ReferencingElement {
         sb.append(AttributedString.NEWLINE);
         if (verbose) {
             if (this.getName().equals("<init>()")) {
-                sb.append(leftPadding + "  ℹ\uFE0F  This method is "
-                        + (this.parameters.isEmpty() ? "the default" : "an")
-                        + " instance initialization method (constructor).");
+                sb.append(leftPadding).append("  ℹ\uFE0F  This method is ")
+                        .append(this.parameters.isEmpty() ? "the default" : "an")
+                        .append(" instance initialization method (constructor).");
                 sb.append(AttributedString.NEWLINE);
             } else if (getName().equals("<clinit>")) {
-                sb.append(leftPadding + "  ℹ\uFE0F  This method is a static initialization method.");
+                sb.append(leftPadding).append("  ℹ\uFE0F  This method is a static initialization method.");
                 sb.append(AttributedString.NEWLINE);
             }
         }
-        sb.append(leftPadding + "Training Information: ");
+        sb.append(leftPadding).append("Training Information: ");
         sb.append(AttributedString.NEWLINE);
         leftPadding = "  " + leftPadding;
 
         if (this.getMethodCounters() != null) {
-            sb.append(leftPadding + "It has a ");
+            sb.append(leftPadding).append("It has a ");
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
             sb.append("MethodCounters");
             sb.style(AttributedStyle.DEFAULT);
@@ -156,11 +156,11 @@ public class MethodObject extends ReferencingElement {
             if (verbose) {
                 sb.append(AttributedString.NEWLINE);
                 sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT));
-                sb.append(leftPadding + "  ℹ\uFE0F  This means it was called significantly during training run.");
+                sb.append(leftPadding).append("  ℹ\uFE0F  This means it was called significantly during training run.");
             }
             sb.style(AttributedStyle.DEFAULT);
         } else {
-            sb.append(leftPadding + "It has no ");
+            sb.append(leftPadding).append("It has no ");
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
             sb.append("MethodCounters");
             sb.style(AttributedStyle.DEFAULT);
@@ -168,15 +168,14 @@ public class MethodObject extends ReferencingElement {
             if (verbose) {
                 sb.append(AttributedString.NEWLINE);
                 sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT));
-                sb.append(leftPadding
-                        + "  ℹ\uFE0F  This method doesn't seem to have been called significantly during training run.");
+                sb.append(leftPadding).append("  ℹ\uFE0F  This method doesn't seem to have been called significantly during training run.");
             }
             sb.style(AttributedStyle.DEFAULT);
         }
         sb.append(AttributedString.NEWLINE);
 
         if (this.getMethodData() != null) {
-            sb.append(leftPadding + "It has a ");
+            sb.append(leftPadding).append("It has a ");
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
             sb.append("MethodData");
             sb.style(AttributedStyle.DEFAULT);
@@ -184,10 +183,10 @@ public class MethodObject extends ReferencingElement {
             if (verbose) {
                 sb.append(AttributedString.NEWLINE);
                 sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT));
-                sb.append(leftPadding + "  ℹ\uFE0F  This means it is highly profiled.");
+                sb.append(leftPadding).append("  ℹ\uFE0F  This means it is highly profiled.");
             }
         } else {
-            sb.append(leftPadding + "It has no ");
+            sb.append(leftPadding).append("It has no ");
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
             sb.append("MethodData");
             sb.style(AttributedStyle.DEFAULT);
@@ -195,41 +194,40 @@ public class MethodObject extends ReferencingElement {
             if (verbose) {
                 sb.append(AttributedString.NEWLINE);
                 sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT));
-                sb.append(leftPadding
-                        + "  ℹ\uFE0F  This means it may be profiled, but not ready to be compiled on a high level.");
+                sb.append(leftPadding).append("  ℹ\uFE0F  This means it may be profiled, but not ready to be compiled on a high level.");
             }
             if (tips) {
                 sb.append(AttributedString.NEWLINE);
                 sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
-                sb.append(leftPadding + "  \uD83D\uDCA1  If this is a key method in your app, you should have this asset.");
+                sb.append(leftPadding).append("  \uD83D\uDCA1  If this is a key method in your app, you should have this asset.");
             }
             sb.style(AttributedStyle.DEFAULT);
         }
         sb.append(AttributedString.NEWLINE);
 
         if (!this.getCompileTrainingData().isEmpty()) {
-            sb.append(leftPadding + "It has ");
+            sb.append(leftPadding).append("It has ");
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
             sb.append("CompileTrainingData");
             sb.style(AttributedStyle.DEFAULT);
             sb.append(" associated to it on level:");
             sb.style(AttributedStyle.DEFAULT.bold());
             for (Integer level : this.compileTrainingData.keySet()) {
-                sb.append(" " + level);
+                sb.append(" ").append(String.valueOf(level));
             }
             if (verbose) {
                 sb.append(AttributedString.NEWLINE);
                 sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT));
-                sb.append(leftPadding + "  ℹ\uFE0F  Higher compilation levels mean a more optimized compilation.");
+                sb.append(leftPadding).append("  ℹ\uFE0F  Higher compilation levels mean a more optimized compilation.");
             }
             if (tips) {
                 sb.append(AttributedString.NEWLINE);
                 sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
-                sb.append(leftPadding + "  \uD83D\uDCA1  Key methods should aim for compilation 3 or above.");
+                sb.append(leftPadding).append("  \uD83D\uDCA1  Key methods should aim for compilation 3 or above.");
             }
             sb.style(AttributedStyle.DEFAULT);
         } else {
-            sb.append(leftPadding + "It has no ");
+            sb.append(leftPadding).append("It has no ");
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
             sb.append("CompileTrainingData");
             sb.style(AttributedStyle.DEFAULT);
@@ -237,17 +235,17 @@ public class MethodObject extends ReferencingElement {
             if (verbose) {
                 sb.append(AttributedString.NEWLINE);
                 sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT));
-                sb.append(leftPadding + "  ℹ\uFE0F  This method was not considered for optimization during training run.");
+                sb.append(leftPadding).append("  ℹ\uFE0F  This method was not considered for optimization during training run.");
             }
             sb.style(AttributedStyle.DEFAULT);
         }
         sb.append(AttributedString.NEWLINE);
 
         if (this.methodTrainingData != null) {
-            sb.append(leftPadding + "It has a ");
+            sb.append(leftPadding).append("It has a ");
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
         } else {
-            sb.append(leftPadding + "It has no ");
+            sb.append(leftPadding).append("It has no ");
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
         }
         sb.append("MethodTrainingData");
@@ -257,9 +255,7 @@ public class MethodObject extends ReferencingElement {
         if (tips) {
             sb.append(AttributedString.NEWLINE);
             sb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW));
-            sb.append(leftPadding
-                    + "  \uD83D\uDCA1  If you think the training for this method is not good enough, make sure your " +
-                    "training run use it more, as it would on a long production run.");
+            sb.append(leftPadding).append("  \uD83D\uDCA1  If you think the training for this method is not good enough, make sure your ").append("training run use it more, as it would on a long production run.");
         }
 
         return sb.toAttributedString();
