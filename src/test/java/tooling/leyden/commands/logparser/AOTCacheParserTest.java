@@ -41,7 +41,7 @@ class AOTCacheParserTest extends DefaultTest {
         File file = new File(getClass().getResource("aot.map").getPath());
         final var aotCache = getDefaultCommand().getInformation();
         getSystemRegistry().execute("load aotCache " + file.getAbsolutePath().replace('\\', '/'));
-        assertTrue(aotCache.getAll().size() > 0);
+        assertTrue(!aotCache.getAll().isEmpty());
         assertEquals(0, aotCache.getWarnings().size());
 
         //Now check individual values
@@ -191,12 +191,12 @@ class AOTCacheParserTest extends DefaultTest {
         for (Element e : information.getElements(null, null, null, true, false,
                 "Object").toList()) {
             assertTrue(e instanceof ReferencingElement);
-            assertTrue(((ReferencingElement) e).getReferences().size() > 0, e + " should have at least a reference");
+            assertTrue(!((ReferencingElement) e).getReferences().isEmpty(), e + " should have at least a reference");
         }
 
         assertEquals(3 + 1, information.getElements(null, null, null, true, false, "Class").count());
         information.getElements(null, null, null, true, false, "Class")
-                .allMatch(c -> ((ClassObject) c).getSymbols().size() > 0);
+                .allMatch(c -> !((ClassObject) c).getSymbols().isEmpty());
 
         //Make sure we didn'0t create unexpected assets in the cache:
         assertEquals(2 + 20 + 8 + 3 + 1, information.getAll().size());
@@ -245,13 +245,13 @@ class AOTCacheParserTest extends DefaultTest {
         var elements = information.getElements(null, null, null, true, false, "MethodData").toList();
         assertEquals(9, elements.size());
         for (Element e : elements) {
-            assertTrue(((ReferencingElement) e).getReferences().size() > 0);
+            assertTrue(!((ReferencingElement) e).getReferences().isEmpty());
         }
 
         elements = information.getElements(null, null, null, true, false, "MethodCounters").toList();
         assertEquals(7, elements.size());
         for (Element e : elements) {
-            assertTrue(((ReferencingElement) e).getReferences().size() > 0);
+            assertTrue(!((ReferencingElement) e).getReferences().isEmpty());
         }
 
         elements = information.getElements("void jdk.internal.misc.CDS.keepAlive(java.lang.Object)",
@@ -699,7 +699,7 @@ class AOTCacheParserTest extends DefaultTest {
                 0x0000000800d13580: @@ PackageEntry      48 jdk.jlink - jdk/tools/jimage
                 0x00000008001188c8: @@ ModuleEntry       80 unnamed module
                 0x0000000800336a58: @@ ModuleEntry       80 java.base
-                				""";
+                """;
 
         BufferedReader reader = new BufferedReader(new StringReader(mapfile));
         reader.lines().forEach(aotCacheParser::accept);
