@@ -65,9 +65,7 @@ class TreeCommand extends BaseCommand {
         //Really, always show classes
         if (Arrays.stream(parameters.types).noneMatch(t -> t.equalsIgnoreCase("Class"))) {
             ArrayList<String> types = new ArrayList<>();
-            for (String t : parameters.types) {
-                types.add(t);
-            }
+            types.addAll(Arrays.asList(parameters.types));
             types.add("Class");
             parameters.types = types.toArray(parameters.types);
         }
