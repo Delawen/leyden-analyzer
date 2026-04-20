@@ -60,7 +60,7 @@ public class LoadFileCommand extends BaseCommand {
                     // Now, we don't want to get ALL the files in the startPath folder
                     // That may trigger access privilege exceptions
                     // and it can be stupidly long
-                    while (filePath.indexOf(fileSeparator) >= 0
+                    while (filePath.contains(fileSeparator)
                             && filePath.indexOf("*") > filePath.indexOf(fileSeparator,
                                     filePath.indexOf(fileSeparator))) {
                         var nextFolder = filePath.substring(0, filePath.indexOf(fileSeparator));
