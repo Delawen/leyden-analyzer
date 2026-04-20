@@ -185,15 +185,18 @@ public class AOTMapParser extends Parser {
                 classObj.ifPresent(element -> ((ReferencingElement) current).addReference(element));
             }
 
-            var end = m.group("end").trim();
-            if (end != null && end.startsWith("java.lang.Class")) {
-                end = end.substring(16, end.indexOf(";") + 1);
-                var classObj = information.getElements(end.replaceAll("/", "."), null, null, true, true, "Symbol").findAny();
-                classObj.ifPresent(element -> ((ReferencingElement) current).addReference(element));
-            } else if (!end.equalsIgnoreCase("null") && !end.contains(" ")) {
-                //It may be that the instance class linked is a subclass of the one defined in m.group("classname")
-                var classObj = information.getElements(end, null, null, true, true, "Class").findAny();
-                classObj.ifPresent(element -> ((ReferencingElement) current).addReference(element));
+            var end = m.group("end");
+            if (end != null) {
+                end = end.trim();
+                if (end.startsWith("java.lang.Class")) {
+                    end = end.substring(16, end.indexOf(";") + 1);
+                    var classObj = information.getElements(end.replaceAll("/", "."), null, null, true, true, "Symbol").findAny();
+                    classObj.ifPresent(element -> ((ReferencingElement) current).addReference(element));
+                } else if (!end.equalsIgnoreCase("null") && !end.contains(" ")) {
+                    //It may be that the instance class linked is a subclass of the one defined in m.group("classname")
+                    var classObj = information.getElements(end, null, null, true, true, "Class").findAny();
+                    classObj.ifPresent(element -> ((ReferencingElement) current).addReference(element));
+                }
             }
             return true;
         }
