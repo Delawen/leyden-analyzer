@@ -9,7 +9,7 @@ public class InfoCommandTypes implements Iterable<String> {
     public enum Types {
         Configuration,
         Count,
-        Summary;
+        Summary
     }
 
     private final List<String> names = Arrays.stream(Types.values()).map(Enum::name).toList();

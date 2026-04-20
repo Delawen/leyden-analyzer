@@ -5,5 +5,5 @@ public enum WhichRun {
     training,
     production,
     both,
-    none;
+    none
 }
