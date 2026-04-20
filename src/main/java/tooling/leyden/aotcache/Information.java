@@ -127,7 +127,7 @@ public class Information {
         parameters.setName(e.getKey());
         parameters.setTypes(new String[] { e.getType() });
         parameters.setUse(CommonParameters.ElementsToUse.cached);
-        return getElements(parameters).count() > 0;
+        return getElements(parameters).findAny().isPresent();
     }
 
     public Element getByAddress(String address) {
