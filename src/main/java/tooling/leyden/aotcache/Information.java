@@ -192,7 +192,7 @@ public class Information {
             result = result.filter(keyElementEntry -> keyElementEntry.getKey().identifier().equalsIgnoreCase(key));
         }
 
-        return filterByParams(parameters, result.map(keyElementEntry -> keyElementEntry.getValue()));
+        return filterByParams(parameters, result.map(Map.Entry::getValue));
     }
 
     public static Stream<Element> filterByParams(String[] packageName,
