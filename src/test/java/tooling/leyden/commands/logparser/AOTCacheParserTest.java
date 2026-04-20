@@ -41,7 +41,7 @@ class AOTCacheParserTest extends DefaultTest {
         File file = new File(getClass().getResource("aot.map").getPath());
         final var aotCache = getDefaultCommand().getInformation();
         getSystemRegistry().execute("load aotCache " + file.getAbsolutePath().replace('\\', '/'));
-        assertTrue(!aotCache.getAll().isEmpty());
+        assertFalse(aotCache.getAll().isEmpty());
         assertEquals(0, aotCache.getWarnings().size());
 
         //Now check individual values
@@ -94,10 +94,10 @@ class AOTCacheParserTest extends DefaultTest {
         final var objects = information.getElements(null, null, null, true, false, "Object").toList();
         assertEquals(6, information.getElements(null, null, null, true, false, "Object").count());
         for (Element e : objects) {
-            assertTrue(e instanceof ReferencingElement);
+            assertInstanceOf(ReferencingElement.class, e);
             ReferencingElement re = (ReferencingElement) e;
             if (!re.getKey().equals("(0xfff632f0) [I length: 0")) {
-                assertTrue(!re.getReferences().isEmpty());
+                assertFalse(re.getReferences().isEmpty());
                 assertTrue(re.getKey().contains(re.getReferences().getFirst().getKey()));
             }
         }
@@ -114,7 +114,7 @@ class AOTCacheParserTest extends DefaultTest {
         assertEquals(2, information.getElements(null, null, null, true, false, "Symbol").count());
         assertEquals(1, information.getElements(null, null, null, true, false, "Class").count());
         for (Element e : information.getElements(null, null, null, true, false, "Symbol").toList()) {
-            assertTrue(e instanceof ReferencingElement);
+            assertInstanceOf(ReferencingElement.class, e);
             assertEquals(1, ((ReferencingElement) e).getReferences().size());
         }
         ClassObject classObject = (ClassObject) information.getElements(null, null, null, true, false, "Class").findAny().get();
@@ -190,8 +190,8 @@ class AOTCacheParserTest extends DefaultTest {
 
         for (Element e : information.getElements(null, null, null, true, false,
                 "Object").toList()) {
-            assertTrue(e instanceof ReferencingElement);
-            assertTrue(!((ReferencingElement) e).getReferences().isEmpty(), e + " should have at least a reference");
+            assertInstanceOf(ReferencingElement.class, e);
+            assertFalse(((ReferencingElement) e).getReferences().isEmpty(), e + " should have at least a reference");
         }
 
         assertEquals(3 + 1, information.getElements(null, null, null, true, false, "Class").count());
@@ -245,13 +245,13 @@ class AOTCacheParserTest extends DefaultTest {
         var elements = information.getElements(null, null, null, true, false, "MethodData").toList();
         assertEquals(9, elements.size());
         for (Element e : elements) {
-            assertTrue(!((ReferencingElement) e).getReferences().isEmpty());
+            assertFalse(((ReferencingElement) e).getReferences().isEmpty());
         }
 
         elements = information.getElements(null, null, null, true, false, "MethodCounters").toList();
         assertEquals(7, elements.size());
         for (Element e : elements) {
-            assertTrue(!((ReferencingElement) e).getReferences().isEmpty());
+            assertFalse(((ReferencingElement) e).getReferences().isEmpty());
         }
 
         elements = information.getElements("void jdk.internal.misc.CDS.keepAlive(java.lang.Object)",
