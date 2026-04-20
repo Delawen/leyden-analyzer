@@ -173,13 +173,12 @@ public class TrainingLogParser extends LogParser {
                 findOrCreateSymbolAndLinkToParent(parentSymbol, trimmedMessage, symbol, trimmedMessage);
 
                 var warningType = WarningType.CacheCreation;
-                if (type.equals("method")) {
-                    warningType = WarningType.CacheCreationRevertedMethod;
-                } else if (type.equals("field")) {
-                    warningType = WarningType.CacheCreationRevertedField;
-                } else if (type.equals("indy")) {
-                    warningType = WarningType.CacheCreationRevertedIndy;
-                }
+                warningType = switch (type) {
+                    case "method" -> WarningType.CacheCreationRevertedMethod;
+                    case "field" -> WarningType.CacheCreationRevertedField;
+                    case "indy" -> WarningType.CacheCreationRevertedIndy;
+                    default -> warningType;
+                };
 
                 information.getWarnings().add(
                         new Warning(
