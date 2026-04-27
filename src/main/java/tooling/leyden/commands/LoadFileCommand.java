@@ -105,6 +105,7 @@ public class LoadFileCommand extends BaseCommand {
                         + (background ? " in background " : " ")
                         + "to our analysis...",
                         AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN))));
+        QuarkusPicocliLineApp.loadingFiles.incrementAndGet();
 
         long megabytes = Math.round((double) path.toFile().length() / 1024 / 1024);
         if (megabytes > 100 && !background) {
@@ -135,6 +136,11 @@ public class LoadFileCommand extends BaseCommand {
             QuarkusPicocliLineApp.addStatusMessage(new StatusMessage(System.currentTimeMillis(),
                     new AttributedString("ERROR: Loading " + path.getFileName(),
                             AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED))));
+        } finally {
+            if(QuarkusPicocliLineApp.loadingFiles.decrementAndGet() < 0) {
+                //In theory this should never happen because we are on the finally, BUT
+                QuarkusPicocliLineApp.loadingFiles.set(0);
+            }
         }
     }
 
