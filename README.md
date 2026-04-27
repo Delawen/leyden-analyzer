@@ -15,8 +15,10 @@ To be able to run this analyzer, you need to:
 
 You can find some already-packaged jar files on the [releases page](https://github.com/Delawen/leyden-analyzer/releases) that you can download and execute with a simple 
 ```bash
-java -jar leyden-analyzer-*-runner.jar
+java -jar leyden-analyzer-*-runner.jar aotCache=${TEST}aot.map productionLog=${TEST}.log productionLog=${TEST}-app.out trainingLog=${TEST}training.log*`
 ```
+
+The arguments are optional, you can load the information at a later step.
 
 ### Building and Running
 
@@ -61,6 +63,10 @@ This tool uses a lot of colors to make reading and understanding of the content 
 ### Load some information
 
 You should start by using the `load` command to load information from different sources.
+
+You can also load use the same arguments when launching the tool:
+
+`java -jar target/quarkus-app/quarkus-run.jar aotCache=${TEST}aot.map productionLog=${TEST}.log productionLog=${TEST}-app.out trainingLog=${TEST}training.log*`
 
 Loading an AOT Cache Map File gives a better overview on what the cache contains.
 
