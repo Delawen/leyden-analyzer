@@ -3,14 +3,7 @@ name: Release
 
 on:
   push:
-    tags:
-      - '[0-9]+.[0-9]+.[0-9]+'
-      - '[0-9]+.[0-9]+.[0-9]+-rc*'
-      - '[0-9]+.[0-9]+.[0-9]+-alpha*'
-      - '[0-9]+.[0-9]+.[0-9]+-beta*'
-      - '[0-9]+.[0-9]+.[0-9]+-gamma*'
-      - '[0-9]+.[0-9]+.[0-9]+-delta*'
-      - '[0-9]+.[0-9]+.[0-9]+-epsilon*'
+    tags: ['[0-9]+.[0-9]+.[0-9]+', '[0-9]+.[0-9]+.[0-9]+-*']
 
 jobs:
   release:
@@ -31,13 +24,13 @@ jobs:
         cache: maven
 
     - name: Build
-      run:  ./mvnw verify
+      run:  ./mvnw verify -Dquarkus.package.jar.type=uber-jar
 
     - name: Release
       uses: softprops/action-gh-release@v2
       with:
-        files: target/*.jar
+        files: target/*-runner.jar
         make_latest: true
         prerelease: false
         generate_release_notes: true
-        draft: false
+        draft: true
