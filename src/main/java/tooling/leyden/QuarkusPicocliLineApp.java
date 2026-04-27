@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -53,6 +54,7 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
 
     private static Status status;
     private static Information information;
+    public final static AtomicInteger loadingFiles = new AtomicInteger();
 
     private final static List<StatusMessage> statusMessages = Collections.synchronizedList(new ArrayList<>());
 
@@ -65,6 +67,13 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
         statusMessages.removeIf(sm -> sm.timestamp() < System.currentTimeMillis() - 1000 * 10);
         for (StatusMessage sm : statusMessages) {
             statusList.add(sm.message());
+        }
+
+        if (loadingFiles.get() > 0) {
+            AttributedStringBuilder asb = new AttributedStringBuilder();
+            asb.style(AttributedStyle.BOLD)
+                    .append("Currently loading " + loadingFiles + " file(s) into the playground.");
+            statusList.add(asb.toAttributedString());
         }
 
         AttributedStringBuilder asb = new AttributedStringBuilder();
