@@ -27,11 +27,14 @@ import picocli.shell.jline3.PicocliCommands.PicocliCommandsFactory;
 import tooling.leyden.aotcache.Information;
 import tooling.leyden.commands.DefaultCommand;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -51,6 +54,8 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
     private Path[] trainingLog;
     @CommandLine.Option(arity = "1..*", paramLabel = "<file>", description = "files to load", names = {"aotCache"})
     private Path[] aotCache;
+    @CommandLine.Option(arity = "1", paramLabel = "<file>", description = "file to load", names = {"instructions"})
+    private Path instructions;
 
     private static Status status;
     private static Information information;
@@ -168,7 +173,38 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
                         systemRegistry.execute("load --background aotCache " + p.toString());
                     }
                 }
-                while (true) {
+                boolean shouldContinue = true;
+                if (instructions != null) {
+                    AttributedStringBuilder builder = new AttributedStringBuilder();
+                    builder.style(AttributedStyle.BOLD.italic());
+                    builder.append("Waiting for files to be loaded");
+                    builder.toAttributedString().println(terminal);
+                    while (loadingFiles.get() > 0) {
+                        Thread.sleep(500);
+                    }
+                    builder = new AttributedStringBuilder();
+                    builder.style(AttributedStyle.BOLD.italic());
+                    builder.append("Executing automated commands...");
+                    builder.toAttributedString().println(terminal);
+                    try (Scanner scanner = new Scanner(Files.newInputStream(instructions), StandardCharsets.UTF_8)) {
+                        while (scanner.hasNextLine() && shouldContinue) {
+                            String command = scanner.nextLine();
+                            builder = new AttributedStringBuilder();
+                            builder.style(AttributedStyle.BOLD.italic());
+                            builder.append("[auto] > ").append(command);
+                            builder.toAttributedString().println(terminal);
+                            systemRegistry.execute(command);
+                        }
+                    } catch (EndOfFileException e) {
+                        shouldContinue = false;
+                    } catch (Exception e) {
+                        builder = new AttributedStringBuilder();
+                        builder.style(AttributedStyle.BOLD.foreground(AttributedStyle.RED));
+                        builder.append("[error] ").append(e.getMessage()).append(AttributedString.NEWLINE);
+                        builder.toAttributedString().println(terminal);
+                    }
+                }
+                while (shouldContinue) {
                     try {
                         systemRegistry.cleanUp();
                         line = reader.readLine(prompt, null, (MaskingCallback) null, null);
@@ -176,9 +212,12 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
                     } catch (UserInterruptException e) {
                         // Ignore
                     } catch (EndOfFileException e) {
-                        break;
+                        shouldContinue = false;
                     } catch (Exception e) {
-                        systemRegistry.trace(e);
+                        var builder = new AttributedStringBuilder();
+                        builder.style(AttributedStyle.BOLD.foreground(AttributedStyle.RED));
+                        builder.append("[error] ").append(e.getMessage()).append(AttributedString.NEWLINE);
+                        builder.toAttributedString().println(terminal);
                     }
                 }
             }

@@ -7,10 +7,66 @@ on:
   workflow_dispatch:
 
 jobs:
-  native-build-and-test:
+
+  build-cache-for-testing:
+    name: Building assets for (${{ matrix.java.version }}
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-    name: Native (${{ matrix.os }}, Java ${{ matrix.mandrel.java }})
+    strategy:
+      fail-fast: true
+      matrix:
+        java: # If you change it here, change it below too
+          - version: '25'
+          - version: '26'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      # Build and run the leyden analyzer to generate an aot cache to test
+      - name: Set up JDK ${{ matrix.java.version }} for Generating Cache for Testing
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ matrix.java.version }}
+          distribution: 'temurin'
+          server-id: github
+          settings-path: ${{ github.workspace }}
+          cache: maven
+
+      - name: Build quick without tests
+        run: ./mvnw package -DskipTests
+
+      - name: Generating basic cache and training logs
+        timeout-minutes: 5
+        run: |
+          echo "Launching the analyzer to generate a cache"
+          java -XX:AOTCacheOutput=target/app.aot \
+              -Xlog:aot+map=trace,aot+map+oops=trace,aot=warning:file=target/aot.map:none:filesize=0 \
+              -Xlog:aot+resolve*=trace,aot+codecache+exit=debug:file=target/training.log:level,tags \
+              -jar target/quarkus-app/quarkus-run.jar instructions=src/test/resources/instructions/commands0.txt
+
+      - name: Generating production logs
+        timeout-minutes: 2
+        run: |
+          echo "Launching the analyzer to generate production logs"
+          java -XX:AOTCache=target/app.aot \
+              -Xlog:class+load=info,aot+codecache=debug:file=target/production.log:level,tags \
+              -jar target/quarkus-app/quarkus-run.jar instructions=src/test/resources/instructions/commands0.txt
+
+      - name: Upload cache and logs
+        uses: actions/upload-artifact@v7
+        with:
+          name: assets-${{ matrix.java.version }}
+          path: |
+            target/*log
+            target/app.aot
+            target/aot.map
+          retention-days: 2
+
+  native-build-and-test:
+    needs: build-cache-for-testing
+    permissions:
+      contents: read
+    name: Native (${{ matrix.os }}, Mandrel JDK ${{ matrix.mandrel.java }}, AOT Cache version ${{ matrix.java.version }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -21,6 +77,9 @@ jobs:
             version: '23.1.10.0-Final'
           - java: '25'
             version: '25.0.2.0-Final'
+        java: # If you change it here, change it above too
+          - version: '25'
+          - version: '26'
 
     steps:
       - name: Checkout repository
@@ -37,6 +96,9 @@ jobs:
         with:
           path: _mandrel_cache
           key: mandrel-archive-${{ runner.os }}-java${{ matrix.mandrel.java }}-${{ matrix.mandrel.version }}
+
+
+      #Now we prepare the environment to build the native image
       - name: Download and Setup Mandrel (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -70,6 +132,14 @@ jobs:
           Move-Item (Get-ChildItem mandrel-java*).name ${{ github.workspace }}\${{ matrix.mandrel.java }}-${{ matrix.mandrel.version }}
           echo "GRAALVM_HOME=${{ github.workspace }}\${{ matrix.mandrel.java }}-${{ matrix.mandrel.version }}" >> $env:GITHUB_ENV
           echo "JAVA_HOME=${{ github.workspace }}\${{ matrix.mandrel.java }}-${{ matrix.mandrel.version }}" >> $env:GITHUB_ENV
+
+      # Recover test assets from previous job
+      - name: Download assets
+        uses: actions/download-artifact@v5
+        with:
+          name: assets-${{ matrix.java.version }}
+
+      #And we build and test
       - name: Build and Test Native (Windows)
         if: runner.os == 'Windows'
         shell: cmd
@@ -89,3 +159,15 @@ jobs:
         run: |
           native-image --version
           ./mvnw clean verify -B -Pnative
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "# Summary" >> $GITHUB_STEP_SUMMARY
+          echo "The assets generated are: " >> $GITHUB_STEP_SUMMARY
+          echo "- Native App ("$(du -sh target/*runner )")" >> $GITHUB_STEP_SUMMARY
+          echo "- AOT Cache ("$(du -sh target/app.aot )")" >> $GITHUB_STEP_SUMMARY
+          echo "- Training logs ("$(du -sh target/training.log*)")" >> $GITHUB_STEP_SUMMARY
+          echo "- Production logs ("$(du -sh target/production.log*)")" >> $GITHUB_STEP_SUMMARY
+          echo "- AOT Map File ("$(du -sh target/aot.map )")" >> $GITHUB_STEP_SUMMARY
+

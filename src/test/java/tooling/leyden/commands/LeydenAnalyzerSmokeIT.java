@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class LeydenAnalyzerSmokeIT {
@@ -33,7 +34,7 @@ public class LeydenAnalyzerSmokeIT {
         try (InputStream stdout = process.getInputStream()) {
             output = new String(stdout.readAllBytes(), StandardCharsets.UTF_8);
         }
-        System.out.println(output);
+        assertNotNull(output);
         assertTrue(output.contains("> "), "Prompt is missing.");
         assertTrue(output.contains("Use 'load' to add assets"), "Help command output is missing.");
     }
