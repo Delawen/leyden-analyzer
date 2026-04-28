@@ -45,3 +45,4 @@ nb-configuration.xml
 .certs/
 
 .leyden*
+output*
