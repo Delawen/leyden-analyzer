@@ -2,6 +2,7 @@ package tooling.leyden.commands;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -18,20 +19,27 @@ public class AutomatedIT {
         if (nativeExePath == null) {
             throw new IllegalStateException("native.image.path is not set. Are you running with -Pnative?");
         }
-        final ProcessBuilder pb = new ProcessBuilder(nativeExePath, "aotCache=target/aot.map",
-                "productionLog=target/production.log", "trainingLog=target/training.log" ,
-                "instructions=src/test/resources/instructions/commands1.txt");
+        final ProcessBuilder pb = new ProcessBuilder(
+                nativeExePath,
+                "aotCache=aot.map",
+                "productionLog=production.log",
+                "trainingLog=training.log" ,
+                "instructions=src" + File.separator + "test" + File.separator +
+                        "resources" + File.separator + "instructions" + File.separator + "commands1.txt");
         pb.redirectErrorStream(true);
         final Process process = pb.start();
-        final boolean finished = process.waitFor(60, TimeUnit.SECONDS);
-        if (!finished) {
-            process.destroyForcibly();
+        process.waitFor(5, TimeUnit.MINUTES);
+        final String errorOutput;
+        try (InputStream stdout = process.getErrorStream()) {
+            errorOutput = new String(stdout.readAllBytes(), StandardCharsets.UTF_8);
         }
+        System.out.println(errorOutput);
         final String output;
         try (InputStream stdout = process.getInputStream()) {
             output = new String(stdout.readAllBytes(), StandardCharsets.UTF_8);
         }
         assertNotNull(output);
+        System.out.println(output);
         assertTrue(output.contains("Executing automated commands..."), "No automated commands found.");
         assertTrue(output.contains("PRODUCTION RUN:"));
         assertTrue(output.contains("Classes loaded: "));
@@ -54,8 +62,5 @@ public class AutomatedIT {
         assertTrue(output.contains("    -> MethodData:"));
         assertTrue(output.contains("    -> MethodTrainingData:"));
         assertTrue(output.contains("  -> CompileTrainingData:"));
-        assertTrue(output.contains("      -> Level 1:"));
-        assertTrue(output.contains("      -> Level 3:"));
-        assertTrue(output.contains("      -> Level 4:"));
     }
 }

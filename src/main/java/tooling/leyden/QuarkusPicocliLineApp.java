@@ -158,19 +158,34 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
 
                 // start the shell and process input until the user quits with Ctrl-D
                 String line;
+                if (aotCache != null) {
+                    for (Path p : aotCache) {
+                        String command = "load --background aotCache " + p.toString();
+                        AttributedStringBuilder builder = new AttributedStringBuilder();
+                        builder.style(AttributedStyle.BOLD.italic());
+                        builder.append("[auto] > ").append(command);
+                        builder.toAttributedString().println(terminal);
+                        systemRegistry.execute(command);
+                    }
+                }
                 if (productionLog != null) {
                     for (Path p : productionLog) {
-                        systemRegistry.execute("load --background productionLog " + p.toString());
+                        String command = "load productionLog " + p.toString();
+                        AttributedStringBuilder builder = new AttributedStringBuilder();
+                        builder.style(AttributedStyle.BOLD.italic());
+                        builder.append("[auto] > ").append(command);
+                        builder.toAttributedString().println(terminal);
+                        systemRegistry.execute(command);
                     }
                 }
                 if (trainingLog != null) {
                     for (Path p : trainingLog) {
-                        systemRegistry.execute("load --background productionLog " + p.toString());
-                    }
-                }
-                if (aotCache != null) {
-                    for (Path p : aotCache) {
-                        systemRegistry.execute("load --background aotCache " + p.toString());
+                        String command = "load trainingLog " + p.toString();
+                        AttributedStringBuilder builder = new AttributedStringBuilder();
+                        builder.style(AttributedStyle.BOLD.italic());
+                        builder.append("[auto] > ").append(command);
+                        builder.toAttributedString().println(terminal);
+                        systemRegistry.execute(command);
                     }
                 }
                 boolean shouldContinue = true;
