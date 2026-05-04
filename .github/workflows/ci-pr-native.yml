@@ -161,13 +161,11 @@ jobs:
           ./mvnw clean verify -B -Pnative
 
       - name: Summary
-        if: always()
         run: |
           echo "# Summary" >> $GITHUB_STEP_SUMMARY
           echo "The assets generated are: " >> $GITHUB_STEP_SUMMARY
-          echo "- Native App ("$(du -sh target/*runner )")" >> $GITHUB_STEP_SUMMARY
-          echo "- AOT Cache ("$(du -sh target/app.aot )")" >> $GITHUB_STEP_SUMMARY
-          echo "- Training logs ("$(du -sh target/training.log*)")" >> $GITHUB_STEP_SUMMARY
-          echo "- Production logs ("$(du -sh target/production.log*)")" >> $GITHUB_STEP_SUMMARY
-          echo "- AOT Map File ("$(du -sh target/aot.map )")" >> $GITHUB_STEP_SUMMARY
-
+          echo "- Native App ("$(du -sh *runner )")" >> $GITHUB_STEP_SUMMARY
+          echo "- AOT Cache ("$(du -sh app.aot )")" >> $GITHUB_STEP_SUMMARY
+          echo "- Training logs ("$(du -sh training.log*)")" >> $GITHUB_STEP_SUMMARY
+          echo "- Production logs ("$(du -sh production.log*)")" >> $GITHUB_STEP_SUMMARY
+          echo "- AOT Map File ("$(du -sh aot.map )")" >> $GITHUB_STEP_SUMMARY
