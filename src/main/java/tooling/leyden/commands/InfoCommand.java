@@ -14,6 +14,7 @@ import picocli.CommandLine.Command;
 import tooling.leyden.aotcache.Configuration;
 import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.MethodObject;
+import tooling.leyden.aotcache.NMethodObject;
 import tooling.leyden.commands.autocomplete.InfoCommandTypes;
 import tooling.leyden.commands.autocomplete.WhichRun;
 
@@ -141,6 +142,7 @@ class InfoCommand extends BaseCommand {
         params.setTypes(new String[] { "Method" });
         params.setUse(CommonParameters.ElementsToUse.cached);
         var futureMethodsSize = parent.getInformation().getFutureElements(params);
+        var futureMethods = parent.getInformation().getFutureElements(params);
         params = new CommonParameters();
         params.setUse(CommonParameters.ElementsToUse.cached);
         params.setTypes(new String[] { "KlassTrainingData" });
@@ -158,7 +160,34 @@ class InfoCommand extends BaseCommand {
         params.setTypes(new String[] { "MethodTrainingData" });
         var futureMethodTrainingData = parent.getInformation().getFutureElements(params);
 
-        var lambdas = Double.valueOf(stats.getValue("[LOG] Lambda Methods loaded from AOT Cache", 0).toString());
+        //code cache
+        params = new CommonParameters();
+        params.setUse(CommonParameters.ElementsToUse.cached);
+        params.setTypes(new String[] { "NMethod" });
+        var futureNMethod = parent.getInformation().getFutureElements(params);
+        var futureNMethodCount = parent.getInformation().getFutureElements(params);
+        params = new CommonParameters();
+        params.setUse(CommonParameters.ElementsToUse.cached);
+        params.setTypes(new String[] { "StubGenBlob" });
+        var futureStubGenBlob = parent.getInformation().getFutureElements(params);
+        params = new CommonParameters();
+        params.setUse(CommonParameters.ElementsToUse.cached);
+        params.setTypes(new String[] { "SharedBlob" });
+        var futureSharedBlob = parent.getInformation().getFutureElements(params);
+        params = new CommonParameters();
+        params.setUse(CommonParameters.ElementsToUse.cached);
+        params.setTypes(new String[] { "Adapter" });
+        var futureAdapter = parent.getInformation().getFutureElements(params);
+        params = new CommonParameters();
+        params.setUse(CommonParameters.ElementsToUse.cached);
+        params.setTypes(new String[] { "C1Blob" });
+        var futureC1Blob = parent.getInformation().getFutureElements(params);
+        params = new CommonParameters();
+        params.setUse(CommonParameters.ElementsToUse.cached);
+        params.setTypes(new String[] { "C2Blob" });
+        var futureC2Blob = parent.getInformation().getFutureElements(params);
+
+    var lambdas = Double.valueOf(stats.getValue("[LOG] Lambda Methods loaded from AOT Cache", 0).toString());
         final double methodsSize = getFutureDouble(futureMethodsSize);
 
         (new AttributedString("PRODUCTION RUN: ", blueFormat)).println(parent.getTerminal());
@@ -198,27 +227,6 @@ class InfoCommand extends BaseCommand {
             printPercentage("  -> Not Cached:", lambdas + extLambdas, percentFormat, redFormat, extLambdas);
             printVerboseInfo("Lambda methods used in production but not cached. Sometimes there are issues storing " +
                     "specific classes and methods. Check for warnings with the warning command.");
-
-            Integer aotCodeEntries = Integer
-                    .valueOf(stats.getValue("[LOG] [CodeCache] Loaded AOT code entries", -1).toString());
-            printVerboseInfo("Summarized information of what has been used from the Code Cache.");
-            if (aotCodeEntries > 0) {
-                (new AttributedString(
-                        "Code Entries: " + aotCodeEntries, AttributedStyle.DEFAULT)).println(parent.getTerminal());
-                printVerboseInfo("Total number of entries loaded from the Code Cache.");
-                printPercentage("  -> Adapters: ", aotCodeEntries.doubleValue(), percentFormat, greenFormat,
-                        Double.valueOf(stats.getValue("[LOG] [CodeCache] Loaded Adapters", 0).toString()));
-                printPercentage("  -> Shared Blobs: ", aotCodeEntries.doubleValue(), percentFormat,
-                        greenFormat,
-                        Double.valueOf(stats.getValue("[LOG] [CodeCache] Loaded Shared Blobs", 0).toString()));
-                printPercentage("  -> C1 Blobs: ", aotCodeEntries.doubleValue(), percentFormat,
-                        greenFormat, Double.valueOf(stats.getValue("[LOG] [CodeCache] Loaded C1 Blobs", 0).toString()));
-                printPercentage("  -> C2 Blobs: ", aotCodeEntries.doubleValue(), percentFormat,
-                        greenFormat, Double.valueOf(stats.getValue("[LOG] [CodeCache] Loaded C2 Blobs", 0).toString()));
-                (new AttributedString(
-                        "AOT code cache size: " + stats.getValue("[LOG] [CodeCache] AOT code cache size", 0),
-                        AttributedStyle.DEFAULT)).println(parent.getTerminal());
-            }
         }
 
         (new AttributedString("AOT CACHE: ", blueFormat)).println(parent.getTerminal());
@@ -286,70 +294,63 @@ class InfoCommand extends BaseCommand {
             printVerboseInfo("MethodData and MethodTrainingData shows how many of those methods were profiled " +
                     "and to what extent.");
 
-            Map<Integer, Integer> compilationLevels = new HashMap<>();
-            parent.getInformation().getElements(null, null, null, true, false, "Method")
-                    .forEach(e -> {
-                        MethodObject method = (MethodObject) e;
-                        for (Map.Entry<Integer, Element> entry : method.getCompileTrainingData().entrySet()) {
-                            compilationLevels.putIfAbsent(entry.getKey(), 0);
-                            compilationLevels.replace(entry.getKey(), compilationLevels.get(entry.getKey()) + 1);
-                        }
-                    });
+            Map<Integer, Integer> trainingCompilationLevels = new HashMap<>();
+            try {
+                futureMethods.get().forEach(e -> {
+                    MethodObject method = (MethodObject) e;
+                    for (Map.Entry<Integer, Element> entry : method.getCompileTrainingData().entrySet()) {
+                        trainingCompilationLevels.putIfAbsent(entry.getKey(), 0);
+                        trainingCompilationLevels.replace(entry.getKey(), trainingCompilationLevels.get(entry.getKey()) + 1);
+                    }
+                });
+            } catch (Exception e) {
+            }
 
             (new AttributedString("  -> CompileTrainingData: ",
                     AttributedStyle.DEFAULT)).println(parent.getTerminal());
             printVerboseInfo("Information to compile methods to different levels/tiers of compilation.");
-            for (Integer level : compilationLevels.keySet().stream().sorted().toList()) {
+            for (Integer level : trainingCompilationLevels.keySet().stream().sorted().toList()) {
                 printPercentage("      -> Level " + level + ": ", methodsSize, percentFormat,
-                        greenFormat, Double.valueOf(compilationLevels.get(level)));
+                        greenFormat, Double.valueOf(trainingCompilationLevels.get(level)));
             }
             printVerboseInfo("The same method could store information to compile on more than one level. " +
                     "Percentages reflect the percentage of methods compiled to this level.");
             printVerboseTip("You can find compilation levels of any method with the command " +
                     "'describe -t=Method -i=\"void com.example.Class.method(com.example.Argument, com.example.Argument2)\"'.");
 
-        }
 
-        var aotCodeEntries = (Double) stats.getValue("[CodeCache] AOT Code Entries", -1.0);
-        if (aotCodeEntries > 0) {
-
-            (new AttributedString("Code Cache: ", AttributedStyle.DEFAULT)).println(parent.getTerminal());
-
-            printPercentage("  -> None: ", aotCodeEntries,
-                    percentFormat, greenFormat, (Double) stats.getValue("[CodeCache] None", 0.0));
-            printPercentage("  -> Adapter: ", aotCodeEntries,
-                    percentFormat, greenFormat, (Double) stats.getValue("[CodeCache] Adapter", 0.0));
-            printPercentage("  -> Stub: ", aotCodeEntries,
-                    percentFormat, greenFormat, (Double) stats.getValue("[CodeCache] Stub", 0.0));
-            printPercentage("  -> SharedBlob: ", aotCodeEntries,
-                    percentFormat, greenFormat, (Double) stats.getValue("[CodeCache] SharedBlob", 0.0));
-            printPercentage("  -> C1Blob: ", aotCodeEntries,
-                    percentFormat, greenFormat, (Double) stats.getValue("[CodeCache] C1Blob", 0.0));
-            printPercentage("  -> C2Blob: ", aotCodeEntries,
-                    percentFormat, greenFormat, (Double) stats.getValue("[CodeCache] C2Blob", 0.0));
-            var nmethod = (Double) stats.getValue("[CodeCache] Nmethod", 0.0);
-            printPercentage("  -> Nmethod: ", aotCodeEntries, percentFormat, greenFormat, nmethod);
-            if (nmethod > 0) {
-                printPercentage("     - Tier 0: ", nmethod,
-                        percentFormat, greenFormat, (Double) stats.getValue("[CodeCache] Nmethod Tier 0", 0.0));
-                printPercentage("     - Tier 1: ", nmethod,
-                        percentFormat, greenFormat, (Double) stats.getValue("[CodeCache] Nmethod Tier 1", 0.0));
-                printPercentage("     - Tier 2: ", nmethod,
-                        percentFormat, greenFormat, (Double) stats.getValue("[CodeCache] Nmethod Tier 2", 0.0));
-                printPercentage("     - Tier 3: ", nmethod,
-                        percentFormat, greenFormat, (Double) stats.getValue("[CodeCache] Nmethod Tier 3", 0.0));
-                printPercentage("     - Tier 4: ", nmethod,
-                        percentFormat, greenFormat, (Double) stats.getValue("[CodeCache] Nmethod Tier 4", 0.0));
-                printPercentage("     - Tier 5: ", nmethod,
-                        percentFormat, greenFormat, (Double) stats.getValue("[CodeCache] Nmethod Tier 5", 0.0));
+            Double nmethods = getFutureDouble(futureNMethodCount);
+            printVerboseInfo("Summarized information of what is inside the Code Cache.");
+            printVerboseTip("This section is only available on newer versions of the JDK.");
+            if (nmethods > 0) {
+                Map<Integer, Integer> compilationLevels = new HashMap<>();
+                try {
+                    futureNMethod.get().forEach(e -> {
+                        int compilationLevel = ((NMethodObject) e).getCompilationLevel();
+                        compilationLevels.putIfAbsent(compilationLevel, 0);
+                        compilationLevels.replace(compilationLevel, compilationLevels.get(compilationLevel) + 1);
+                    });
+                } catch (Exception e) {
+                }
+                (new AttributedString("Code Cache:", AttributedStyle.DEFAULT)).println(parent.getTerminal());
+                (new AttributedString(" - NMethods: ", AttributedStyle.DEFAULT)).print(parent.getTerminal());
+                (new AttributedString("" + nmethods.intValue(), greenFormat)).println(parent.getTerminal());
+                printVerboseInfo("Code compiled stored on the cache");
+                for (Integer level : compilationLevels.keySet().stream().sorted().toList()) {
+                    printPercentage("      -> Tier " + level + ": ", nmethods, percentFormat,
+                            greenFormat, Double.valueOf(compilationLevels.get(level)));
+                }
+                (new AttributedString(" - Adapters: ", AttributedStyle.DEFAULT)).print(parent.getTerminal());
+                (new AttributedString("" + getFutureLong(futureAdapter), greenFormat)).println(parent.getTerminal());
+                (new AttributedString(" - StubGenBlob: ", AttributedStyle.DEFAULT)).print(parent.getTerminal());
+                (new AttributedString("" + getFutureLong(futureStubGenBlob), greenFormat)).println(parent.getTerminal());
+                (new AttributedString(" - SharedBlob: ", AttributedStyle.DEFAULT)).print(parent.getTerminal());
+                (new AttributedString("" + getFutureLong(futureSharedBlob), greenFormat)).println(parent.getTerminal());
+                (new AttributedString(" - C1Blob: ", AttributedStyle.DEFAULT)).print(parent.getTerminal());
+                (new AttributedString("" + getFutureLong(futureC1Blob), greenFormat)).println(parent.getTerminal());
+                (new AttributedString(" - C2Blob: ", AttributedStyle.DEFAULT)).print(parent.getTerminal());
+                (new AttributedString("" + getFutureLong(futureC2Blob), greenFormat)).println(parent.getTerminal());
             }
-            (new AttributedString("  -> Entries: ", AttributedStyle.DEFAULT)).print(parent.getTerminal());
-            (new AttributedString(intFormat.format(aotCodeEntries), greenFormat)).println(parent.getTerminal());
-
-            (new AttributedString("  -> Cache Size: ", AttributedStyle.DEFAULT)).print(parent.getTerminal());
-            (new AttributedString(
-                    stats.getValue("[CodeCache] Cache Size", "unknown").toString(), greenFormat))
-                    .println(parent.getTerminal());
         }
     }
 
@@ -357,6 +358,15 @@ class InfoCommand extends BaseCommand {
         double count;
         try {
             count = (double) future.get().count();
+        } catch (Exception e) {
+            count = -1;
+        }
+        return count;
+    }
+    private static long getFutureLong(Future<Stream<Element>> future) {
+        long count;
+        try {
+            count = future.get().count();
         } catch (Exception e) {
             count = -1;
         }

@@ -372,9 +372,7 @@ public class AOTMapParser extends Parser {
                 ((NMethodObject)element).setMethod(identifier);
             } else if (type.equalsIgnoreCase( "StubGenBlob")
                     || type.equalsIgnoreCase( "SharedBlob")
-                    || type.equalsIgnoreCase( "StubGenBlob")
-                    || type.equalsIgnoreCase( "C1Blo")
-                    || type.equalsIgnoreCase( "StubGenBlob")
+                    || type.equalsIgnoreCase( "C1Blob")
                     || type.equalsIgnoreCase( "C2Blob")
                     || type.equalsIgnoreCase( "Adapter")) {
                 //0x00007fbcf7ffeff4: @@ StubGenBlob       25896 73 initial_blob (stub gen)
