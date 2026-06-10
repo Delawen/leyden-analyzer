@@ -1,11 +1,5 @@
 package tooling.leyden.commands.logparser;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.StringReader;
@@ -21,6 +15,8 @@ import tooling.leyden.aotcache.*;
 import tooling.leyden.commands.CommonParameters;
 import tooling.leyden.commands.DefaultTest;
 import tooling.leyden.commands.LoadFileCommand;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 class AOTCacheParserTest extends DefaultTest {
@@ -744,4 +740,100 @@ class AOTCacheParserTest extends DefaultTest {
         assertEquals("java.base", e.getKey());
     }
 
+
+    @Test
+    void codeCache() {
+        String mapfile = """
+0x00000008003eb000: @@ Class             1000 java.math.BigInteger
+0x00000008003ed000: @@ Class             520 [Ljava.math.BigInteger;
+0x00000008003ed400: @@ Class             520 [[Ljava.math.BigInteger;
+0x00007fbcf7ffeff4: @@ StubGenBlob       25896 73 initial_blob (stub gen)
+0x00007fbcf7ffefc8: @@ SharedBlob        403 13 throw_StackOverflowError_blob (shared runtime)
+0x00007fbcf7ffef9c: @@ StubGenBlob       3621 74 continuation_blob (stub gen)
+0x00007fbcf7ffed34: @@ SharedBlob        2156 0 deopt_blob (shared runtime)
+0x00007fbcf7ffe49c: @@ StubGenBlob       129373 75 compiler_blob (stub gen)
+0x00007fbcf7ffe470: @@ StubGenBlob       59182 76 final_blob (stub gen)
+0x00007fbcf7ffcc8c: @@ C1Blob            650 17 dtrace_object_alloc_blob (C1 runtime)
+0x00007fbcf7ffcc60: @@ C1Blob            387 18 unwind_exception_blob (C1 runtime)
+0x00007fbcf7ffbe74: @@ C2Blob            335 70 vthread_start_transition_blob (C2 runtime)
+0x00007fbcf7ffbe48: @@ Adapter           1333 217 ILIL
+0x00007fbcf7ffbe1c: @@ Adapter           1376 218 LIIILLL
+0x00007fbcf7ffbdf0: @@ C2Blob            333 71 vthread_end_transition_blob (C2 runtime)
+0x00007fbcf7ffbdc4: @@ Adapter           1460 219 LLLIILILLII
+0x00007fbcf7ffbd98: @@ Adapter           1342 220 LIIIL
+0x00000008003ec258: @@ Method            112 java.math.BigInteger java.math.BigInteger.subtract(java.math.BigInteger)
+0x00000008003eebd0: @@ Method            112 int[] java.math.BigInteger.subtract(long, int[])
+0x00000008003eecd8: @@ Method            112 int[] java.math.BigInteger.subtract(int[], int[])
+0x00000008012d6d58: @@ ConstMethod       256 java.math.BigInteger java.math.BigInteger.subtract(java.math.BigInteger)
+0x00000008012db2f8: @@ ConstMethod       344 int[] java.math.BigInteger.subtract(long, int[])
+0x00000008012db5b8: @@ ConstMethod       296 int[] java.math.BigInteger.subtract(int[], int[])
+0x00007fe0fbff6b70: @@ Nmethod           15469 4 1298 java.math.BigInteger.subtract([I[I)[I
+0x00007fe0fbfe8890: @@ Nmethod           6552 2 2131 java.math.BigInteger.subtract(Ljava/math/BigInteger;)Ljava/math/BigInteger;
+0x00007fe0fbfe28d4: @@ Nmethod           11533 4 3154 java.math.BigInteger.subtract([I[I)[I
+0x00007f9ab3fe6c60: @@ Nmethod           2444 2 2550 java.util.Arrays.sort([Ljava/lang/Object;Ljava/util/Comparator;)V
+                """;
+
+        BufferedReader reader = new BufferedReader(new StringReader(mapfile));
+        reader.lines().forEach(aotCacheParser::accept);
+        aotCacheParser.postProcessing();
+
+        CommonParameters param = new CommonParameters();
+        param.setTypes(new String[] { "NMethod" });
+        assertEquals(4, information.getElements(param).count());
+        param.setTypes(new String[] { "StubGenBlob" });
+        assertEquals(4, information.getElements(param).count());
+        param.setTypes(new String[] { "SharedBlob" });
+        assertEquals(2, information.getElements(param).count());
+        param.setTypes(new String[] { "C1Blob" });
+        assertEquals(2, information.getElements(param).count());
+        param.setTypes(new String[] { "C2Blob" });
+        assertEquals(2, information.getElements(param).count());
+        param.setTypes(new String[] { "Adapter" });
+        assertEquals(4, information.getElements(param).count());
+
+        NMethodObject e = (NMethodObject) information.getByAddress("0x00007fe0fbff6b70");
+        assertEquals("NMethod", e.getType());
+        assertFalse(e.isHeapRoot());
+        assertEquals(15469, e.getSize());
+        assertEquals(4, e.getCompilationLevel());
+        assertEquals(1298, e.getId());
+        assertNotNull(e.getMethod());
+        assertEquals("(" + e.getCompilationLevel() + ") [" + e.getId()
+                + "] java.math.BigInteger.subtract([I[I)[I", e.getKey());
+        assertEquals("0x00000008003eecd8", e.getMethod().getAddress());
+
+        e = (NMethodObject) information.getByAddress("0x00007fe0fbfe8890");
+        assertEquals("NMethod", e.getType());
+        assertFalse(e.isHeapRoot());
+        assertEquals(6552, e.getSize());
+        assertEquals(2, e.getCompilationLevel());
+        assertEquals(2131, e.getId());
+        assertNotNull(e.getMethod());
+        assertEquals("(" + e.getCompilationLevel() + ") [" + e.getId()
+                + "] java.math.BigInteger.subtract(Ljava/math/BigInteger;)Ljava/math/BigInteger;", e.getKey());
+        assertEquals("0x00000008003ec258", e.getMethod().getAddress());
+
+        e = (NMethodObject) information.getByAddress("0x00007fe0fbfe28d4");
+        assertEquals("NMethod", e.getType());
+        assertFalse(e.isHeapRoot());
+        assertEquals(11533, e.getSize());
+        assertEquals(4, e.getCompilationLevel());
+        assertEquals(3154, e.getId());
+        assertNotNull(e.getMethod());
+        assertEquals("(" + e.getCompilationLevel() + ") [" + e.getId()
+                + "] java.math.BigInteger.subtract([I[I)[I", e.getKey());
+        assertEquals("0x00000008003eecd8", e.getMethod().getAddress());
+
+        e = (NMethodObject) information.getByAddress("0x00007f9ab3fe6c60");
+        assertEquals("NMethod", e.getType());
+        assertFalse(e.isHeapRoot());
+        assertEquals(2444, e.getSize());
+        assertEquals(2, e.getCompilationLevel());
+        assertEquals(2550, e.getId());
+        assertNotNull(e.getMethod());
+        assertNull(e.getMethod().getAddress());
+        assertEquals("(" + e.getCompilationLevel() + ") [" + e.getId()
+                + "] java.util.Arrays.sort([Ljava/lang/Object;Ljava/util/Comparator;)V", e.getKey());
+        assertEquals("void java.util.Arrays.sort(java.lang.Object[], java.util.Comparator)", e.getMethod().getKey());
+    }
 }

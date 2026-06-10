@@ -25,6 +25,10 @@ public class AOTMapParser extends Parser {
     // 0x00000000ffe94558: @@ Object (0xffe94558) java.lang.String "sun.util.locale.BaseLocale"
     // 0x00000000ffef4720: @@ Object (0xffef4720) java.lang.Class Lsun/util/locale/BaseLocale$1;
     // 0x0000000801cd0518: @@ MethodTrainingData 96
+    // 0x00007fbcf7ffbdf0: @@ C2Blob            333 71 vthread_end_transition_blob (C2 runtime)
+    // 0x00007fbcf7ffbd98: @@ Adapter           1342 220 LIIIL
+    // 0x00007fbcf7fe5500: @@ Nmethod           2788 2 2906 java.util.concurrent.ConcurrentHashMap$MapEntry.<init>(Ljava/lang/Object;Ljava/lang/Object;Ljava/util/concurrent/ConcurrentHashMap;)V
+
     private final Pattern assetHeader = Pattern.compile(regexpAddress + ": @@ (?<type>\\w+)(?: data)?\\s+"
             + "(?<miniaddress>\\(0[xX][0-9a-fA-F]+\\))?"
             + "(?<size>\\d+)?\\s*(?<identifier>.*)");
@@ -351,7 +355,49 @@ public class AOTMapParser extends Parser {
             } else if (type.equalsIgnoreCase("CArray")) {
                 //0x0000000800439bb8: @@ CArray            24
                 element = ElementFactory.getOrCreate(address, type, address);
-            } else {
+            }  else if (type.equalsIgnoreCase("Nmethod")) {
+                //0x00007fbcf7fe5500: @@ Nmethod           2788 2 2906 java.util.concurrent.ConcurrentHashMap$MapEntry.<init>(Ljava/lang/Object;Ljava/lang/Object;Ljava/util/concurrent/ConcurrentHashMap;)V
+                //0x00007fbcf7fe54d4: @@ Nmethod           5552 2 2905 java.util.concurrent.ConcurrentHashMap$EntryIterator.next()Ljava/util/Map$Entry;
+                //0x00007fbcf7fe25e8: @@ Nmethod           11537 4 3183 java.math.BigInteger.subtract([I[I)[I
+                //0x00007fbcf7fe25bc: @@ Nmethod           6965 4 3251 java.util.regex.Pattern$CharProperty.match(Ljava/util/regex/Matcher;ILjava/lang/CharSequence;)Z
+                int index = identifier.indexOf(" ");
+                int compilationLevel = Integer.valueOf(identifier.substring(0, index));
+                identifier = identifier.substring(index + 1);
+                index = identifier.indexOf(" ");
+                int id = Integer.valueOf(identifier.substring(0, index));
+                identifier = identifier.substring(index + 1);
+                element = ElementFactory.getOrCreate(identifier, type, address);
+                ((NMethodObject)element).setCompilationLevel(compilationLevel);
+                ((NMethodObject)element).setId(id);
+                ((NMethodObject)element).setMethod(identifier);
+            } else if (type.equalsIgnoreCase( "StubGenBlob")
+                    || type.equalsIgnoreCase( "SharedBlob")
+                    || type.equalsIgnoreCase( "StubGenBlob")
+                    || type.equalsIgnoreCase( "C1Blo")
+                    || type.equalsIgnoreCase( "StubGenBlob")
+                    || type.equalsIgnoreCase( "C2Blob")
+                    || type.equalsIgnoreCase( "Adapter")) {
+                //0x00007fbcf7ffeff4: @@ StubGenBlob       25896 73 initial_blob (stub gen)
+                //0x00007fbcf7ffefc8: @@ SharedBlob        403 13 throw_StackOverflowError_blob (shared runtime)
+                //0x00007fbcf7ffef9c: @@ StubGenBlob       3621 74 continuation_blob (stub gen)
+                //0x00007fbcf7ffed34: @@ SharedBlob        2156 0 deopt_blob (shared runtime)
+                //0x00007fbcf7ffe49c: @@ StubGenBlob       129373 75 compiler_blob (stub gen)
+                //0x00007fbcf7ffe470: @@ StubGenBlob       59182 76 final_blob (stub gen)
+                //0x00007fbcf7ffcc8c: @@ C1Blob            650 17 dtrace_object_alloc_blob (C1 runtime)
+                //0x00007fbcf7ffcc60: @@ C1Blob            387 18 unwind_exception_blob (C1 runtime)
+                //0x00007fbcf7ffbe74: @@ C2Blob            335 70 vthread_start_transition_blob (C2 runtime)
+                //0x00007fbcf7ffbe48: @@ Adapter           1333 217 ILIL
+                //0x00007fbcf7ffbe1c: @@ Adapter           1376 218 LIIILLL
+                //0x00007fbcf7ffbdf0: @@ C2Blob            333 71 vthread_end_transition_blob (C2 runtime)
+                //0x00007fbcf7ffbdc4: @@ Adapter           1460 219 LLLIILILLII
+                //0x00007fbcf7ffbd98: @@ Adapter           1342 220 LIIIL
+                int index = identifier.indexOf(" ");
+                int id = Integer.valueOf(identifier.substring(0, index));
+                identifier = identifier.substring(index + 1);
+                element = ElementFactory.getOrCreate(identifier, type, address);
+                ((CodeObject)element).setId(id);
+            }
+            else {
                 loadFile.getParent().getOut().println("Unidentified: " + type + " at address " + address);
                 element = ElementFactory.getOrCreate(address, type, address);
             }
@@ -461,7 +507,7 @@ public class AOTMapParser extends Parser {
         return element;
     }
 
-    private static String convertSymbolSignatureToClassQualifiedName(String identifier) {
+    public static String convertSymbolSignatureToClassQualifiedName(String identifier) {
         //Lorg/aspectj/weaver/ast/ASTNode;  -> org.aspectj.weaver.ast.ASTNode
         //[Lcom/fasterxml/jackson/databind/JsonSerializable; -> [Lcom.fasterxml.jackson.databind.JsonSerializable;
         identifier = identifier.replaceAll("/", ".");
