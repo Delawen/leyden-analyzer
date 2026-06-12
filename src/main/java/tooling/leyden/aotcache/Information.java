@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import tooling.leyden.commands.CommonParameters;
@@ -188,6 +189,12 @@ public class Information {
 
         if (key != null && !key.isBlank()) {
             result = result.filter(keyElementEntry -> keyElementEntry.getKey().identifier().equalsIgnoreCase(key));
+        }
+
+        if (parameters.getNameLike() != null && !parameters.getNameLike().isBlank()) {
+            Pattern pattern = Pattern.compile(parameters.getNameLike());
+            result = result.filter(
+                    keyElementEntry -> pattern.matcher(keyElementEntry.getKey().identifier()).matches());
         }
 
         return filterByParams(parameters, result.map(Map.Entry::getValue));

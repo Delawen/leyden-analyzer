@@ -26,6 +26,10 @@ public class CommonParameters {
             "The object identifier. If it is a class, use the full qualified name." }, defaultValue = "", arity = "0..1", paramLabel = "<id>", completionCandidates = Identifiers.class)
     private String name;
 
+    @CommandLine.Option(names = { "--like" }, description = {
+            "A regexp to compare the identifier." }, defaultValue = "", arity = "0..1", paramLabel = "<like>", completionCandidates = Identifiers.class)
+    private String nameLike;
+
     @CommandLine.Option(names = { "--address", "-a" }, description = {
             "Find elements on this address (0x....). It has to be the long address." }, arity = "0..1", paramLabel = "<address>", completionCandidates = Addressess.class)
     String address;
@@ -182,5 +186,13 @@ public class CommonParameters {
 
     public void setInstanceOf(String instanceOf) {
         this.instanceOf = instanceOf;
+    }
+
+    public String getNameLike() {
+        return nameLike;
+    }
+
+    public void setNameLike(String nameLike) {
+        this.nameLike = nameLike;
     }
 }
