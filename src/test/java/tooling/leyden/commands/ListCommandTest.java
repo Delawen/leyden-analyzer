@@ -86,6 +86,14 @@ class ListCommandTest extends DefaultTest {
         count = new AtomicInteger();
         assertTrue(command.findElements(count).allMatch(Element::isTrained));
         assertEquals(1, count.get());
+
+
+        command.parameters.types = null;
+        command.parameters.trained = false;
+        command.parameters.setNameLike("(.)*interceptors(.)*");
+        count = new AtomicInteger();
+        assertTrue(command.findElements(count).allMatch(e -> e.getKey().contains("interceptors")));
+        assertEquals(3, count.get());
     }
 
     @Test
