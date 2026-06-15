@@ -8,6 +8,7 @@ import java.util.Map;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
+import tooling.leyden.commands.CommonParameters;
 
 /**
  * This class represents a method inside the AOT Cache.
@@ -20,6 +21,7 @@ public class MethodObject extends ReferencingElement {
     private Element methodCounters;
     private Element methodTrainingData;
     private final Map<Integer, Element> compileTrainingData = new HashMap<>();
+    private String adapterSignature;
 
     private String returnType;
     private final List<String> parameters = new ArrayList<>();
@@ -103,6 +105,10 @@ public class MethodObject extends ReferencingElement {
 
     public void setReturnType(String returnType) {
         this.returnType = returnType;
+    }
+
+    public String getAdapterSignature() {
+        return adapterSignature;
     }
 
     @Override
@@ -265,6 +271,7 @@ public class MethodObject extends ReferencingElement {
         if (!identifier.contains("(") || !identifier.contains(")")) {
             return;
         }
+        StringBuilder sb = new StringBuilder("");
         //Get parameter classes to add as references
         //88 void java.util.Hashtable.reconstitutionPut(java.util.Hashtable$Entry[], java.lang.Object, java.lang.Object)
         String[] parameters = identifier.substring(identifier.indexOf("(") + 1, identifier.indexOf(")"))
@@ -283,8 +290,22 @@ public class MethodObject extends ReferencingElement {
                                 .forEachOrdered(this::addReference);
                     }
                 }
+
+            }
+            //This may not be 100% accurate, specially after valhalla?
+            switch (parameter) {
+               // case "byte"  -> sb.append("B");
+               // case "short" -> sb.append("S");
+                case "byte", "short", "boolean", "char", "int" -> sb.append("I");
+                case "long" -> sb.append("J");
+                case "float" -> sb.append("F");
+                case "double" -> sb.append("D");
+               // case "boolean" -> sb.append("Z");
+               // case "char" -> sb.append("C");
+                default -> sb.append("L");
             }
         }
+        this.adapterSignature = sb.toString();
     }
 
     private void fillClass(String className) {
