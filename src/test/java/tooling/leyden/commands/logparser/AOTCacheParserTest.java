@@ -760,7 +760,7 @@ class AOTCacheParserTest extends DefaultTest {
 0x00007fbcf7ffbe1c: @@ Adapter           1376 218 LIIILLL
 0x00007fbcf7ffbdf0: @@ C2Blob            333 71 vthread_end_transition_blob (C2 runtime)
 0x00007fbcf7ffbdc4: @@ Adapter           1460 219 LLLIILILLII
-0x00007fbcf7ffbd98: @@ Adapter           1342 220 LIIIL
+0x00007fbcf7ffbd98: @@ Adapter           1342 220 L
 0x00000008003ec258: @@ Method            112 java.math.BigInteger java.math.BigInteger.subtract(java.math.BigInteger)
 0x00000008003eebd0: @@ Method            112 int[] java.math.BigInteger.subtract(long, int[])
 0x00000008003eecd8: @@ Method            112 int[] java.math.BigInteger.subtract(int[], int[])
@@ -801,6 +801,7 @@ class AOTCacheParserTest extends DefaultTest {
         assertEquals("(" + e.getCompilationLevel() + ") [" + e.getId()
                 + "] java.math.BigInteger.subtract([I[I)[I", e.getKey());
         assertEquals("0x00000008003eecd8", e.getMethod().getAddress());
+        assertNull(e.getAdapter());
 
         e = (NMethodObject) information.getByAddress("0x00007fe0fbfe8890");
         assertEquals("NMethod", e.getType());
@@ -812,6 +813,9 @@ class AOTCacheParserTest extends DefaultTest {
         assertEquals("(" + e.getCompilationLevel() + ") [" + e.getId()
                 + "] java.math.BigInteger.subtract(Ljava/math/BigInteger;)Ljava/math/BigInteger;", e.getKey());
         assertEquals("0x00000008003ec258", e.getMethod().getAddress());
+        assertNotNull(e.getAdapter());
+        assertEquals("0x00007fbcf7ffbd98", e.getAdapter().getAddress());
+
 
         e = (NMethodObject) information.getByAddress("0x00007fe0fbfe28d4");
         assertEquals("NMethod", e.getType());
@@ -823,6 +827,7 @@ class AOTCacheParserTest extends DefaultTest {
         assertEquals("(" + e.getCompilationLevel() + ") [" + e.getId()
                 + "] java.math.BigInteger.subtract([I[I)[I", e.getKey());
         assertEquals("0x00000008003eecd8", e.getMethod().getAddress());
+        assertNull(e.getAdapter());
 
         e = (NMethodObject) information.getByAddress("0x00007f9ab3fe6c60");
         assertEquals("NMethod", e.getType());
@@ -835,5 +840,6 @@ class AOTCacheParserTest extends DefaultTest {
         assertEquals("(" + e.getCompilationLevel() + ") [" + e.getId()
                 + "] java.util.Arrays.sort([Ljava/lang/Object;Ljava/util/Comparator;)V", e.getKey());
         assertEquals("void java.util.Arrays.sort(java.lang.Object[], java.util.Comparator)", e.getMethod().getKey());
+        assertNull(e.getAdapter());
     }
 }
