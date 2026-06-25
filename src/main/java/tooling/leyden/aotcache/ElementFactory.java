@@ -12,6 +12,11 @@ public class ElementFactory {
     private static Element getElement(String identifier, String type, String address) {
         Element e;
 
+        if (address != null && Information.getMyself().getByAddress(address) != null) {
+            Information.getMyself().addWarning(Information.getMyself().getByAddress(address),
+                    "Address collision at " + address, WarningType.CacheCreation);
+        }
+
         switch (type) {
             case "Class" -> e = new ClassObject(identifier);
             case "Method" -> e = new MethodObject(identifier);

@@ -365,11 +365,12 @@ public class AOTMapParser extends Parser {
                 identifier = identifier.substring(index + 1);
                 index = identifier.indexOf(" ");
                 int id = Integer.valueOf(identifier.substring(0, index));
-                identifier = identifier.substring(index + 1);
+                var methodIdentifier = identifier.substring(index + 1);
+                identifier = "(" + compilationLevel + ") " + "[" + id + "] " + methodIdentifier;
                 element = ElementFactory.getOrCreate(identifier, type, address);
                 ((NMethodObject)element).setCompilationLevel(compilationLevel);
                 ((NMethodObject)element).setId(id);
-                ((NMethodObject)element).setMethod(identifier);
+                ((NMethodObject)element).setMethod(methodIdentifier);
             } else if (type.equalsIgnoreCase( "StubGenBlob")
                     || type.equalsIgnoreCase( "SharedBlob")
                     || type.equalsIgnoreCase( "C1Blob")
@@ -392,6 +393,7 @@ public class AOTMapParser extends Parser {
                 int index = identifier.indexOf(" ");
                 int id = Integer.valueOf(identifier.substring(0, index));
                 identifier = identifier.substring(index + 1);
+                identifier = "[" + id + "] " + identifier;
                 element = ElementFactory.getOrCreate(identifier, type, address);
                 ((CodeObject)element).setId(id);
             }
