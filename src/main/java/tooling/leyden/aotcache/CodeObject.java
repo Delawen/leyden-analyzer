@@ -24,18 +24,12 @@ public class CodeObject extends ReferencingElement {
     }
 
     @Override
-    public String getKey() {
-        return "[" + this.getId() + "] " + super.getKey();
-    }
-
-    @Override
     public AttributedString getDescription(String leftPadding, Boolean verbose, Boolean tips) {
         AttributedStringBuilder sb = new AttributedStringBuilder();
         sb.append(super.getDescription(leftPadding, verbose, tips));
-        if (verbose) {
-            sb.append(AttributedString.NEWLINE);
-            sb.append(leftPadding).append("This is part of the Code Cache.");
-        }
+        sb.append(AttributedString.NEWLINE);
+        sb.append(leftPadding).append("This is part of the Code Cache. Code Cache ID is " + this.getId());
+
         return sb.toAttributedString();
     }
 

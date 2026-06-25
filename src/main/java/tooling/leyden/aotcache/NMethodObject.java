@@ -53,9 +53,10 @@ public class NMethodObject extends CodeObject {
         cparameters.setNameLike("(.)* " + this.method.getAdapterSignature());
         Information.getMyself().getElements(cparameters).findAny()
                 .ifPresent(a -> this.adapter = (CodeObject) a);
-        addReference(this.adapter);
         if (this.adapter == null) {
             Information.getMyself().addWarning(this, "This nmethod does not have an adapter.", WarningType.CacheCreation);
+        } else {
+            addReference(this.adapter);
         }
     }
 
@@ -104,11 +105,6 @@ public class NMethodObject extends CodeObject {
 
     public void setCompilationLevel(Integer compilationLevel) {
         this.compilationLevel = compilationLevel;
-    }
-
-    @Override
-    public String getKey() {
-        return "(" + this.getCompilationLevel() + ") " + super.getKey();
     }
 
     @Override
