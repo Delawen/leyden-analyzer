@@ -95,6 +95,9 @@ jobs:
           path: _mandrel_cache
           key: mandrel-archive-${{ runner.os }}-java${{ matrix.mandrel.java }}-${{ matrix.mandrel.version }}
 
+      - name: Setup MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: microsoft/setup-msbuild@v3
 
       #Now we prepare the environment to build the native image
       - name: Download and Setup Mandrel (Linux)
@@ -146,8 +149,6 @@ jobs:
           # Headless CI, on Windows, JLine keeps looking for a real terminal and takes ages.
           JAVA_TOOL_OPTIONS: "-Dorg.jline.terminal.dumb=true -Dorg.jline.terminal.exec=false"
         run: |
-          set PATH=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\;%PATH%
-          call vcvars64 || exit 1
           set "PATH=%JAVA_HOME%\bin;%PATH%"
           if not exist "%GRAALVM_HOME%\bin\native-image.cmd" ( echo "Cannot find native-image tool. Quitting..." & exit 1 )
           cmd /C native-image --version
