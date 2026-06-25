@@ -21,7 +21,7 @@ jobs:
           - version: '26'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       # Build and run the leyden analyzer to generate an aot cache to test
       - name: Set up JDK ${{ matrix.java.version }} for Generating Cache for Testing
         uses: actions/setup-java@v5
@@ -81,7 +81,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Cache Maven repository
         uses: actions/cache@v5
         with:
