@@ -27,7 +27,7 @@ jobs:
       run:  ./mvnw verify -Dquarkus.package.jar.type=uber-jar
 
     - name: Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b
       with:
         files: target/*-runner.jar
         make_latest: true
