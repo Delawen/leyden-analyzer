@@ -72,7 +72,12 @@ class DescribeCommandTest extends DefaultTest {
                       ℹ️  This method was not considered for optimization during training run.
                     It has no MethodTrainingData associated to it.
                       💡  If you think the training for this method is not good enough, make sure your training run use it more, as it would on a long production run.
-                
+                  Code Cache:\s
+                    Native methods:\s
+                     - ID: 1298 Tier 4
+                     - ID: 3154 Tier 4
+                      ℹ️  These are the compiled methods ready to run.
+                  
                   References:\s
                     Assets referenced from this asset:\s
                        [Cached][Untrained][Class]   java.math.BigInteger
