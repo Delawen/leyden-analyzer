@@ -17,14 +17,8 @@ jobs:
       - uses: peternied/check-pull-request-description-checklist@v1.1
         with:
           checklist-items: |
-                  This is not AI slop
-                  I have performed a self-review of my code
-                  I have commented my code, particularly in hard-to-understand areas
-                  I have made corresponding changes to the documentation
-                  My changes generate no new warnings
+                  This is not AI generated and I own the assets pushed
                   I have added tests that prove my fix is effective or that my feature works
-                  New and existing unit tests pass locally with my changes
-                  Any dependent changes have been merged and published in downstream modules
   whoami:
     name: "PR Mandatory Checks"
     if:  github.event.pull_request.user.id == 49699333
