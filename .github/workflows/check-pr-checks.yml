@@ -14,7 +14,7 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - uses: peternied/check-pull-request-description-checklist@v1.1
+      - uses: peternied/check-pull-request-description-checklist@ec79db61b595a5f3bea6df7963f818c013845b89
         with:
           checklist-items: |
                   This is not AI generated and I own the assets pushed
