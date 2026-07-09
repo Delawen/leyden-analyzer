@@ -15,6 +15,7 @@ jobs:
     steps:
       - uses: ad/dependabot-auto-approve@3cad5f42e79296505473325ac6636be897c8b8a1
         with:
+          github-token: ${{ secrets.PAT_TOKEN }}  # Use your PAT secret name
           dependency-type: 'all'
           auto-merge: 'true'
           add-label: 'auto-merged'
