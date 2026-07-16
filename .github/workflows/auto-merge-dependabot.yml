@@ -2,7 +2,10 @@
 # This job auto-merges dependabot dependencies.
 # If they pass all mandatory tests (which includes smoke tests), just merge the PR.
 name: Dependabot Auto Manage
-on: pull_request
+on:
+  pull_request:
+  status:
+  check_run:
 
 permissions:
   contents: write
@@ -13,9 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.user.login == 'dependabot[bot]' || github.event.pull_request.user.login == 'app/dependabot'
     steps:
-      - uses: ad/dependabot-auto-approve@3cad5f42e79296505473325ac6636be897c8b8a1
-        with:
-          github-token: ${{ secrets.PAT_TOKEN }}  # Use your PAT secret name
-          dependency-type: 'all'
-          auto-merge: 'true'
-          add-label: 'auto-merged'
+      - uses: actions/checkout@v7
+      - name: Auto-Merge PR
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run:  gh pr merge --repo "Delawen/leyden-analyzer" --auto --delete-branch --squash "${{ github.event.pull_request.number }}"
+      - name: Add label to PR
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: gh pr edit --repo "Delawen/leyden-analyzer" --add-label "auto-merged" "${{ github.event.pull_request.number }}"
