@@ -30,6 +30,24 @@ public class CodeObject extends ReferencingElement {
         sb.append(AttributedString.NEWLINE);
         sb.append(leftPadding).append("This is part of the Code Cache. Code Cache ID is " + this.getId());
 
+        if (this.getType().equalsIgnoreCase("EmbeddedStub")) {
+            sb.append(AttributedString.NEWLINE);
+            Element e = this.getReferences().stream()
+                    .filter(r -> r.getType().equalsIgnoreCase("StubGenBlob")).findAny().orElse(null);
+            if (e != null) {
+                sb.append(leftPadding).append("This embedded stub is part of the blob ");
+                sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
+                sb.append(e.toAttributedString());
+                sb.style(AttributedStyle.DEFAULT);
+                sb.append(".");
+            } else {
+                sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED));
+                sb.append(leftPadding)
+                        .append("This stub seems to not have a StubGenBlob associated. Please report this error. ");
+                sb.style(AttributedStyle.DEFAULT);
+            }
+        }
+
         return sb.toAttributedString();
     }
 
