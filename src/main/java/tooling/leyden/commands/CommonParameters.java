@@ -64,9 +64,10 @@ public class CommonParameters {
             "Display object instances from this Java Class." }, arity = "0..1", completionCandidates = Identifiers.class)
     protected String instanceOf;
 
-    @CommandLine.Option(names = { "--trained" }, description = { "Only displays elements with training information.",
-            "This may restrict the types of elements shown, along with what was passed as parameters." }, defaultValue = "false", negatable = true, arity = "0..1")
-    protected Boolean trained = false;
+    @CommandLine.Option(names = { "--trained" },
+            description = { "Only displays elements with training information (true) or without training information (false).",
+            "This may restrict the types of elements shown, along with what was passed as parameters." }, negatable = true, arity = "0..1")
+    protected Boolean trained;
 
     @CommandLine.Option(names = { "--lambdas" }, description = {
             "Display lambda classes too. Useful to hide lambda classes." }, defaultValue = "true", negatable = true, arity = "0..1")

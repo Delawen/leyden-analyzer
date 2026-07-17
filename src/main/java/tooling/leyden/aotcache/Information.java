@@ -320,8 +320,12 @@ public class Information {
             });
         }
 
-        if (parameters.getTrained()) {
-            result = result.filter(e -> e.isTraineable() && e.isTrained());
+        if (parameters.getTrained() != null) {
+            if (parameters.getTrained()) {
+                result = result.filter(e -> e.isTraineable() && e.isTrained());
+            } else {
+                result = result.filter(e -> e.isTraineable() && !e.isTrained());
+            }
         }
 
         if (!parameters.getLambdas()) {
