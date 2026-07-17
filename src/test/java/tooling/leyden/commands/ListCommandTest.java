@@ -65,22 +65,22 @@ class ListCommandTest extends DefaultTest {
         command.parameters.innerClasses = true;
         command.parameters.trained = false;
         command.parameters.loaded = WhichRun.all;
-        assertEquals(21, command.findElements(new AtomicInteger()).count());
+        assertEquals(4, command.findElements(new AtomicInteger()).count());
 
         var count = new AtomicInteger();
         command.parameters.types = new String[] { "Class" };
         assertTrue(command.findElements(count).allMatch(e -> e instanceof ClassObject));
-        assertEquals(2, count.get());
+        assertEquals(1, count.get());
 
         count = new AtomicInteger();
         command.parameters.types = new String[] { "Class", "Method" };
         assertTrue(command.findElements(count).allMatch(e -> e instanceof ClassObject || e instanceof MethodObject));
-        assertEquals(6, count.get());
+        assertEquals(4, count.get());
 
         command.parameters.types = new String[] { "Method" };
         count = new AtomicInteger();
         assertTrue(command.findElements(count).allMatch(Element::isTraineable));
-        assertEquals(4, count.get());
+        assertEquals(3, count.get());
 
         command.parameters.trained = true;
         count = new AtomicInteger();
@@ -89,7 +89,7 @@ class ListCommandTest extends DefaultTest {
 
 
         command.parameters.types = null;
-        command.parameters.trained = false;
+        command.parameters.trained = null;
         command.parameters.setNameLike("(.)*interceptors(.)*");
         count = new AtomicInteger();
         assertTrue(command.findElements(count).allMatch(e -> e.getKey().contains("interceptors")));
