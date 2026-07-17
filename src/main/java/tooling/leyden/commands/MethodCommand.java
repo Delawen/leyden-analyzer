@@ -24,15 +24,17 @@ class MethodCommand extends BaseCommand {
     protected CommonParameters parameters;
 
     @CommandLine.Option(names = { "--tier" }, description = {
-            "Filter methods by compilation tier." }, arity = "0..*", split = ",", paramLabel = "<0..4>")
+            "Filter methods by compilation tier." }, arity = "0..*", paramLabel = "<0..4>")
     protected Integer tier;
 
     @CommandLine.Option(names = { "--trainingtier" }, description = {
-            "Filter methods by training tier." }, arity = "0..*", split = ",", paramLabel = "<0..4>")
+            "Filter methods by training tier." }, arity = "0..*", paramLabel = "<0..4>")
     protected Integer trainingTier;
 
-    @CommandLine.Option(names = { "--compiled" }, description = {
-            "Filter methods that has been compiled (true) or not compiled (false)" }, arity = "0..1", paramLabel = "<true>")
+    @CommandLine.Option(names = { "--compiled" },
+            description = {"Filter methods that has been compiled (true) or not compiled (false)" },
+            negatable = true,
+            arity = "0..1", paramLabel = "<true>")
     protected Boolean hasBeenCompiled;
 
     @Command(mixinStandardHelpOptions = true, version = "1.0", subcommands = { CommandLine.HelpCommand.class }, description = {
