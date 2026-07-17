@@ -843,4 +843,80 @@ class AOTCacheParserTest extends DefaultTest {
         assertEquals("void java.util.Arrays.sort(java.lang.Object[], java.util.Comparator)", e.getMethod().getKey());
         assertNull(e.getAdapter());
     }
+
+
+    @Test
+    void stubGenBlobsAndEmbedded() {
+        String mapfile = """
+              0x00007fd2fbffefe4: @@ StubGenBlob       24452 73 initial_blob (stub gen)
+              0x00007fd2dbfff05b: @@ EmbeddedStub      276 73 77 call_stub_stub (stub gen)
+              0x00007fd2dbfff010: @@ EmbeddedStub      75 73 78 forward_exception_stub (stub gen)
+              0x00007fd2dbfff16f: @@ EmbeddedStub      31 73 79 catch_exception_stub (stub gen)
+              0x00007fd2dbfff350: @@ EmbeddedStub      612 73 80 updateBytesCRC32_stub (stub gen)
+              0x00007fd2dbfff5d0: @@ EmbeddedStub      612 73 81 updateBytesCRC32C_stub (stub gen)
+              0x00007fd2dbfff83e: @@ EmbeddedStub      14 73 82 f2hf_stub (stub gen)
+              0x00007fd2dbfff834: @@ EmbeddedStub      10 73 83 hf2f_stub (stub gen)
+              0x00007fd2dc00196f: @@ EmbeddedStub      909 73 84 dexp_stub (stub gen)
+              0x00007fd2dc002ed7: @@ EmbeddedStub      660 73 85 dlog_stub (stub gen)
+              0x00007fd2dc00316b: @@ EmbeddedStub      744 73 86 dlog10_stub (stub gen)
+              0x00007fd2dc001cfc: @@ EmbeddedStub      4571 73 87 dpow_stub (stub gen)
+              0x00007fd2dbfff84c: @@ EmbeddedStub      1861 73 88 dsin_stub (stub gen)
+              0x00007fd2dbffff91: @@ EmbeddedStub      1793 73 89 dcos_stub (stub gen)
+              0x00007fd2dc000692: @@ EmbeddedStub      2312 73 90 dtan_stub (stub gen)
+              0x00007fd2dc000f9a: @@ EmbeddedStub      1029 73 91 dsinh_stub (stub gen)
+              0x00007fd2dc00139f: @@ EmbeddedStub      859 73 92 dtanh_stub (stub gen)
+              0x00007fd2dc0016fa: @@ EmbeddedStub      629 73 93 dcbrt_stub (stub gen)
+              0x00007fd2dc003470: @@ EmbeddedStub      489 73 94 fmod_stub (stub gen)
+              0x00007fd2dbfff18e: @@ EmbeddedStub      1 73 95 verify_mxcsr_stub (stub gen)
+              0x00007fd2dbfff18f: @@ EmbeddedStub      56 73 96 f2i_fixup_stub (stub gen)
+              0x00007fd2dbfff1c7: @@ EmbeddedStub      67 73 97 f2l_fixup_stub (stub gen)
+              0x00007fd2dbfff20a: @@ EmbeddedStub      80 73 98 d2i_fixup_stub (stub gen)
+              0x00007fd2dbfff25a: @@ EmbeddedStub      90 73 99 d2l_fixup_stub (stub gen)
+              0x00007fd2dbfff2d0: @@ EmbeddedStub      16 73 100 float_sign_mask_stub (stub gen)
+              0x00007fd2dbfff2f0: @@ EmbeddedStub      16 73 101 float_sign_flip_stub (stub gen)
+              0x00007fd2dbfff310: @@ EmbeddedStub      16 73 102 double_sign_mask_stub (stub gen)
+              0x00007fd2dbfff330: @@ EmbeddedStub      16 73 103 double_sign_flip_stub (stub gen)
+                """;
+
+        BufferedReader reader = new BufferedReader(new StringReader(mapfile));
+        reader.lines().forEach(aotCacheParser::accept);
+        aotCacheParser.postProcessing();
+
+        CommonParameters param = new CommonParameters();
+        param.setTypes(new String[] { "StubGenBlob" });
+        assertEquals(1, information.getElements(param).count());
+        param.setTypes(new String[] { "EmbeddedStub" });
+        assertEquals(27, information.getElements(param).count());
+
+        CodeObject e = (CodeObject) information.getByAddress("0x00007fd2fbffefe4");
+        assertEquals("StubGenBlob", e.getType());
+        assertFalse(e.isHeapRoot());
+        assertEquals(24452, e.getSize());
+        assertEquals(73, e.getId());
+        assertEquals("[73] initial_blob (stub gen)", e.getKey());
+        assertEquals(27, e.getWhoReferencesMe().size());
+        assertEquals(0, e.getReferences().size());
+
+        // 0x00007fd2dbfff05b: @@ EmbeddedStub      276 73 77 call_stub_stub (stub gen)
+        e = (CodeObject) information.getByAddress("0x00007fd2dbfff05b");
+        assertEquals("EmbeddedStub", e.getType());
+        assertFalse(e.isHeapRoot());
+        assertEquals(276, e.getSize());
+        assertEquals(77, e.getId());
+        assertEquals("[77] call_stub_stub (stub gen)", e.getKey());
+        assertEquals(1, e.getReferences().size());
+        assertEquals("[73] initial_blob (stub gen)", e.getReferences().getFirst().getKey());
+        assertEquals(0, e.getWhoReferencesMe().size());
+
+        // 0x00007fd2dbfff010: @@ EmbeddedStub      75 73 78 forward_exception_stub (stub gen)
+        e = (CodeObject) information.getByAddress("0x00007fd2dbfff010");
+        assertEquals("EmbeddedStub", e.getType());
+        assertFalse(e.isHeapRoot());
+        assertEquals(75, e.getSize());
+        assertEquals(78, e.getId());
+        assertEquals("[78] forward_exception_stub (stub gen)", e.getKey());
+        assertEquals(1, e.getReferences().size());
+        assertEquals("[73] initial_blob (stub gen)", e.getReferences().getFirst().getKey());
+        assertEquals(0, e.getWhoReferencesMe().size());
+    }
 }

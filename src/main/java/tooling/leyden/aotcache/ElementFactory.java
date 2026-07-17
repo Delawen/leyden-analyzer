@@ -25,7 +25,8 @@ public class ElementFactory {
                     "Symbol" -> e = new ReferencingElement(identifier, type);
             case "Object" -> e = new InstanceObject(identifier);
             case "Nmethod" -> e = new NMethodObject(identifier);
-            case "StubGenBlob", "SharedBlob", "C1Blob", "C2Blob", "Adapter" -> e = new CodeObject(identifier, type);
+            case "StubGenBlob", "SharedBlob", "C1Blob", "C2Blob",
+                 "Adapter", "EmbeddedStub" -> e = new CodeObject(identifier, type);
             default -> {
                 e = new BasicObject(identifier);
                 e.setType(type);

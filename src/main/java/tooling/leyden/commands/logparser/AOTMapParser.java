@@ -398,6 +398,22 @@ public class AOTMapParser extends Parser {
                 identifier = "[" + id + "] " + identifier;
                 element = ElementFactory.getOrCreate(identifier, type, address);
                 ((CodeObject)element).setId(id);
+            } else if (type.equalsIgnoreCase("EmbeddedStub")) {
+                //0x00007fd2dbfff350: @@ EmbeddedStub      612 73 80 updateBytesCRC32_stub (stub gen)
+                //0x00007fd2dbfff5d0: @@ EmbeddedStub      612 73 81 updateBytesCRC32C_stub (stub gen)
+                int index = identifier.indexOf(" ");
+                int sgbid = Integer.valueOf(identifier.substring(0, index));
+                identifier = identifier.substring(index + 1);
+                index = identifier.indexOf(" ");
+                int id = Integer.valueOf(identifier.substring(0, index));
+                identifier = identifier.substring(index + 1);
+                identifier = "[" + id + "] " + identifier;
+                element = ElementFactory.getOrCreate(identifier, type, address);
+                ((CodeObject)element).setId(id);
+                //Search for the StubGenBlob associated and reference it
+                this.information.getElements(null, null, null, null, true, "StubGenBlob")
+                        .filter(sgb -> ((CodeObject)sgb).getId().equals(sgbid))
+                        .forEach(sgb -> ((CodeObject) element).addReference(sgb));
             }
             else {
                 loadFile.getParent().getOut().println("Unidentified: " + type + " at address " + address);

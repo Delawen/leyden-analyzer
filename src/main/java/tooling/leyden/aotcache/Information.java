@@ -311,7 +311,7 @@ public class Information {
             });
         }
 
-        if (!parameters.useArrays()) {
+        if (parameters.useArrays()!= null && !parameters.useArrays()) {
             result = result.filter(e -> {
                 if (e instanceof ClassObject classObject) {
                     return !classObject.isArray();
