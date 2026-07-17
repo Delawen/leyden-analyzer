@@ -21,6 +21,7 @@ import tooling.leyden.aotcache.Information;
                         InfoCommand.class,
                         ListCommand.class,
                         LoadFileCommand.class,
+                        MethodCommand.class,
                         PicocliCommands.ClearScreen.class,
                         TreeCommand.class,
                         CommandLine.HelpCommand.class })
