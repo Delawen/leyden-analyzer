@@ -399,13 +399,13 @@ public class AOTMapParser extends Parser {
                 element = ElementFactory.getOrCreate(identifier, type, address);
                 ((CodeObject)element).setId(id);
             } else if (type.equalsIgnoreCase("EmbeddedStub")) {
-                //0x00007fd2dbfff350: @@ EmbeddedStub      612 73 80 updateBytesCRC32_stub (stub gen)
-                //0x00007fd2dbfff5d0: @@ EmbeddedStub      612 73 81 updateBytesCRC32C_stub (stub gen)
+                // 0x00007fd2dbfff350: @@ EmbeddedStub      612 id=80 blob=73 updateBytesCRC32_stub (stub gen)
+                // 0x00007fd2dbfff010: @@ EmbeddedStub      75 id=78 blob=73 forward_exception_stub (stub gen)
                 int index = identifier.indexOf(" ");
-                int sgbid = Integer.valueOf(identifier.substring(0, index));
+                int id = Integer.valueOf(identifier.substring(3, index));
                 identifier = identifier.substring(index + 1);
                 index = identifier.indexOf(" ");
-                int id = Integer.valueOf(identifier.substring(0, index));
+                int sgbid = Integer.valueOf(identifier.substring(5, index));
                 identifier = identifier.substring(index + 1);
                 identifier = "[" + id + "] " + identifier;
                 element = ElementFactory.getOrCreate(identifier, type, address);
