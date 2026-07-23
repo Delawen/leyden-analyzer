@@ -21,7 +21,7 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run:  gh pr merge --repo "Delawen/leyden-analyzer" --auto --delete-branch "${{ github.event.pull_request.number }}"
+        run:  gh pr merge --repo "Delawen/leyden-analyzer" --auto --delete-branch --rebase "${{ github.event.pull_request.number }}"
       - name: Add label to PR
         shell: bash
         env:
