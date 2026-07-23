@@ -4,7 +4,6 @@ import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 import tooling.leyden.commands.CommonParameters;
-import tooling.leyden.commands.logparser.AOTMapParser;
 
 import java.util.*;
 
@@ -31,11 +30,9 @@ public class NMethodObject extends CodeObject {
         // primitives like  [I convert to int[]
         // int[] java.math.BigInteger.subtract(int[], int[])
         // java.math.BigInteger.subtract([I[I)[I
+        // java.lang.String.checkIndex(II)V
 
-        String[] parameters = identifier.substring(identifier.indexOf("(") + 1, identifier.lastIndexOf(")")).split(";");
-        for (int i = 0; i < parameters.length; i++) {
-            parameters[i] = translateSymbols(parameters[i]);
-        }
+        var parameters = translateParameters(identifier);
         String returnType = translateSymbols(identifier.substring(identifier.lastIndexOf(")") + 1));
 
         String signature = identifier.substring(0, identifier.indexOf("("));
@@ -43,7 +40,7 @@ public class NMethodObject extends CodeObject {
         // move return type to the front
         // java.math.BigInteger.subtract(Ljava/math/BigInteger;)Ljava/math/BigInteger;
         // java.math.BigInteger java.math.BigInteger.subtract(java.math.BigInteger)
-        String methodIdentifier = returnType + " " + signature + "(" + String.join(", ", parameters) + ")";
+        String methodIdentifier = returnType + " " + signature + "(" + parameters + ")";
         this.method = (MethodObject) ElementFactory.getOrCreate(methodIdentifier, "Method", null);
         this.addReference(this.getMethod());
 
@@ -60,44 +57,76 @@ public class NMethodObject extends CodeObject {
         }
     }
 
-    private String translateSymbols(String symbol) {
-        //Take care of arrays
-        List<String> symbols = new ArrayList<>(Arrays.asList(symbol.split("\\[")));
-        if (symbols.size() > 1) {
-            symbols.removeFirst();
-            symbols = symbols.stream().map(s -> translateSymbol(s) + "[]").toList();
-        } else {
-            symbols = symbols.stream().map(s -> translateSymbol(s)).toList();
-        }
+    protected String translateParameters(String identifier) {
 
-        return String.join(", ", symbols);
+        //First we split by classes. So we know each parameter will have primitives and then, maybe, end on an optional class.
+        String[] parameters = identifier.substring(identifier.indexOf("(") + 1, identifier.lastIndexOf(")")).split(";");
+        for (int i = 0; i < parameters.length; i++) {
+            parameters[i] = translateSymbols(parameters[i]);
+        }
+        return String.join(", ", parameters);
     }
 
-    private String translateSymbol(String symbol) {
-        symbol = symbol.replaceAll("/", ".");
+    String translateSymbols(String symbol) {
+        //We will receive something on the form:
+        // [CI[ILjava/lang/foreign/MemorySegment;
+        // BII
+        // First primitives (which may be arrays) and an optional class at the end
+        StringBuilder sb = new StringBuilder();
 
-        if (symbol.startsWith("L") && symbol.endsWith(";")) {
-            symbol = symbol.substring(1, symbol.length() - 1);
-        } else if (symbol.startsWith("L")) {
-            symbol = symbol.substring(1, symbol.length());
+        symbol = symbol.replaceAll("/", ".");
+        boolean classEnd = false;
+        boolean wasArray = false;
+        for (char c : symbol.toCharArray()) {
+           if (classEnd) {
+               if (c != ';') {
+                sb.append(c);
+                }
+                continue;
+            } else if (!wasArray && !sb.isEmpty()) {
+                sb.append(", ");
+            }
+
+            if (c == '[') {
+                wasArray = true;
+            } else if (c == 'L'){
+                classEnd = true;
+            } else {
+                sb.append(translateNativeToHuman(c));
+                if (wasArray) {
+                    sb.append("[]");
+                    wasArray = false;
+                }
+            }
+
         }
 
-        switch (symbol) {
-            case "B" -> symbol = "byte";
-            case "S" -> symbol = "short";
-            case "I" -> symbol = "int";
-            case "J" -> symbol = "long";
-            case "F" -> symbol = "float";
-            case "D" -> symbol = "double";
-            case "Z" -> symbol = "boolean";
-            case "C" -> symbol = "char";
-            case "V" -> symbol = "void";
+        if (wasArray) {
+            sb.append("[]");
+        }
+
+        return sb.toString();
+    }
+
+    private static String translateNativeToHuman(char c) {
+        String symbol;
+        switch (c) {
+            case 'B' -> symbol = "byte";
+            case 'S' -> symbol = "short";
+            case 'I' -> symbol = "int";
+            case 'J' -> symbol = "long";
+            case 'F' -> symbol = "float";
+            case 'D' -> symbol = "double";
+            case 'Z' -> symbol = "boolean";
+            case 'C' -> symbol = "char";
+            case 'V' -> symbol = "void";
             default -> {
+                symbol = c + "";
             }
         }
-
         return symbol;
     }
+
 
     public Integer getCompilationLevel() {
         return compilationLevel;
