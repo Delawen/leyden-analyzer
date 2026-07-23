@@ -20,10 +20,10 @@ jobs:
       - name: Auto-Merge PR
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run:  gh pr merge --repo "Delawen/leyden-analyzer" --auto --delete-branch --squash "${{ github.event.pull_request.number }}"
       - name: Add label to PR
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: gh pr edit --repo "Delawen/leyden-analyzer" --add-label "auto-merged" "${{ github.event.pull_request.number }}"
