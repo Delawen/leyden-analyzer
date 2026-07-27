@@ -358,15 +358,15 @@ public class AOTMapParser extends Parser {
                 //0x0000000800439bb8: @@ CArray            24
                 element = ElementFactory.getOrCreate(address, type, address);
             }  else if (type.equalsIgnoreCase("Nmethod")) {
-                //0x00007fbcf7fe5500: @@ Nmethod           2788 2 2906 java.util.concurrent.ConcurrentHashMap$MapEntry.<init>(Ljava/lang/Object;Ljava/lang/Object;Ljava/util/concurrent/ConcurrentHashMap;)V
-                //0x00007fbcf7fe54d4: @@ Nmethod           5552 2 2905 java.util.concurrent.ConcurrentHashMap$EntryIterator.next()Ljava/util/Map$Entry;
-                //0x00007fbcf7fe25e8: @@ Nmethod           11537 4 3183 java.math.BigInteger.subtract([I[I)[I
-                //0x00007fbcf7fe25bc: @@ Nmethod           6965 4 3251 java.util.regex.Pattern$CharProperty.match(Ljava/util/regex/Matcher;ILjava/lang/CharSequence;)Z
+                //0x00007fbcf7fe5500: @@ Nmethod           2788 level=2 id=2906 java.util.concurrent.ConcurrentHashMap$MapEntry.<init>(Ljava/lang/Object;Ljava/lang/Object;Ljava/util/concurrent/ConcurrentHashMap;)V
+                //0x00007fbcf7fe54d4: @@ Nmethod           5552 level=2 id=2905 java.util.concurrent.ConcurrentHashMap$EntryIterator.next()Ljava/util/Map$Entry;
+                //0x00007fbcf7fe25e8: @@ Nmethod           11537 level=4 id=3183 java.math.BigInteger.subtract([I[I)[I
+                //0x00007fbcf7fe25bc: @@ Nmethod           6965 level=4 id=3251 java.util.regex.Pattern$CharProperty.match(Ljava/util/regex/Matcher;ILjava/lang/CharSequence;)Z
                 int index = identifier.indexOf(" ");
-                int compilationLevel = Integer.valueOf(identifier.substring(0, index));
+                int compilationLevel = Integer.valueOf(identifier.substring(6, index));
                 identifier = identifier.substring(index + 1);
                 index = identifier.indexOf(" ");
-                int id = Integer.valueOf(identifier.substring(0, index));
+                int id = Integer.valueOf(identifier.substring(3, index));
                 var methodIdentifier = identifier.substring(index + 1);
                 identifier = "(" + compilationLevel + ") " + "[" + id + "] " + methodIdentifier;
                 element = ElementFactory.getOrCreate(identifier, type, address);
@@ -378,22 +378,22 @@ public class AOTMapParser extends Parser {
                     || type.equalsIgnoreCase( "C1Blob")
                     || type.equalsIgnoreCase( "C2Blob")
                     || type.equalsIgnoreCase( "Adapter")) {
-                //0x00007fbcf7ffeff4: @@ StubGenBlob       25896 73 initial_blob (stub gen)
-                //0x00007fbcf7ffefc8: @@ SharedBlob        403 13 throw_StackOverflowError_blob (shared runtime)
-                //0x00007fbcf7ffef9c: @@ StubGenBlob       3621 74 continuation_blob (stub gen)
-                //0x00007fbcf7ffed34: @@ SharedBlob        2156 0 deopt_blob (shared runtime)
-                //0x00007fbcf7ffe49c: @@ StubGenBlob       129373 75 compiler_blob (stub gen)
-                //0x00007fbcf7ffe470: @@ StubGenBlob       59182 76 final_blob (stub gen)
-                //0x00007fbcf7ffcc8c: @@ C1Blob            650 17 dtrace_object_alloc_blob (C1 runtime)
-                //0x00007fbcf7ffcc60: @@ C1Blob            387 18 unwind_exception_blob (C1 runtime)
-                //0x00007fbcf7ffbe74: @@ C2Blob            335 70 vthread_start_transition_blob (C2 runtime)
-                //0x00007fbcf7ffbe48: @@ Adapter           1333 217 ILIL
-                //0x00007fbcf7ffbe1c: @@ Adapter           1376 218 LIIILLL
-                //0x00007fbcf7ffbdf0: @@ C2Blob            333 71 vthread_end_transition_blob (C2 runtime)
-                //0x00007fbcf7ffbdc4: @@ Adapter           1460 219 LLLIILILLII
-                //0x00007fbcf7ffbd98: @@ Adapter           1342 220 LIIIL
+                //0x00007fbcf7ffeff4: @@ StubGenBlob       25896 id=73 initial_blob (stub gen)
+                //0x00007fbcf7ffefc8: @@ SharedBlob        403 id=13 throw_StackOverflowError_blob (shared runtime)
+                //0x00007fbcf7ffef9c: @@ StubGenBlob       3621 id=74 continuation_blob (stub gen)
+                //0x00007fbcf7ffed34: @@ SharedBlob        2156 id=0 deopt_blob (shared runtime)
+                //0x00007fbcf7ffe49c: @@ StubGenBlob       129373 id=75 compiler_blob (stub gen)
+                //0x00007fbcf7ffe470: @@ StubGenBlob       59182 id=76 final_blob (stub gen)
+                //0x00007fbcf7ffcc8c: @@ C1Blob            650 id=17 dtrace_object_alloc_blob (C1 runtime)
+                //0x00007fbcf7ffcc60: @@ C1Blob            387 id=18 unwind_exception_blob (C1 runtime)
+                //0x00007fbcf7ffbe74: @@ C2Blob            335 id=70 vthread_start_transition_blob (C2 runtime)
+                //0x00007fbcf7ffbe48: @@ Adapter           1333 id=217 ILIL
+                //0x00007fbcf7ffbe1c: @@ Adapter           1376 id=218 LIIILLL
+                //0x00007fbcf7ffbdf0: @@ C2Blob            333 id=71 vthread_end_transition_blob (C2 runtime)
+                //0x00007fbcf7ffbdc4: @@ Adapter           1460 id=219 LLLIILILLII
+                //0x00007fbcf7ffbd98: @@ Adapter           1342 id=220 LIIIL
                 int index = identifier.indexOf(" ");
-                int id = Integer.valueOf(identifier.substring(0, index));
+                int id = Integer.valueOf(identifier.substring(3, index));
                 identifier = identifier.substring(index + 1);
                 identifier = "[" + id + "] " + identifier;
                 element = ElementFactory.getOrCreate(identifier, type, address);
