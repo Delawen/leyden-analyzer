@@ -26,20 +26,20 @@ class MethodCommandTest extends DefaultTest {
 0x00000008003eb000: @@ Class             1000 java.math.BigInteger
 0x00000008003ed000: @@ Class             520 [Ljava.math.BigInteger;
 0x00000008003ed400: @@ Class             520 [[Ljava.math.BigInteger;
-0x00007fbcf7ffeff4: @@ StubGenBlob       25896 73 initial_blob (stub gen)
-0x00007fbcf7ffefc8: @@ SharedBlob        403 13 throw_StackOverflowError_blob (shared runtime)
-0x00007fbcf7ffef9c: @@ StubGenBlob       3621 74 continuation_blob (stub gen)
-0x00007fbcf7ffed34: @@ SharedBlob        2156 0 deopt_blob (shared runtime)
-0x00007fbcf7ffe49c: @@ StubGenBlob       129373 75 compiler_blob (stub gen)
-0x00007fbcf7ffe470: @@ StubGenBlob       59182 76 final_blob (stub gen)
-0x00007fbcf7ffcc8c: @@ C1Blob            650 17 dtrace_object_alloc_blob (C1 runtime)
-0x00007fbcf7ffcc60: @@ C1Blob            387 18 unwind_exception_blob (C1 runtime)
-0x00007fbcf7ffbe74: @@ C2Blob            335 70 vthread_start_transition_blob (C2 runtime)
-0x00007fbcf7ffbe48: @@ Adapter           1333 217 ILIL
-0x00007fbcf7ffbe1c: @@ Adapter           1376 218 LIIILLL
-0x00007fbcf7ffbdf0: @@ C2Blob            333 71 vthread_end_transition_blob (C2 runtime)
-0x00007fbcf7ffbdc4: @@ Adapter           1460 219 LLLIILILLII
-0x00007fbcf7ffbd98: @@ Adapter           1342 220 L
+0x00007fbcf7ffeff4: @@ StubGenBlob       25896 id=73 initial_blob (stub gen)
+0x00007fbcf7ffefc8: @@ SharedBlob        403 id=13 throw_StackOverflowError_blob (shared runtime)
+0x00007fbcf7ffef9c: @@ StubGenBlob       3621 id=74 continuation_blob (stub gen)
+0x00007fbcf7ffed34: @@ SharedBlob        2156 id=0 deopt_blob (shared runtime)
+0x00007fbcf7ffe49c: @@ StubGenBlob       129373 id=75 compiler_blob (stub gen)
+0x00007fbcf7ffe470: @@ StubGenBlob       59182 id=76 final_blob (stub gen)
+0x00007fbcf7ffcc8c: @@ C1Blob            650 id=17 dtrace_object_alloc_blob (C1 runtime)
+0x00007fbcf7ffcc60: @@ C1Blob            387 id=18 unwind_exception_blob (C1 runtime)
+0x00007fbcf7ffbe74: @@ C2Blob            335 id=70 vthread_start_transition_blob (C2 runtime)
+0x00007fbcf7ffbe48: @@ Adapter           1333 id=217 ILIL
+0x00007fbcf7ffbe1c: @@ Adapter           1376 id=218 LIIILLL
+0x00007fbcf7ffbdf0: @@ C2Blob            333 id=71 vthread_end_transition_blob (C2 runtime)
+0x00007fbcf7ffbdc4: @@ Adapter           1460 id=219 LLLIILILLII
+0x00007fbcf7ffbd98: @@ Adapter           1342 id=220 L
 0x00000008003ec258: @@ Method            112 java.math.BigInteger java.math.BigInteger.subtract(java.math.BigInteger)
 0x00000008003eebd0: @@ Method            112 int[] java.math.BigInteger.subtract(long, int[])
 0x00000008003eecd8: @@ Method            112 int[] java.math.BigInteger.subtract(int[], int[])
@@ -47,10 +47,10 @@ class MethodCommandTest extends DefaultTest {
 0x00000008012d6d58: @@ ConstMethod       256 java.math.BigInteger java.math.BigInteger.subtract(java.math.BigInteger)
 0x00000008012db2f8: @@ ConstMethod       344 int[] java.math.BigInteger.subtract(long, int[])
 0x00000008012db5b8: @@ ConstMethod       296 int[] java.math.BigInteger.subtract(int[], int[])
-0x00007fe0fbff6b70: @@ Nmethod           15469 4 1298 java.math.BigInteger.subtract([I[I)[I
-0x00007fe0fbfe8890: @@ Nmethod           6552 2 2131 java.math.BigInteger.subtract(Ljava/math/BigInteger;)Ljava/math/BigInteger;
-0x00007fe0fbfe28d4: @@ Nmethod           11533 4 3154 java.math.BigInteger.subtract([I[I)[I
-0x00007f9ab3fe6c60: @@ Nmethod           2444 2 2550 java.util.Arrays.sort([Ljava/lang/Object;Ljava/util/Comparator;)V
+0x00007fe0fbff6b70: @@ Nmethod           15469 level=4 id=1298 java.math.BigInteger.subtract([I[I)[I
+0x00007fe0fbfe8890: @@ Nmethod           6552 level=2 id=2131 java.math.BigInteger.subtract(Ljava/math/BigInteger;)Ljava/math/BigInteger;
+0x00007fe0fbfe28d4: @@ Nmethod           11533 level=4 id=3154 java.math.BigInteger.subtract([I[I)[I
+0x00007f9ab3fe6c60: @@ Nmethod           2444 level=2 id=2550 java.util.Arrays.sort([Ljava/lang/Object;Ljava/util/Comparator;)V
                 """;
 
         final var loadFile = new LoadFileCommand();
