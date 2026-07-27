@@ -490,6 +490,7 @@ class AOTCacheParserTest extends DefaultTest {
                  - klass: 'java/lang/module/ModuleDescriptor$Version' 0x0000000800932e00
                  - fields (4 words):
                  - private final 'sequence' 'Ljava/util/List;' @16 0x00000000ffd07550 (0xffd07550) java.util.ArrayList
+                 - private final transient 'componentType' 'Ljava/lang/Class;' @72 0x000000026c946360 (0x3d928c6c) java.lang.Class I
                  - resolved_references: 0x00000000ffd07ba0 (0xffd07ba0) [Ljava.lang.Object; length: 18
                 0x00000000ffd07518:   00000001 00000000 00932e00 ffd07538 ffd07550 ffd07588 ffd075d0 00000000   ............8u..Pu...u...u......
 
