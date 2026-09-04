@@ -8,6 +8,7 @@ import tooling.leyden.aotcache.ClassObject;
 import tooling.leyden.aotcache.Configuration;
 import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.ElementFactory;
+import tooling.leyden.aotcache.Information;
 import tooling.leyden.aotcache.ReferencingElement;
 import tooling.leyden.aotcache.Warning;
 import tooling.leyden.aotcache.WarningType;
@@ -74,8 +75,17 @@ public class TrainingLogParser extends LogParser {
     }
 
     private void processAOTReverted(String trimmedMessage) {
-        final var splitMessage = trimmedMessage.substring(trimmedMessage.indexOf("]: ") + 2).trim().split("\\s+");
+        int idx = trimmedMessage.indexOf("]: ");
+        if (idx < 0) {
+            Information.getMyself().addWarning(null, "Unparseable line '" + trimmedMessage + "'", WarningType.CacheCreation);
+            return;
+        }
 
+        final var splitMessage = trimmedMessage.substring(idx + 3).trim().split("\\s+");
+        if (splitMessage.length == 0 || splitMessage[0].isBlank()) {
+            Information.getMyself().addWarning(null, "Unparseable line '" + trimmedMessage + "'", WarningType.CacheCreation);
+            return;
+        }
         //First we find the Symbol related to
         final var parentClassName = splitMessage[0];
         ReferencingElement parentSymbol = assignClassToSymbol(findSymbol(parentClassName));
