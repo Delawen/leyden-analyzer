@@ -5,8 +5,6 @@ import picocli.CommandLine.Command;
 import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.MethodObject;
 import tooling.leyden.aotcache.NMethodObject;
-import tooling.leyden.aotcache.ReferencingElement;
-import tooling.leyden.commands.autocomplete.Packages;
 
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicInteger;
