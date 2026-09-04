@@ -28,9 +28,9 @@ public class Information {
     private final Map<Key, Element> elementsNotInTheCache = new ConcurrentHashMap<>();
 
     //List of warnings and incidents that may be useful to check
-    private final List<Warning> warnings = new ArrayList<>();
+    private final List<Warning> warnings = Collections.synchronizedList(new ArrayList<>());
     //Auto-generated warnings by `warning check` command
-    private final List<Warning> autoWarnings = new ArrayList<>();
+    private final List<Warning> autoWarnings = Collections.synchronizedList(new ArrayList<>());
 
     //Store information extracted and inferred
     private final Configuration configuration = new Configuration();
