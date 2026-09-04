@@ -1,17 +1,13 @@
 package tooling.leyden.aotcache;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Elements that refer to other types of elements. For example: An element in the ConstantPool may be of certain
  * class, which is defined and loaded on the Information independently.
  **/
 public class ReferencingElement extends Element {
-    private final Set<Element> references = new HashSet<>();
+    private final Set<Element> references = Collections.synchronizedSet(new HashSet<>());
     private String name;
 
     public ReferencingElement(String name, String type) {

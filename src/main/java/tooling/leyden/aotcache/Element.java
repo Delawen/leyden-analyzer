@@ -1,11 +1,6 @@
 package tooling.leyden.aotcache;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
@@ -21,7 +16,7 @@ public abstract class Element {
     private WhichRun loaded = WhichRun.None;
     private final List<String> whereDoesItComeFrom = new ArrayList<>();
     private final List<String> source = new ArrayList<>();
-    private final Set<Element> whoReferencesMe = new HashSet<>();
+    private final Set<Element> whoReferencesMe =  Collections.synchronizedSet(new HashSet<>());
     /**
      * Address where an element can be found
      */
