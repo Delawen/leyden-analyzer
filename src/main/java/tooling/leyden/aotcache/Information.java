@@ -161,13 +161,17 @@ public class Information {
             var result = new ArrayList<Element>();
             for (String t : type) {
                 var k = new Key(key, t);
-                if (parameters.getUse() != CommonParameters.ElementsToUse.notCached
-                        && elements.containsKey(k)) {
-                    result.add(elements.get(k));
+                if (parameters.getUse() != CommonParameters.ElementsToUse.notCached) {
+                    var element = elements.get(k);
+                    if (element != null) {
+                        result.add(element);
+                    }
                 }
-                if (parameters.getUse() != CommonParameters.ElementsToUse.cached
-                        && elementsNotInTheCache.containsKey(k)) {
-                    result.add(elementsNotInTheCache.get(k));
+                if (parameters.getUse() != CommonParameters.ElementsToUse.cached) {
+                    var element = elementsNotInTheCache.get(k);
+                    if (element != null) {
+                        result.add(element);
+                    }
                 }
             }
             return result.parallelStream();
