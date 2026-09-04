@@ -8,7 +8,6 @@ import java.util.Map;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
-import tooling.leyden.commands.CommonParameters;
 
 /**
  * This class represents a method inside the AOT Cache.

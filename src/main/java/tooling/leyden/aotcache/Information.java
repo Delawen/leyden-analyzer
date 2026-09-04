@@ -37,7 +37,9 @@ public class Information {
     private final Configuration statistics = new Configuration();
 
     //To pre-calculate auto-completion
-    private final List<String> identifiers = new ArrayList<>();
+    private final Set<String> identifiers = ConcurrentHashMap.newKeySet();
+
+
     //To search by address
     private final Map<String, Element> elementsByAddress = new ConcurrentHashMap<>();
     //To find Heap Roots
@@ -80,7 +82,7 @@ public class Information {
         }
 
         // Pre-calculate auto-completions
-        if (e.getType().equalsIgnoreCase("Class") && !identifiers.contains(e.getKey())) {
+        if (e.getType().equalsIgnoreCase("Class")) {
             identifiers.add(e.getKey());
         }
     }
@@ -421,7 +423,7 @@ public class Information {
                 .toList();
     }
 
-    public List<String> getIdentifiers() {
+    public Collection<String> getIdentifiers() {
         return List.copyOf(identifiers);
     }
 
