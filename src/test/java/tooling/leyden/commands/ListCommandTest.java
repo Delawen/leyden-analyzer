@@ -8,14 +8,43 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.junit.QuarkusTest;
-import tooling.leyden.aotcache.ClassObject;
-import tooling.leyden.aotcache.Element;
-import tooling.leyden.aotcache.MethodObject;
+import tooling.leyden.aotcache.*;
 import tooling.leyden.commands.autocomplete.WhichRun;
 import tooling.leyden.commands.logparser.AOTMapParser;
 
 @QuarkusTest
 class ListCommandTest extends DefaultTest {
+
+    @Test
+    void counters() {
+        final var loadFile = new LoadFileCommand();
+        loadFile.setParent(getDefaultCommand());
+        AOTMapParser aotCacheParser = new AOTMapParser(loadFile);
+
+        aotCacheParser.accept("0x0000000801711128: @@ Class             624 org.infinispan.xsite.NoOpBackupSender");
+        aotCacheParser.accept("0x00000008017113f0: @@ ConstantPoolCache 64 org.infinispan.xsite.NoOpBackupSender");
+        aotCacheParser.accept(
+                "0x00000008017116c0: @@ Method            88 org.infinispan.xsite.NoOpBackupSender org.infinispan.xsite.NoOpBackupSender.getInstance()");
+        aotCacheParser.accept("0x00000008017115b8: @@ Method            88 org.infinispan.interceptors" +
+                ".InvocationStage org.infinispan.xsite.NoOpBackupSender.backupClear(org.infinispan.commands.write.ClearCommand)");
+        aotCacheParser.accept("0x0000000801b3d6e0: @@ MethodCounters    64 org.infinispan.interceptors" +
+                ".InvocationStage org.infinispan.xsite.NoOpBackupSender.backupClear(org.infinispan.commands.write.ClearCommand)");
+        aotCacheParser
+                .accept("0x0000000801711610: @@ Method            88 void org.infinispan.xsite.NoOpBackupSender.<init>()");
+        aotCacheParser
+                .accept("0x0000000801711668: @@ Method            88 void org.infinispan.xsite.NoOpBackupSender.<clinit>()");
+
+        var detailedCount = Information.getMyself().getDetailedCount();
+        assertTrue(detailedCount.containsKey("Class"));
+        assertTrue(detailedCount.containsKey("ConstantPool"));
+        assertTrue(detailedCount.containsKey("Method"));
+        assertTrue(detailedCount.containsKey("MethodCounters"));
+        assertEquals(4, detailedCount.size());
+        assertEquals(1, detailedCount.get("Class"));
+        assertEquals(1, detailedCount.get("ConstantPool"));
+        assertEquals(4, detailedCount.get("Method"));
+        assertEquals(1, detailedCount.get("MethodCounters"));
+    }
 
     @Test
     void checkUsedAndNotTrained() {
@@ -65,9 +94,12 @@ class ListCommandTest extends DefaultTest {
         command.parameters.innerClasses = true;
         command.parameters.trained = false;
         command.parameters.loaded = WhichRun.all;
-        assertEquals(4, command.findElements(new AtomicInteger()).count());
 
         var count = new AtomicInteger();
+        assertTrue(command.findElements(count).allMatch(e -> !e.isTrained()));
+        assertEquals(4, count.get());
+
+        count = new AtomicInteger();
         command.parameters.types = new String[] { "Class" };
         assertTrue(command.findElements(count).allMatch(e -> e instanceof ClassObject));
         assertEquals(1, count.get());
@@ -114,7 +146,6 @@ class ListCommandTest extends DefaultTest {
         ListCommand command = new ListCommand();
         command.parent = getDefaultCommand();
         command.parameters = new CommonParameters();
-        command.parameters.trained = false;
         command.parameters.lambdas = true;
         command.parameters.innerClasses = true;
         command.parameters.loaded = WhichRun.all;
@@ -127,7 +158,11 @@ class ListCommandTest extends DefaultTest {
         assertEquals(1, command.findElements(new AtomicInteger()).count());
 
         command.parameters.address = "0x0000000801eeb208";
-        assertEquals(1, command.findElements(new AtomicInteger()).count());
+        command.parameters.lambdas = true;
+        command.parameters.innerClasses = true;
+        AtomicInteger atin = new AtomicInteger();
+        assertTrue(command.findElements(atin).allMatch(e -> e.getAddress().equals(command.parameters.address)));
+        assertEquals(1, atin.getOpaque());
     }
 
     @Test
@@ -143,13 +178,22 @@ class ListCommandTest extends DefaultTest {
         ListCommand command = new ListCommand();
         command.parent = getDefaultCommand();
         command.parameters = new CommonParameters();
-        assertEquals(2, command.findElements(new AtomicInteger()).count());
+        AtomicInteger atomicInteger = new AtomicInteger();
+        var elements = command.findElements(atomicInteger);
+        assertTrue(elements.allMatch(e -> e instanceof InstanceObject));
+        assertEquals(2, atomicInteger.get());
 
         command.parameters.showAOTInited = false;
-        assertEquals(1, command.findElements(new AtomicInteger()).count());
+        atomicInteger = new AtomicInteger();
+        elements = command.findElements(atomicInteger);
+        assertTrue(elements.allMatch(e -> !((InstanceObject) e).isAOTinited()));
+        assertEquals(1, atomicInteger.get());
 
         command.parameters.showAOTInited = true;
-        assertEquals(1, command.findElements(new AtomicInteger()).count());
+        atomicInteger = new AtomicInteger();
+        elements = command.findElements(atomicInteger);
+        assertTrue(elements.allMatch(e -> ((InstanceObject) e).isAOTinited()));
+        assertEquals(1, atomicInteger.get());
     }
 
     @Test
@@ -170,19 +214,34 @@ class ListCommandTest extends DefaultTest {
         command.parent = getDefaultCommand();
         command.parameters = new CommonParameters();
         command.parameters.setTypes(new String[] { "Object" });
-        assertEquals(3, command.findElements(new AtomicInteger()).count());
+        AtomicInteger atomicInteger = new AtomicInteger();
+        var els = command.findElements(atomicInteger);
+        assertTrue(els.allMatch(e -> e.getType().equals("Object")));
+        assertEquals(3, atomicInteger.get());
 
         command.parameters.instanceOf = "java.lang.Class";
-        assertEquals(1, command.findElements(new AtomicInteger()).count());
+        atomicInteger = new AtomicInteger();
+        els = command.findElements(atomicInteger);
+        assertTrue(els.allMatch(e -> ((InstanceObject)e).getInstanceOf().getKey().equals(command.parameters.instanceOf)));
+        assertEquals(1, atomicInteger.get());
 
         command.parameters.instanceOf = "java.lang.String";
-        assertEquals(1, command.findElements(new AtomicInteger()).count());
+        atomicInteger = new AtomicInteger();
+        els = command.findElements(atomicInteger);
+        assertTrue(els.allMatch(e -> ((InstanceObject)e).getInstanceOf().getKey().equals(command.parameters.instanceOf)));
+        assertEquals(1, atomicInteger.get());
 
         command.parameters.instanceOf = "java.lang.Integer";
-        assertEquals(1, command.findElements(new AtomicInteger()).count());
+        atomicInteger = new AtomicInteger();
+        els = command.findElements(atomicInteger);
+        assertTrue(els.allMatch(e -> ((InstanceObject)e).getInstanceOf().getKey().equals(command.parameters.instanceOf)));
+        assertEquals(1, atomicInteger.get());
 
         command.parameters.instanceOf = "java.util.ArrayList";
-        assertEquals(0, command.findElements(new AtomicInteger()).count());
+        atomicInteger = new AtomicInteger();
+        els = command.findElements(atomicInteger);
+        assertTrue(els.allMatch(e -> ((InstanceObject)e).getInstanceOf().getKey().equals(command.parameters.instanceOf)));
+        assertEquals(0, atomicInteger.get());
     }
 
 }

@@ -238,7 +238,7 @@ class TreeCommand extends BaseCommand {
 
     //Delegate on Information for filtering
     private Stream<Element> filter(Stream<Element> elements) {
-        return Information.filterByParams(parameters.packageName, parameters.excludePackageName, parameters.arrays,
+        return Information.filterByParams(parameters.packageName, parameters.excludePackageName,
                 parameters.types, parameters.isHeapRoot, elements);
     }
 

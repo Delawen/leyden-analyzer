@@ -123,9 +123,13 @@ class WarningCommand extends BaseCommand {
         var result = new ArrayList<Warning>();
         var packages = new HashMap<String, Integer>();
 
-        parent.getInformation().getElements(null, null, excludedPackages, false, false, "Method")
+        CommonParameters parameters = new CommonParameters();
+        parameters.setTypes(new String[] {"Method"});
+        parameters.setExcludePackageName(excludedPackages);
+        parameters.setTrained(false);
+        parameters.setUse(CommonParameters.ElementsToUse.cached);
+        parent.getInformation().getElements(parameters)
                 .map(MethodObject.class::cast)
-                .filter(e -> e.getMethodCounters() != null && e.getCompileTrainingData().isEmpty())
                 .forEach(method -> {
                     final var classObject = method.getClassObject();
                     addToPackageList(classObject, packages);
@@ -144,7 +148,10 @@ class WarningCommand extends BaseCommand {
         var result = new ArrayList<Warning>();
         var packages = new HashMap<String, Integer>();
 
-        for (Element e : parent.getInformation().getExternalElements().values()) {
+        CommonParameters commonParameters = new CommonParameters();
+        commonParameters.setUse(CommonParameters.ElementsToUse.notCached);
+        commonParameters.setTypes(new String[] {"Class"});
+        for (Element e : parent.getInformation().getElements(commonParameters).toList()) {
             if (e instanceof ClassObject classObject) {
                 if (Arrays.stream(excludedPackages).noneMatch(p -> classObject.getPackageName().startsWith(p))) {
                     addToPackageList(classObject, packages);

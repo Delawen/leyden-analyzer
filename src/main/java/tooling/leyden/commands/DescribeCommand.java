@@ -1,7 +1,7 @@
 package tooling.leyden.commands;
 
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Collection;
 import java.util.List;
 
 import org.jline.utils.AttributedString;
@@ -162,14 +162,11 @@ class DescribeCommand extends BaseCommand {
         }
     }
 
-    protected List<Element> getElementsReferencingThisOne(Element element) {
+    protected Collection<Element> getElementsReferencingThisOne(Element element) {
         if (!isRunning()) {
             return List.of();
         }
-        return parent.getInformation().getAll().parallelStream()
-                .filter(e -> (e instanceof ReferencingElement))
-                .filter(e -> ((ReferencingElement) e).getReferences().contains(element))
-                .sorted(Comparator.comparing(Element::getType))
-                .toList();
+
+        return parent.getInformation().getWhoReferencesMe(element);
     }
 }

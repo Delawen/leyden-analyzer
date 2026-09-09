@@ -56,6 +56,8 @@ class WarningCommandTest extends DefaultTest {
         //Now we add the compiledTrainingData
         aotCacheParser.accept(
                 "0x0000000801cd5648: @@ CompileTrainingData 80 1 org.infinispan.xsite.NoOpBackupSender org.infinispan.xsite.NoOpBackupSender.getInstance()");
+        aotCacheParser.accept(
+                "0x0000000801cd5648: @@ CompileTrainingData 80 1 void org.infinispan.xsite.NoOpBackupSender.<init>()");
 
         assertTrue(warningCommand.getTopPackagesUsedAndNotTrained().isEmpty());
     }

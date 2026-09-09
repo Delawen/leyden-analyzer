@@ -3,6 +3,7 @@ package tooling.leyden.commands.logparser;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import jakarta.transaction.Transactional;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStyle;
 
@@ -108,16 +109,13 @@ public class AOTMapParser extends Parser {
     }
 
     @Override
-    public void postProcessing() {
+    public void actualPostProcessing() {
         //Due to ordering on the map file, we may have some unresolved placeholder elements
-        information.getAll().stream()
-                .filter(e -> e instanceof ReferencingElement)
-                .map(ReferencingElement.class::cast)
-                .forEach(ReferencingElement::resolvePlaceholders);
+        Information.getMyself().replacePlaceHolders();
     }
 
     @Override
-    public void accept(String content) {
+    public void actualAccept(String content) {
         Matcher m = regexpNewAOTCache.matcher(content);
         if (m.matches()) {
             if (name != null) {
@@ -172,8 +170,8 @@ public class AOTMapParser extends Parser {
     private boolean processArray(String content) {
         Matcher m = array.matcher(content);
         if (m.matches()) {
-            information.setHeapRoot((ReferencingElement) current);
-            ((ReferencingElement) current).addReference(new PlaceHolderElement(m.group("address")));
+            ((ReferencingElement) current).addReference(
+                    ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address")));
             return true;
         }
         return false;
@@ -183,10 +181,22 @@ public class AOTMapParser extends Parser {
         Matcher m = heapRoot.matcher(content);
         if (m.matches()) {
             information.addHeapRoot(m.group("address"));
-            if (!current.isHeapRoot()) {
-                current.setHeapRoot(true);
-                information.setHeapRoot((ReferencingElement) current);
-                ((ReferencingElement) current).addReference(new PlaceHolderElement(m.group("address")));
+            if (current instanceof ReferencingElement re) {
+                //The references set of current may become huge
+                //let's update manually the database instead of going
+                //through the many-to-many relationship
+                var placeholder = ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address"));
+                Information.getMyself().addRelationship(re, placeholder);
+                if (!information.isHeapRootSet()) {
+                    re = (ReferencingElement) Information.getMyself().refresh(re);
+                    information.setHeapRoot(re);
+                    re.setHeapRoot(true);
+                    information.updateElement(re);
+                }
+            } else {
+                information.addWarning(current,
+                        "Weird formatting, this element should be a heap root.",
+                        WarningType.CacheCreation);
             }
             return true;
         }
@@ -197,7 +207,8 @@ public class AOTMapParser extends Parser {
         Matcher m = resolvedReferences.matcher(content);
         if (m.matches()) {
             if (m.group("address") != null) {
-                ((ReferencingElement) current).addReference(new PlaceHolderElement(m.group("address")));
+                ((ReferencingElement) current).addReference(
+                        ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address")));
             }
             return true;
         }
@@ -207,11 +218,13 @@ public class AOTMapParser extends Parser {
     private boolean processField(String content) {
         Matcher m = fieldClass.matcher(content);
         if (m.matches()) {
+            current = Information.getMyself().refresh(current);
             if (m.group("address") != null) {
-                ((ReferencingElement) current).addReference(new PlaceHolderElement(m.group("address")));
+                ((ReferencingElement) current).addReference(
+                        ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address")));
             } else {
                 var classObj = information
-                        .getElements(m.group("classname").replaceAll("/", "."), null, null, true, true, "Class").findAny();
+                        .getElements(m.group("classname").replaceAll("/", "."), null, null, true, "Class").findAny();
                 classObj.ifPresent(element -> ((ReferencingElement) current).addReference(element));
             }
 
@@ -221,12 +234,12 @@ public class AOTMapParser extends Parser {
                 if (end.startsWith("java.lang.Class")) {
                     if (end.contains(";")) {
                         end = end.substring(16, end.indexOf(";") + 1);
-                        var classObj = information.getElements(end.replaceAll("/", "."), null, null, true, true, "Symbol").findAny();
+                        var classObj = information.getElements(end.replaceAll("/", "."), null, null, true, "Symbol").findAny();
                         classObj.ifPresent(element -> ((ReferencingElement) current).addReference(element));
                     } // else it is a primitive
                 } else if (!end.equalsIgnoreCase("null") && !end.contains(" ")) {
                     //It may be that the instance class linked is a subclass of the one defined in m.group("classname")
-                    var classObj = information.getElements(end, null, null, true, true, "Class").findAny();
+                    var classObj = information.getElements(end, null, null, true, "Class").findAny();
                     classObj.ifPresent(element -> ((ReferencingElement) current).addReference(element));
                 }
             }
@@ -235,7 +248,9 @@ public class AOTMapParser extends Parser {
         m = fieldPrimitive.matcher(content);
         if (m.matches()) {
             if (m.group("address") != null) {
-                ((ReferencingElement) current).addReference(new PlaceHolderElement(m.group("address")));
+                current = Information.getMyself().refresh(current);
+                ((ReferencingElement) current).addReference(
+                        ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address")));
             }
             return true;
         }
@@ -245,10 +260,12 @@ public class AOTMapParser extends Parser {
     private boolean processKlassLine(String content) {
         Matcher m = klass.matcher(content);
         if (m.matches()) {
+            current = Information.getMyself().refresh(current);
             final var address = m.group("address");
             Element e = information.getByAddress(address);
             if (e == null) {
-                ((ReferencingElement) current).addReference(new PlaceHolderElement(address));
+                ((ReferencingElement) current).addReference(
+                        ElementFactory.getOrCreate(address, "PlaceHolder", address));
             } else if (!e.getKey().equalsIgnoreCase(m.group("class").replaceAll("/", "."))
                     || !e.getType().equalsIgnoreCase("Class")) {
                 (new AttributedString("ERROR: Was expecting class " + m.group(1)
@@ -262,9 +279,11 @@ public class AOTMapParser extends Parser {
         } else {
             m = klassArray.matcher(content);
             if (m.matches()) {
+                current = Information.getMyself().refresh(current);
                 Element e = information.getByAddress(m.group("address"));
                 if (e == null) {
-                    ((ReferencingElement) current).addReference(new PlaceHolderElement(m.group("address")));
+                    ((ReferencingElement) current).addReference(
+                            ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address")));
                 } else {
                     ((ReferencingElement) current).addReference(e);
                 }
@@ -437,7 +456,7 @@ public class AOTMapParser extends Parser {
                 element = ElementFactory.getOrCreate(identifier, type, address);
                 ((CodeObject)element).setId(id);
                 //Search for the StubGenBlob associated and reference it
-                this.information.getElements(null, null, null, null, true, "StubGenBlob")
+                this.information.getElements(null, null, null, true, "StubGenBlob")
                         .filter(sgb -> ((CodeObject)sgb).getId().equals(sgbid))
                         .forEach(sgb -> ((CodeObject) element).addReference(sgb));
             }
@@ -473,13 +492,13 @@ public class AOTMapParser extends Parser {
         if (!identifier.contains(" ") || className.equalsIgnoreCase("java.lang.String")) {
             //0x00000007ffd66460: @@ Object (0xfffacc8c) jdk.internal.misc.Unsafe
             //0x00000007ffc90208: @@ Object (0xfff92041) java.lang.String "javax.crypto.spec.SecretKeySpec"
-            this.information.getElements(className, null, null, null, true, "Class")
+            this.information.getElements(className, null, null, true, "Class")
                     .findAny().ifPresent(c -> element.setInstanceOf((ClassObject) c));
         } else if (className.equalsIgnoreCase("java.lang.Class")) {
             //0x00000007ffd02620: @@ Object (0xfffa04c4) java.lang.Class Ljava/lang/ProcessEnvironment;
             //0x00000007ffd026c0: @@ Object (0xfffa04d8) java.lang.Class Ljava/lang/invoke/LambdaForm$DMH+0x800000073; (aot-inited)
             //0x00000007ffd02b10: @@ Object (0xfffa0562) java.lang.Class J
-            this.information.getElements(className, null, null, null, true, "Class")
+            this.information.getElements(className, null, null, true, "Class")
                     .findAny().ifPresent(c -> element.setInstanceOf((ClassObject) c));
             var targetClass = contentParts[1];
             if (contentParts[1].contains(";")) {
@@ -487,13 +506,13 @@ public class AOTMapParser extends Parser {
                 targetClass = targetClass.substring(0, contentParts[1].indexOf(";") + 1);
             }
             //This class refers to... the class behind the symbol
-            this.information.getElements(targetClass, null, null, true, true,
+            this.information.getElements(targetClass, null, null, true,
                     "Symbol").forEach(element::addReference);
         } else if (className.startsWith("[")) {
             //0x00000007ffd666b0: @@ Object (0xfffaccd6) [Ljava.lang.ref.SoftReference; length: 26
             //0x00000007ffd66728: @@ Object (0xfffacce5) [I length: 0
             var targetClass = className.replaceAll("\\.", "/");
-            this.information.getElements(targetClass.trim(), null, null, true, true,
+            this.information.getElements(targetClass.trim(), null, null, true,
                     "Symbol").forEach(element::addReference);
         }
 
@@ -512,14 +531,14 @@ public class AOTMapParser extends Parser {
             Matcher m = methodSignature1.matcher(identifier);
             if (m.matches()) {
                 //Link to Symbol for return type
-                this.information.getElements(m.group("return"), null, null, true, true,
+                this.information.getElements(m.group("return"), null, null, true,
                         "Symbol").findAny().ifPresent(symbol -> ((ReferencingElement) element).addReference(symbol));
 
                 m = listOfClasses.matcher(m.group("parameters"));
                 int start = 0;
                 while (m.find(start)) {
                     var found = m.group("class") + (m.group("type") != null ? m.group("type") : "") + ";";
-                    this.information.getElements(found, null, null, true, true,
+                    this.information.getElements(found, null, null, true,
                             "Symbol").findAny().ifPresent(symbol -> ((ReferencingElement) element).addReference(symbol));
                     start = (m.group("type") != null ? m.end("type") : m.end());
                 }
@@ -532,14 +551,14 @@ public class AOTMapParser extends Parser {
                 Matcher m = listOfClasses.matcher(identifier);
                 while (m.find()) {
                     this.information.getElements(convertSymbolSignatureToClassQualifiedName(m.group("class")), null,
-                            null, true, true, "Class")
+                            null, true, "Class")
                             .findAny().ifPresent(classObj -> ((ReferencingElement) element).addReference(classObj));
                 }
             } else {
                 //else 0x0000000803be1968: @@ Symbol            56 java/lang/invoke/LambdaForm$DMH+0x8000000ed
                 //Try to associate it to the corresponding class:
                 this.information.getElements(convertSymbolSignatureToClassQualifiedName(identifier),
-                        null, null, true, true, "Class")
+                        null, null, true, "Class")
                         .findAny().ifPresent(classObj -> {
                             ((ClassObject) classObj).addSymbol((ReferencingElement) element);
                             ((ReferencingElement) element).addReference(classObj);
@@ -584,7 +603,7 @@ public class AOTMapParser extends Parser {
         //Usually we get the ConstantPoolCache before the ConstantPool
         //So this should not find anything
         ConstantPoolObject e = null;
-        var cp = this.information.getElements(identifier, null, null, true, true, "ConstantPool").findAny();
+        var cp = this.information.getElements(identifier, null, null, true, "ConstantPool").findAny();
         if (cp.isPresent()) {
             e = (ConstantPoolObject) cp.get();
         }
@@ -605,7 +624,7 @@ public class AOTMapParser extends Parser {
 
         if (cp.getPoolHolder() == null) {
             //Try to associate it to the corresponding class:
-            var element = this.information.getElements(identifier, null, null, true, true, "Class").findAny();
+            var element = this.information.getElements(identifier, null, null, true, "Class").findAny();
             element.ifPresent(value -> cp.setPoolHolder((ClassObject) value));
         }
 
@@ -666,6 +685,8 @@ public class AOTMapParser extends Parser {
 
             e.addReference(method);
             method.addCompileTrainingData(level, e);
+            Information.getMyself().updateElement(method);
+            Information.getMyself().updateElement(e);
         }
 
         return e;
@@ -676,10 +697,10 @@ public class AOTMapParser extends Parser {
         ClassObject classObject = (ClassObject) ElementFactory.getOrCreate(identifier, "Class", address);
         classObject.addSource(thisSource);
         //If there are Symbols with this exact class name (dotted or slashed), link them:
-        var symbol = this.information.getElements(identifier.replaceAll("\\.", "/"), null, null, true, true, "Symbol")
+        var symbol = this.information.getElements(identifier.replaceAll("\\.", "/"), null, null, true, "Symbol")
                 .findAny();
         symbol.ifPresent(element -> classObject.addSymbol((ReferencingElement) element));
-        symbol = this.information.getElements(identifier, null, null, true, true, "Symbol").findAny();
+        symbol = this.information.getElements(identifier, null, null, true, "Symbol").findAny();
         symbol.ifPresent(element -> classObject.addSymbol((ReferencingElement) element));
 
         if (identifier.contains("$$")) {

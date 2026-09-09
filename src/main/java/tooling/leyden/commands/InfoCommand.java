@@ -57,22 +57,10 @@ class InfoCommand extends BaseCommand {
     }
 
     public void count() {
-        CommonParameters params = new CommonParameters();
-        params.setUse(CommonParameters.ElementsToUse.both);
-        params.setUseArrays(true);
-        Stream<Element> elements = parent.getInformation().getElements(params);
-        final var counts = new HashMap<String, AtomicInteger>();
-
-        for (Element item : elements.toList()) {
-            var value = counts.putIfAbsent(item.getType(), new AtomicInteger(1));
-            if (value != null) {
-                value.incrementAndGet();
-            }
-        }
-
+        Map<String, Long> counts = parent.getInformation().getDetailedCount();
         counts.entrySet().stream().sorted(Map.Entry.comparingByKey())
                 .forEach(entry -> parent.getOut()
-                        .println(String.format("%1$25s", entry.getKey()) + " => " + entry.getValue().get()));
+                        .println(String.format("%1$25s", entry.getKey()) + " => " + entry.getValue()));
     }
 
     private boolean shouldShow(String s) {
@@ -104,35 +92,29 @@ class InfoCommand extends BaseCommand {
 
         CommonParameters params = new CommonParameters();
         params.setUse(CommonParameters.ElementsToUse.cached);
-        params.setUseArrays(false);
         params.setTypes(new String[] { "Class" });
         var futureClasses = parent.getInformation().getFutureElements(params);
         params = new CommonParameters();
         params.setLoaded(WhichRun.training);
         params.setUse(CommonParameters.ElementsToUse.cached);
-        params.setUseArrays(false);
         params.setTypes(new String[] { "Class" });
         var futureClassesCachedNotUsed = parent.getInformation().getFutureElements(params);
         params = new CommonParameters();
-        params.setUseArrays(true);
         params.setTypes(new String[] { "Object" });
         params.setUse(CommonParameters.ElementsToUse.cached);
         var futureObjectCount = parent.getInformation().getFutureElements(params);
         params = new CommonParameters();
-        params.setUseArrays(true);
         params.setTypes(new String[] { "Object" });
         params.setUse(CommonParameters.ElementsToUse.cached);
         params.setShowAOTInited(true);
         var futureAotInited = parent.getInformation().getFutureElements(params);
         params = new CommonParameters();
-        params.setUseArrays(true);
         params.setTypes(new String[] { "Object" });
         params.setUse(CommonParameters.ElementsToUse.cached);
         params.setShowAOTInited(null);
         params.setInstanceOf("java.lang.Class");
         var futureClassInstances = parent.getInformation().getFutureElements(params);
         params = new CommonParameters();
-        params.setUseArrays(true);
         params.setTypes(new String[] { "Object" });
         params.setUse(CommonParameters.ElementsToUse.cached);
         params.setShowAOTInited(null);
@@ -298,7 +280,7 @@ class InfoCommand extends BaseCommand {
             try {
                 futureMethods.get().forEach(e -> {
                     MethodObject method = (MethodObject) e;
-                    for (Map.Entry<Integer, Element> entry : method.getCompileTrainingData().entrySet()) {
+                    for (Map.Entry<Integer, Element> entry : method.getCompileTrainingDataElements().entrySet()) {
                         trainingCompilationLevels.putIfAbsent(entry.getKey(), 0);
                         trainingCompilationLevels.replace(entry.getKey(), trainingCompilationLevels.get(entry.getKey()) + 1);
                     }

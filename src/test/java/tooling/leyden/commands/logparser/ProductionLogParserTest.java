@@ -16,6 +16,7 @@ import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.ElementFactory;
 import tooling.leyden.aotcache.Information;
 import tooling.leyden.aotcache.WarningType;
+import tooling.leyden.commands.CommonParameters;
 import tooling.leyden.commands.DefaultTest;
 import tooling.leyden.commands.LoadFileCommand;
 
@@ -85,7 +86,6 @@ class ProductionLogParserTest extends DefaultTest {
 
         assertFalse(Information.getMyself().getStatistics().getKeys().isEmpty());
         assertFalse(Information.getMyself().getAll().isEmpty());
-        assertFalse(Information.getMyself().getExternalElements().isEmpty());
 
         final int extClasses = Integer.parseInt(
                 Information.getMyself().getStatistics().getValue("[LOG] Classes not loaded from AOT Cache").toString());
@@ -96,9 +96,11 @@ class ProductionLogParserTest extends DefaultTest {
         final int lambdas = Integer.parseInt(
                 Information.getMyself().getStatistics().getValue("[LOG] Lambda Methods loaded from AOT Cache").toString());
 
-        assertEquals(extClasses, Information.getMyself().getExternalElements().size());
-        assertEquals(classes, Information.getMyself().getElements(null, null, null, true, false, "Class").count());
-        assertEquals(extClasses + classes, Information.getMyself().getElements(null, null, null, true, true, "Class").count());
+        CommonParameters commonParameters = new CommonParameters();
+        commonParameters.setUse(CommonParameters.ElementsToUse.notCached);
+        assertEquals(extClasses, Information.getMyself().getElements(commonParameters).count());
+        assertEquals(classes, Information.getMyself().getElements(null, null, null, false, "Class").count());
+        assertEquals(extClasses + classes, Information.getMyself().getElements(null, null, null, true, "Class").count());
 
         assertEquals(8, extClasses);
         assertEquals(6, extLambdas);
@@ -157,6 +159,7 @@ class ProductionLogParserTest extends DefaultTest {
 
     @Test
     void whereWereYouLoadedFrom() {
+        io.quarkus.narayana.jta.QuarkusTransaction.begin();
         Element e = ElementFactory.getOrCreate("org.cutecats.Test", "Class", null);
 
         e.setLoaded(Element.WhichRun.Training);
