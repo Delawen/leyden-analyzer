@@ -1,7 +1,7 @@
 package tooling.leyden.commands;
 
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Collection;
 import java.util.List;
 
 import org.jline.utils.AttributedString;
@@ -70,7 +70,6 @@ class DescribeCommand extends BaseCommand {
             var customLeftPadding = "  " + leftPadding;
             getReferences(e, sb, customLeftPadding);
             getElementsReferencing(e, sb, customLeftPadding);
-            getWhereDoesItComeFrom(e, sb);
             getSources(e, sb);
             getWarnings(e, sb);
         }
@@ -135,20 +134,6 @@ class DescribeCommand extends BaseCommand {
         }
     }
 
-    private static void getWhereDoesItComeFrom(Element e, AttributedStringBuilder sb) {
-        if (!e.getWhereDoesItComeFrom().isEmpty()) {
-            sb.append(leftPadding);
-            sb.append(AttributedString.NEWLINE);
-            sb.append(leftPadding).append("Where does this element come from: ");
-            sb.append(AttributedString.NEWLINE);
-            e.getWhereDoesItComeFrom().forEach(s -> {
-                sb.append(leftPadding).append("  > ");
-                sb.append(s);
-                sb.append(AttributedString.NEWLINE);
-            });
-        }
-    }
-
     private static void getSources(Element e, AttributedStringBuilder sb) {
         if (!e.getSources().isEmpty()) {
             sb.append(AttributedString.NEWLINE);
@@ -162,14 +147,11 @@ class DescribeCommand extends BaseCommand {
         }
     }
 
-    protected List<Element> getElementsReferencingThisOne(Element element) {
+    protected Collection<Element> getElementsReferencingThisOne(Element element) {
         if (!isRunning()) {
             return List.of();
         }
-        return parent.getInformation().getAll().parallelStream()
-                .filter(e -> (e instanceof ReferencingElement))
-                .filter(e -> ((ReferencingElement) e).getReferences().contains(element))
-                .sorted(Comparator.comparing(Element::getType))
-                .toList();
+
+        return parent.getInformation().getWhoReferencesMe(element);
     }
 }

@@ -34,10 +34,6 @@ public class CommonParameters {
             "Find elements on this address (0x....). It has to be the long address." }, arity = "0..1", paramLabel = "<address>", completionCandidates = Addressess.class)
     String address;
 
-    @CommandLine.Option(names = {
-            "--showArrays" }, description = "Display array classes if true. True by default.", defaultValue = "true", negatable = true, arity = "0..1")
-    protected Boolean arrays = true;
-
     @CommandLine.Option(names = { "--use",
             "-u" }, description = "What type of elements to use on this command: cached during AOT, not cached, or both. " +
                     "By default, shows everything.", defaultValue = "both", arity = "0..1")
@@ -46,10 +42,6 @@ public class CommonParameters {
     @CommandLine.Option(names = { "-t",
             "--type" }, arity = "0..*", split = ",", paramLabel = "<type>", description = "Restrict the command to this type of element", completionCandidates = Types.class)
     protected String[] types;
-
-    @CommandLine.Option(names = { "-hr",
-            "--showHeapRoot" }, arity = "0..1", negatable = true, paramLabel = "<isHeapRoot>", description = "If true, shows only heapRoot elements. If false, shows only non-heapRoot elements.")
-    protected Boolean isHeapRoot = null;
 
     @CommandLine.Option(names = { "--loaded" }, description = {
             "Display classes that were loaded in a training run, a production run, both, or none.",
@@ -97,22 +89,6 @@ public class CommonParameters {
         this.name = name;
     }
 
-    public Boolean useArrays() {
-        return arrays;
-    }
-
-    public void setUseArrays(Boolean arrays) {
-        this.arrays = arrays;
-    }
-
-    public Boolean isHeapRoot() {
-        return isHeapRoot;
-    }
-
-    public void setHeapRoot(Boolean heapRoot) {
-        isHeapRoot = heapRoot;
-    }
-
     public String[] getPackageName() {
         return packageName;
     }
@@ -149,8 +125,16 @@ public class CommonParameters {
         return trained;
     }
 
+    public void setTrained(Boolean trained) {
+        this.trained = trained;
+    }
+
     public Boolean getLambdas() {
         return lambdas;
+    }
+
+    public void setReferencing(String referencing) {
+        this.referencing = referencing;
     }
 
     public String getReferencing() {

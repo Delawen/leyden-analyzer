@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import jakarta.persistence.*;
+
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
@@ -11,15 +13,24 @@ import org.jline.utils.AttributedStyle;
 /**
  * This element represents a class inside the AOT Cache.
  */
+@Entity
+@DiscriminatorValue("ClassObject")
 public class ClassObject extends ReferencingElement {
 
-    private String name;
     private String packageName = "";
+
+    @OneToMany(mappedBy = "classObject", fetch = FetchType.LAZY)
     private final List<MethodObject> methods = new ArrayList<>();
+
     private String arrayPrefix = "";
+
+    @ManyToOne(fetch = FetchType.LAZY)
     private Element klassTrainingData;
-    private final List<ReferencingElement> symbols = new ArrayList<>();
+
     private Boolean isClassLoader = false;
+
+    public ClassObject() {
+    }
 
     ClassObject(String identifier) {
         super(identifier, "Class");
@@ -37,18 +48,12 @@ public class ClassObject extends ReferencingElement {
                 && this.getName().startsWith("ClassLoaders")) {
             isClassLoader = true;
         }
+
+        setKey(arrayPrefix + (getPackageName().isBlank() ? "" : getPackageName() + ".") + getName());
     }
 
     public String getType() {
         return "Class";
-    }
-
-    public String getKey() {
-        return arrayPrefix + (getPackageName().isBlank() ? "" : getPackageName() + ".") + getName();
-    }
-
-    public String getName() {
-        return name;
     }
 
     public String getPackageName() {
@@ -61,22 +66,6 @@ public class ClassObject extends ReferencingElement {
 
     public Boolean isClassLoader() {
         return isClassLoader;
-    }
-
-    public List<ReferencingElement> getSymbols() {
-        return symbols;
-    }
-
-    public void addSymbol(ReferencingElement symbol) {
-        if (!this.getSymbols().contains(symbol)) {
-            this.getSymbols().add(symbol);
-            this.getSymbols().sort(Comparator.comparing(Element::getKey));
-        }
-        symbol.markAsReferenced(this);
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public Element getKlassTrainingData() {
@@ -106,7 +95,7 @@ public class ClassObject extends ReferencingElement {
             method.setClassObject(this);
             this.getMethods().sort(Comparator.comparing(Element::isTrained).thenComparing(Element::getKey));
         }
-        method.markAsReferenced(this);
+        Information.getMyself().addRelationship(this, method);
     }
 
     public Boolean isArray() {

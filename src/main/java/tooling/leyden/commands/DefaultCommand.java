@@ -27,7 +27,6 @@ import tooling.leyden.aotcache.Information;
                         CommandLine.HelpCommand.class })
 public class DefaultCommand implements Runnable {
     private PrintWriter out;
-    private final Information information = new Information();
     private Terminal terminal;
 
     public DefaultCommand() {
@@ -43,7 +42,7 @@ public class DefaultCommand implements Runnable {
     }
 
     public Information getInformation() {
-        return information;
+        return Information.getMyself();
     }
 
     public PrintWriter getOut() {

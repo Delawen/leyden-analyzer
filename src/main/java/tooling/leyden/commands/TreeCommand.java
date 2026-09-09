@@ -167,10 +167,7 @@ class TreeCommand extends BaseCommand {
                 }
             }
         } else {
-            if (element instanceof ClassObject classObject) {
-                referenced.addAll(classObject.getSymbols());
-                referenced.addAll(classObject.getMethods());
-            } else if (element instanceof ConstantPoolObject cp) {
+            if (element instanceof ConstantPoolObject cp) {
                 //it would be clearer if we could show the dependency connection as being to a specific Method or Field
                 // and maybe mark it in some way as a CPCache pre-link dependency rather than, say, a Method link that arises because
                 // of, say, a compilation dependency.
@@ -178,7 +175,6 @@ class TreeCommand extends BaseCommand {
             } else if (element instanceof MethodObject method) {
                 referenced.add(method.getClassObject());
             }
-
             if (element instanceof ReferencingElement re) {
                 referenced.addAll(re.getReferences());
             }
@@ -238,8 +234,8 @@ class TreeCommand extends BaseCommand {
 
     //Delegate on Information for filtering
     private Stream<Element> filter(Stream<Element> elements) {
-        return Information.filterByParams(parameters.packageName, parameters.excludePackageName, parameters.arrays,
-                parameters.types, parameters.isHeapRoot, elements);
+        return Information.filterByParams(parameters.packageName, parameters.excludePackageName,
+                parameters.types, elements);
     }
 
 }

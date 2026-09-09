@@ -3,17 +3,26 @@ package tooling.leyden.aotcache;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 
 /**
  * This element represents an Object of the ConstantPool(Cache) inside the AOT Cache.
  */
+@Entity
+@DiscriminatorValue("ConstantPoolObject")
 public class ConstantPoolObject extends Element {
     private String constantPoolCacheAddress;
-    private ClassObject poolHolder;
-    private final String key;
+
+    @Column(name = "cp_pool_holder_key")
+    private String poolHolderKey;
+
+    public ConstantPoolObject() {
+    }
 
     ConstantPoolObject(String key) {
-        this.key = key;
+        setKey(key);
         this.setType("ConstantPool");
     }
 
@@ -26,17 +35,14 @@ public class ConstantPoolObject extends Element {
     }
 
     public ClassObject getPoolHolder() {
-        return poolHolder;
+        if (poolHolderKey == null) return null;
+        return (ClassObject) Information.getMyself()
+                .getElements(poolHolderKey, null, null, true, "Class")
+                .findAny().orElse(null);
     }
 
     public void setPoolHolder(ClassObject poolHolder) {
-        this.poolHolder = poolHolder;
-        poolHolder.markAsReferenced(this);
-    }
-
-    @Override
-    public String getKey() {
-        return key;
+        this.poolHolderKey = poolHolder.getKey();
     }
 
     @Override

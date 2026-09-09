@@ -69,19 +69,19 @@ class TrainingLogParserTest extends DefaultTest {
         parser.accept("[info][aot] initial optimized module handling: enabled");
         parser.accept("[info][aot] initial full module graph: disabled");
 
-        assertEquals("4096", Information.getMyself().getConfiguration().getValue("Core region alignment"));
-        assertEquals("1", Information.getMyself().getConfiguration().getValue("UseCompressedOops"));
-        assertEquals("1", Information.getMyself().getConfiguration().getValue("UseCompressedClassPointers"));
-        assertEquals("0", Information.getMyself().getConfiguration().getValue("UseCompactObjectHeaders"));
+        assertEquals("4096", Information.getMyself().getConfiguration("Core region alignment", null).getValue());
+        assertEquals("1", Information.getMyself().getConfiguration("UseCompressedOops", null).getValue());
+        assertEquals("1", Information.getMyself().getConfiguration("UseCompressedClassPointers", null).getValue());
+        assertEquals("0", Information.getMyself().getConfiguration("UseCompactObjectHeaders", null).getValue());
         assertEquals("1 # always map archive(s) at an alternative address",
-                Information.getMyself().getConfiguration().getValue("ArchiveRelocationMode"));
-        assertEquals("(null)", Information.getMyself().getConfiguration().getValue("archived module property jdk.module.main"));
+                Information.getMyself().getConfiguration("ArchiveRelocationMode", null).getValue());
+        assertEquals("(null)", Information.getMyself().getConfiguration("archived module property jdk.module.main", null).getValue());
         assertEquals("java.naming/com.sun.jndi.ldap=ALL-UNNAMED",
-                Information.getMyself().getConfiguration().getValue("archived module property jdk.module.addexports"));
-        assertEquals("ALL-UNNAMED", Information.getMyself().getConfiguration()
-                .getValue("archived module property jdk.module.enable.native.access"));
-        assertEquals("enabled", Information.getMyself().getConfiguration().getValue("initial optimized module handling"));
-        assertEquals("disabled", Information.getMyself().getConfiguration().getValue("initial full module graph"));
+                Information.getMyself().getConfiguration("archived module property jdk.module.addexports", null).getValue());
+        assertEquals("ALL-UNNAMED",
+                Information.getMyself().getConfiguration("archived module property jdk.module.enable.native.access", null).getValue());
+        assertEquals("enabled", Information.getMyself().getConfiguration("initial optimized module handling", null).getValue());
+        assertEquals("disabled", Information.getMyself().getConfiguration("initial full module graph", null).getValue());
     }
 
     @Test
@@ -124,13 +124,13 @@ class TrainingLogParserTest extends DefaultTest {
 
         var parentSymbol = (ReferencingElement) Information.getMyself()
                 .getElements("org/infinispan/rest/framework/impl/InvocationImpl",
-                        null, null, true, true, "Symbol")
+                        null, null, true, "Symbol")
                 .findAny().get();
         assertEquals(17, parentSymbol.getReferences().size());
         assertEquals(2,
                 ((ReferencingElement) Information.getMyself()
                         .getElements("io/reactivex/rxjava3/internal/subscribers/InnerQueuedSubscriber",
-                                null, null, true, true, "Symbol")
+                                null, null, true, "Symbol")
                         .findAny().get())
                         .getReferences().size());
 
@@ -138,14 +138,14 @@ class TrainingLogParserTest extends DefaultTest {
         parser.accept("[trace][aot,resolve              ] archived method CP entry [194]: " +
                 "jdk/jfr/internal/jfc/model/XmlSelection jdk/jfr/internal/jfc/model/XmlSelection.getDefault:()Ljava/lang/String; => jdk/jfr/internal/jfc/model/XmlSelection");
         parentSymbol = (ReferencingElement) Information.getMyself().getElements("jdk/jfr/internal/jfc/model/XmlSelection",
-                null, null, true, true, "Symbol").findAny().get();
+                null, null, true, "Symbol").findAny().get();
         assertEquals(3, parentSymbol.getReferences().size());
 
         parser.accept("[trace][aot,resolve              ] archived method CP entry [  8]: " +
                 "jdk/jfr/internal/dcmd/DCmdStart$$Lambda+0x80000010e java/lang/Object.<init>:()V => java/lang/Object");
         parentSymbol = (ReferencingElement) Information.getMyself()
                 .getElements("jdk/jfr/internal/dcmd/DCmdStart$$Lambda+0x80000010e",
-                        null, null, true, true, "Symbol")
+                        null, null, true, "Symbol")
                 .findAny().get();
         assertEquals(4, parentSymbol.getReferences().size());
 
@@ -153,7 +153,7 @@ class TrainingLogParserTest extends DefaultTest {
                 "jdk/jfr/internal/dcmd/DCmdStart jdk/jfr/internal/dcmd/Argument.<init>" +
                 ":(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZLjava/lang/String;Z)V => jdk/jfr/internal/dcmd/Argument");
         parentSymbol = (ReferencingElement) Information.getMyself().getElements("jdk/jfr/internal/dcmd/DCmdStart",
-                null, null, true, true, "Symbol").findAny().get();
+                null, null, true, "Symbol").findAny().get();
         assertEquals(4, parentSymbol.getReferences().size());
         assertTrue(parentSymbol.getReferences().stream()
                 .anyMatch(symbol -> symbol.getKey().equals("jdk/jfr/internal/dcmd/Argument")));
@@ -166,7 +166,7 @@ class TrainingLogParserTest extends DefaultTest {
                 "jdk/internal/module/ModuleBootstrap$$Lambda+0x80000000c java/util/Collection.stream:()Ljava/util/stream/Stream; => java/util/Collection");
         parentSymbol = (ReferencingElement) Information.getMyself()
                 .getElements("jdk/internal/module/ModuleBootstrap$$Lambda+0x80000000c",
-                        null, null, true, true, "Symbol")
+                        null, null, true, "Symbol")
                 .findAny().get();
         assertEquals(4, parentSymbol.getReferences().size());
 
@@ -178,7 +178,7 @@ class TrainingLogParserTest extends DefaultTest {
         parser.accept("[trace][aot,resolve              ] archived interface method CP entry [ 13]: " +
                 "jdk/jfr/internal/jfc/model/XmlNot java/util/List.size:()I => java/util/List");
         parentSymbol = (ReferencingElement) Information.getMyself().getElements("jdk/jfr/internal/jfc/model/XmlNot",
-                null, null, true, true, "Symbol").findAny().get();
+                null, null, true, "Symbol").findAny().get();
         assertEquals(4, parentSymbol.getReferences().size());
         assertTrue(parentSymbol.getReferences().stream().anyMatch(symbol -> symbol.getKey().equals("java/util/List")));
         assertTrue(parentSymbol.getReferences().stream().anyMatch(symbol -> symbol.getKey().equals("size")));
@@ -189,7 +189,7 @@ class TrainingLogParserTest extends DefaultTest {
                 "jdk/jfr/internal/dcmd/DCmdDump (0) => java/lang/invoke/LambdaMetafactory.metafactory:" +
                 "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;");
         parentSymbol = (ReferencingElement) Information.getMyself().getElements("jdk/jfr/internal/dcmd/DCmdDump",
-                null, null, true, true, "Symbol").findAny().get();
+                null, null, true, "Symbol").findAny().get();
         assertEquals(4, parentSymbol.getReferences().size());
 
         final var signature = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;";
@@ -197,13 +197,14 @@ class TrainingLogParserTest extends DefaultTest {
                 "jdk/jfr/internal/dcmd/DCmdCheck (1) => java/lang/invoke/LambdaMetafactory.metafactory:" +
                 signature);
         parentSymbol = (ReferencingElement) Information.getMyself().getElements("jdk/jfr/internal/dcmd/DCmdCheck",
-                null, null, true, true, "Symbol").findAny().get();
+                null, null, true, "Symbol").findAny().get();
         assertEquals(4, parentSymbol.getReferences().size());
         assertTrue(parentSymbol.getReferences().stream()
                 .anyMatch(symbol -> symbol.getKey().equals("java/lang/invoke/LambdaMetafactory")));
         assertTrue(parentSymbol.getReferences().stream().anyMatch(symbol -> symbol.getKey().equals("metafactory")));
         assertTrue(parentSymbol.getReferences().stream().anyMatch(symbol -> symbol.getKey().equals(signature)));
 
+        Information.getMyself().getAll().parallelStream().forEachOrdered(e -> assertEquals("Symbol", e.getType()));
         assertTrue(Information.getMyself().getAll().parallelStream().allMatch(e -> e.getType().equals("Symbol")));
 
         //If a class exists already, the Symbol must be linked there:
@@ -219,9 +220,9 @@ class TrainingLogParserTest extends DefaultTest {
                 "[trace][aot,resolve              ] archived klass  CP entry [ 28]: sun/util/locale/BaseLocale boot => sun/util/locale/LocaleUtils boot (not supertype)");
 
         var classObj = (ClassObject) Information.getMyself().getElements("sun.util.locale.BaseLocale",
-                null, null, true, true, "Class").findAny().get();
-        assertEquals(1, classObj.getSymbols().size());
-        parentSymbol = classObj.getSymbols().getFirst();
+                null, null, true, "Class").findAny().get();
+        assertEquals(1, classObj.getWhoReferencesMe().size());
+        parentSymbol = (ReferencingElement) classObj.getWhoReferencesMe().iterator().next();
         assertEquals(classObj.getKey(), parentSymbol.getKey().replaceAll("/", "."));
         assertEquals(3, parentSymbol.getReferences().size());
         assertTrue(parentSymbol.getReferences().stream().anyMatch(symbol -> symbol.getKey().equals("java/lang/Object")));
@@ -230,14 +231,14 @@ class TrainingLogParserTest extends DefaultTest {
         assertTrue(parentSymbol.getReferences().stream().anyMatch(symbol -> symbol.getType().equals("Class")));
 
         var cp = (ConstantPoolObject) Information.getMyself().getElements("sun.util.locale.BaseLocale",
-                null, null, true, true, "ConstantPool").findAny().get();
+                null, null, true, "ConstantPool").findAny().get();
         assertNotNull(cp.getConstantPoolCacheAddress());
         assertEquals(cp.getPoolHolder(), classObj);
 
         classObj = (ClassObject) Information.getMyself().getElements("sun.util.locale.LocaleUtils",
-                null, null, true, true, "Class").findAny().get();
-        assertEquals(1, classObj.getSymbols().size());
-        parentSymbol = classObj.getSymbols().getFirst();
+                null, null, true, "Class").findAny().get();
+        assertEquals(1, classObj.getWhoReferencesMe().size());
+        parentSymbol = (ReferencingElement) classObj.getWhoReferencesMe().iterator().next();
         assertEquals(classObj.getKey(), parentSymbol.getKey().replaceAll("/", "."));
     }
 
@@ -247,11 +248,11 @@ class TrainingLogParserTest extends DefaultTest {
                 "[trace][aot,resolve] reverted field  CP entry [157]: io/quarkus/vertx/http/runtime/VertxHttpRecorder => io/quarkus/dev/spi/DevModeType.REMOTE_SERVER_SIDE:Lio/quarkus/dev/spi/DevModeType;");
 
         assertTrue(Information.getMyself().getElements("io.quarkus.vertx.http.runtime" +
-                ".VertxHttpRecorder", null, null, true, true, "Class")
+                ".VertxHttpRecorder", null, null, true, "Class")
                 .findAny().isPresent());
-        assertTrue(Information.getMyself().getElements("io.quarkus.dev.spi.DevModeType", null, null, true, true,
+        assertTrue(Information.getMyself().getElements("io.quarkus.dev.spi.DevModeType", null, null, true,
                 "Class").findAny().isPresent());
-        assertEquals(2, Information.getMyself().getElements(null, null, null, true, true, "Class")
+        assertEquals(2, Information.getMyself().getElements(null, null, null, true, "Class")
                 .count());
     }
 
@@ -279,23 +280,21 @@ class TrainingLogParserTest extends DefaultTest {
         reader.lines().forEach(parser::accept);
         parser.postProcessing();
 
-        var statistics = Information.getMyself().getStatistics();
-
-        assertEquals(0.0, statistics.getValue("[CodeCache] None"));
-        assertEquals(728.0, statistics.getValue("[CodeCache] Adapter"));
-        assertEquals(10.0, statistics.getValue("[CodeCache] Stub"));
-        assertEquals(1.0, statistics.getValue("[CodeCache] SharedBlob"));
-        assertEquals(2.0, statistics.getValue("[CodeCache] C1Blob"));
-        assertEquals(3.0, statistics.getValue("[CodeCache] C2Blob"));
-        assertEquals(9142.0, statistics.getValue("[CodeCache] Nmethod"));
-        assertEquals(5.0, statistics.getValue("[CodeCache] Nmethod Tier 0"));
-        assertEquals(1251.0, statistics.getValue("[CodeCache] Nmethod Tier 1"));
-        assertEquals(3379.0, statistics.getValue("[CodeCache] Nmethod Tier 2"));
-        assertEquals(4.0, statistics.getValue("[CodeCache] Nmethod Tier 3"));
-        assertEquals(2256.0, statistics.getValue("[CodeCache] Nmethod Tier 4"));
-        assertEquals(2257.0, statistics.getValue("[CodeCache] Nmethod Tier 5"));
-        assertEquals("31332312 bytes, max entry's size: 136328 bytes", statistics.getValue("[CodeCache] Cache Size"));
-        assertEquals(9870.0, statistics.getValue("[CodeCache] AOT Code Entries"));
+        assertEquals(0, Information.getMyself().getStatistic("[CodeCache] None", null).getValue());
+        assertEquals(728, Information.getMyself().getStatistic("[CodeCache] Adapter", null).getValue());
+        assertEquals(10, Information.getMyself().getStatistic("[CodeCache] Stub", null).getValue());
+        assertEquals(1, Information.getMyself().getStatistic("[CodeCache] SharedBlob", null).getValue());
+        assertEquals(2, Information.getMyself().getStatistic("[CodeCache] C1Blob", null).getValue());
+        assertEquals(3, Information.getMyself().getStatistic("[CodeCache] C2Blob", null).getValue());
+        assertEquals(9142, Information.getMyself().getStatistic("[CodeCache] Nmethod", null).getValue());
+        assertEquals(5, Information.getMyself().getStatistic("[CodeCache] Nmethod Tier 0", null).getValue());
+        assertEquals(1251, Information.getMyself().getStatistic("[CodeCache] Nmethod Tier 1", null).getValue());
+        assertEquals(3379, Information.getMyself().getStatistic("[CodeCache] Nmethod Tier 2", null).getValue());
+        assertEquals(4, Information.getMyself().getStatistic("[CodeCache] Nmethod Tier 3", null).getValue());
+        assertEquals(2256, Information.getMyself().getStatistic("[CodeCache] Nmethod Tier 4", null).getValue());
+        assertEquals(2257, Information.getMyself().getStatistic("[CodeCache] Nmethod Tier 5", null).getValue());
+        assertEquals(31332312, Information.getMyself().getStatistic("[CodeCache] Cache Size", null).getValue());
+        assertEquals(9870, Information.getMyself().getStatistic("[CodeCache] AOT Code Entries", null).getValue());
     }
 
     @Test

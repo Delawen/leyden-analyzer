@@ -1,5 +1,10 @@
 package tooling.leyden.aotcache;
 
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ManyToOne;
+
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
@@ -10,11 +15,20 @@ import java.util.*;
 /**
  * This class represents a native compiled method inside the AOT Cache.
  */
+@Entity
+@DiscriminatorValue("NMethodObject")
 public class NMethodObject extends CodeObject {
 
+    @ManyToOne(fetch = FetchType.LAZY)
     private MethodObject method;
+
     private Integer compilationLevel;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     private CodeObject adapter;
+
+    public NMethodObject() {
+    }
 
     public NMethodObject(String identifier) {
         super(identifier, "NMethod");
@@ -47,9 +61,9 @@ public class NMethodObject extends CodeObject {
         //Search for the adapter, which should come first on the code cache
         CommonParameters cparameters = new CommonParameters();
         cparameters.setTypes(new String[]{"Adapter"});
-        cparameters.setNameLike("(.)* " + this.method.getAdapterSignature());
+        cparameters.setNameLike("(.)* " + this.method.getAdapterSignature() + "$");
         Information.getMyself().getElements(cparameters).findAny()
-                .ifPresent(a -> this.adapter = (CodeObject) a);
+                .ifPresent(a -> this.setAdapter((CodeObject) a));
         if (this.adapter == null) {
             Information.getMyself().addWarning(this, "This nmethod does not have an adapter.", WarningType.CacheCreation);
         } else {
@@ -148,6 +162,11 @@ public class NMethodObject extends CodeObject {
 
     public CodeObject getAdapter() {
         return adapter;
+    }
+
+    public void setAdapter(CodeObject adapter) {
+        this.adapter = adapter;
+        Information.getMyself().updateElement(this);
     }
 
     @Override

@@ -21,9 +21,11 @@ class ListCommand extends BaseCommand {
 
     public void execution() {
         final var counter = new AtomicInteger();
-        final var elements = findElements(counter).iterator();
-        while (isRunning() && elements.hasNext()) {
-            elements.next().toAttributedString().println(parent.getTerminal());
+        for (Element e : findElements(counter).toList()) {
+            e.toAttributedString().println(parent.getTerminal());
+            if (!isRunning()) {
+                break;
+            }
         }
         if (isRunning()) {
             parent.getOut().println("Found " + counter.get() + " elements.");
@@ -31,10 +33,6 @@ class ListCommand extends BaseCommand {
     }
 
     protected Stream<Element> findElements(AtomicInteger counter) {
-        Stream<Element> elements = parent.getInformation().getElements(parameters);
-        elements = elements.sorted(Comparator.comparing(Element::getKey).thenComparing(Element::getType));
-        elements = elements.peek(item -> counter.incrementAndGet());
-
-        return elements;
+        return Information.getMyself().getElements(parameters).peek(item -> counter.incrementAndGet());
     }
 }

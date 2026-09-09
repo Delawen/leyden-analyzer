@@ -1,105 +1,146 @@
 package tooling.leyden.aotcache;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.regex.Pattern;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
+import io.quarkus.arc.Arc;
+
+import io.quarkus.arc.Unremovable;
+import jakarta.inject.Singleton;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import tooling.leyden.commands.CommonParameters;
 
+@Singleton
+@Unremovable
 public class Information {
 
-    //This represents the AOT Cache
-    private final Map<Key, Element> elements = new ConcurrentHashMap<>();
-
-    //This represents elements that were loaded in the app
-    //from a different source, not the AOT Cache.
-    //Useful to detect if there are elements that should have been cached.
-    private final Map<Key, Element> elementsNotInTheCache = new ConcurrentHashMap<>();
+    private ElementRepository elementRepository;
+    private ConfigurationRepository configurationRepository;
+    private StatisticRepository statisticRepository;
 
     //List of warnings and incidents that may be useful to check
     private final List<Warning> warnings = Collections.synchronizedList(new ArrayList<>());
-    //Auto-generated warnings by `warning check` command
     private final List<Warning> autoWarnings = Collections.synchronizedList(new ArrayList<>());
 
-    //Store information extracted and inferred
-    private final Configuration configuration = new Configuration();
-    private final Configuration statistics = new Configuration();
-
-    //To pre-calculate auto-completion
-    private final Set<String> identifiers = ConcurrentHashMap.newKeySet();
-
-
-    //To search by address
-    private final Map<String, Element> elementsByAddress = new ConcurrentHashMap<>();
     //To find Heap Roots
     private final Set<String> heapRootAddresses = Collections.synchronizedSet(new HashSet<>());
     private ReferencingElement heapRoot = null;
 
+    // To replace placeholders
+    private final Map<String, PlaceHolderElement> placeholders = new HashMap();
+
     private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
 
-    //Singletonish
-    private static Information myself;
-
     public static Information getMyself() {
-        return myself;
+        var container = Arc.container();
+        if (container == null) return null;
+        var instance = container.instance(Information.class);
+        return instance.isAvailable() ? instance.get() : null;
     }
 
     public Information() {
-        myself = this;
+    }
+
+    private ElementRepository elementRepository() {
+        if (elementRepository == null) {
+            elementRepository = lookupRepository(ElementRepository.class);
+        }
+        return elementRepository;
+    }
+
+    public Element updateElement(Element e) {
+        if (e == null){
+            return e;
+        }
+        if (e.getDbId() == null) {
+            elementRepository().getEntityManager().persist(e);
+        } else {
+            e = elementRepository().getEntityManager().merge(e);
+        }
+
+        return e;
+    }
+
+    private ConfigurationRepository configurationRepository() {
+        if (configurationRepository == null) {
+            configurationRepository = lookupRepository(ConfigurationRepository.class);
+        }
+        return configurationRepository;
+    }
+
+    private StatisticRepository statisticRepository() {
+        if (statisticRepository == null) {
+            statisticRepository = lookupRepository(StatisticRepository.class);
+        }
+        return statisticRepository;
+    }
+
+    private static <T> T lookupRepository(Class<T> type) {
+        var container = Arc.container();
+        if (container == null) return null;
+        var instance = container.instance(type);
+        return instance.isAvailable() ? instance.get() : null;
+    }
+
+    public List<Configuration> getConfiguration() {
+        return configurationRepository().findAll().list();
+    }
+    public Configuration getConfiguration(String key, String defaultValue) {
+        return configurationRepository().findByName(key).orElseGet(() -> new Configuration(key, defaultValue));
+    }
+
+    public void update(Configuration config) {
+        configurationRepository().getEntityManager().merge(config);
+    }
+
+    public void update(Statistic stat) {
+        configurationRepository().getEntityManager().merge(stat);
+        statisticRepository().getEntityManager().flush();
+    }
+
+    public void incrementStatistic(String key) {
+        statisticRepository().incrementStatistic(key);
+    }
+
+    public synchronized Statistic getStatistic(String key, Integer defaultValue) {
+        statisticRepository().createStatistic(key);
+        return statisticRepository().findByName(key).get();
+    }
+
+    public List<Statistic> getStatistic() {
+        return statisticRepository().findAll().list();
     }
 
     public void addAOTCacheElement(Element e, String source) {
         e.addSource(source);
-        final var key = new Key(e.getKey(), e.getType());
-        elements.put(key, e);
+        e.setInCache(true);
 
-        // Due to weird ordering in logfiles, sometimes a method gets
-        // referenced before the class it belongs to gets referenced.
-        // So we have to make sure elements are not repeated both in
-        // this.elements and this.elementsNotInTheCache
-        elementsNotInTheCache.remove(key);
-
-        if (e.getAddress() != null) {
-            elementsByAddress.putIfAbsent(e.getAddress(), e);
-            if (heapRootAddresses.contains(e.getAddress())) {
-                e.setHeapRoot(true);
-                heapRootAddresses.remove(e.getAddress());
-                if (heapRoot != null) {
-                    heapRoot.addReference(e);
-                }
+        // Due to ordering in logfiles, sometimes an asset gets
+        // referenced before the asset itself gets defined.
+        if (heapRootAddresses.contains(e.getAddress())) {
+            e.setHeapRoot(true);
+            heapRootAddresses.remove(e.getAddress());
+            if (heapRoot != null) {
+                heapRoot.addReference(e);
             }
         }
 
-        // Pre-calculate auto-completions
-        if (e.getType().equalsIgnoreCase("Class")) {
-            identifiers.add(e.getKey());
-        }
-    }
-
-    public void addExternalElement(Element e) {
-        elementsNotInTheCache.put(new Key(e.getKey(), e.getType()), e);
-        if (e.getAddress() != null) {
-            elementsByAddress.putIfAbsent(e.getAddress(), e);
-        }
-    }
-
-    public Map<Key, Element> getExternalElements() {
-        return this.elementsNotInTheCache;
+        updateElement(e);
     }
 
     public void addHeapRoot(String address) {
         this.heapRootAddresses.add(address);
+    }
+
+    public boolean isHeapRootSet() {
+        return this.heapRoot != null;
     }
 
     public void setHeapRoot(ReferencingElement e) {
@@ -111,120 +152,75 @@ public class Information {
     }
 
     public void clear() {
-        elements.clear();
-        elementsNotInTheCache.clear();
-        warnings.clear();
-        autoWarnings.clear();
-        statistics.clear();
-        configuration.clear();
-        identifiers.clear();
-        elementsByAddress.clear();
-        heapRootAddresses.clear();
-        heapRoot = null;
+
+        io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> {
+            elementRepository().deleteAll();
+            configurationRepository().deleteAll();
+            statisticRepository().deleteAll();
+            flush();
+
+            warnings.clear();
+            autoWarnings.clear();
+            heapRootAddresses.clear();
+            heapRoot = null;
+        });
     }
 
     public boolean cacheContains(Element e) {
         CommonParameters parameters = new CommonParameters();
         parameters.setName(e.getKey());
-        parameters.setTypes(new String[] { e.getType() });
+        parameters.setTypes(new String[]{e.getType()});
         parameters.setUse(CommonParameters.ElementsToUse.cached);
         return getElements(parameters).findAny().isPresent();
     }
 
     public Element getByAddress(String address) {
-        return elementsByAddress.getOrDefault(address, null);
+        return elementRepository().findByAddress(address).orElse(null);
+    }
+
+    public Element getByDbId(Long dbId) {
+        return elementRepository().findByDbId(dbId).orElse(null);
     }
 
     public Stream<Element> getElements(String key, String[] packageName, String[] excludePackageName,
-            Boolean includeArrays, Boolean includeExternalElements, String... type) {
-
+                                       Boolean includeExternalElements, String... type) {
         CommonParameters parameters = new CommonParameters();
         parameters.setName(key);
         parameters.setPackageName(packageName);
         parameters.setExcludePackageName(excludePackageName);
-        parameters.setUseArrays(includeArrays);
         parameters.setTypes(type);
-        parameters
-                .setUse(includeExternalElements ? CommonParameters.ElementsToUse.both : CommonParameters.ElementsToUse.cached);
+        parameters.setUse(includeExternalElements
+                ? CommonParameters.ElementsToUse.both
+                : CommonParameters.ElementsToUse.cached);
 
         return getElements(parameters);
     }
 
     public Future<Stream<Element>> getFutureElements(CommonParameters parameters) {
-        return executorService.submit(() -> getElements(parameters));
+        return executorService.submit(() -> {
+            AtomicReference<Stream<Element>> res = new AtomicReference<>();
+            io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> res.set(getElements(parameters)));
+            return res.get();
+        });
     }
 
     public Stream<Element> getElements(CommonParameters parameters) {
-        String key = parameters.getName();
-        String[] type = parameters.getTypes();
-
-        if (key != null && !key.isBlank() && type != null && type.length > 0) {
-            //This is trivial, don't search through all elements
-            var result = new ArrayList<Element>();
-            for (String t : type) {
-                var k = new Key(key, t);
-                if (parameters.getUse() != CommonParameters.ElementsToUse.notCached) {
-                    var element = elements.get(k);
-                    if (element != null) {
-                        result.add(element);
-                    }
-                }
-                if (parameters.getUse() != CommonParameters.ElementsToUse.cached) {
-                    var element = elementsNotInTheCache.get(k);
-                    if (element != null) {
-                        result.add(element);
-                    }
-                }
-            }
-            return result.parallelStream();
-        }
-
-        //Another trivial set
-        if (parameters.getAddress() != null) {
-            return Stream.ofNullable(elementsByAddress.getOrDefault(parameters.getAddress(), null));
-        }
-
-        var tmp = new HashSet<Map.Entry<Key, Element>>();
-        if (parameters.getUse() != CommonParameters.ElementsToUse.cached) {
-            tmp.addAll(elementsNotInTheCache.entrySet());
-        }
-        if (parameters.getUse() != CommonParameters.ElementsToUse.notCached) {
-            tmp.addAll(elements.entrySet());
-        }
-        var result = tmp.parallelStream();
-
-        if (key != null && !key.isBlank()) {
-            result = result.filter(keyElementEntry -> keyElementEntry.getKey().identifier().equalsIgnoreCase(key));
-        }
-
-        if (parameters.getNameLike() != null && !parameters.getNameLike().isBlank()) {
-            Pattern pattern = Pattern.compile(parameters.getNameLike());
-            result = result.filter(
-                    keyElementEntry -> pattern.matcher(keyElementEntry.getKey().identifier()).matches());
-        }
-
-        return filterByParams(parameters, result.map(Map.Entry::getValue));
+        return elementRepository().findByParameters(parameters).stream();
     }
 
     public static Stream<Element> filterByParams(String[] packageName,
-            String[] excludePackageName,
-            Boolean addArrays,
-            String[] types,
-            Boolean showOnlyHeapRoots,
-            Stream<Element> result) {
-
+                                                 String[] excludePackageName,
+                                                 String[] types,
+                                                 Stream<Element> result) {
         CommonParameters parameters = new CommonParameters();
         parameters.setPackageName(packageName);
         parameters.setExcludePackageName(excludePackageName);
-        parameters.setUseArrays(addArrays);
         parameters.setTypes(types);
-        parameters.setHeapRoot(showOnlyHeapRoots);
 
         return filterByParams(parameters, result);
     }
 
     public static Stream<Element> filterByParams(CommonParameters parameters, Stream<Element> result) {
-
         var packageName = parameters.getPackageName();
         var excludePackageName = parameters.getExcludePackageName();
 
@@ -276,7 +272,6 @@ public class Information {
                     return Arrays.stream(excludePackageName).noneMatch(p -> methodObject.getName().startsWith(p));
                 }
                 if (e.getType().equals("Object") || e.getType().startsWith("ConstantPool")) {
-
                     return Arrays.stream(excludePackageName).noneMatch(p -> e.getKey().startsWith(p));
                 }
                 if (e.getType().endsWith("TrainingData")
@@ -303,10 +298,6 @@ public class Information {
                             .anyMatch(t -> t.equalsIgnoreCase(e.getType())));
         }
 
-        if (parameters.isHeapRoot() != null) {
-            result = result.filter(e -> e.isHeapRoot() == parameters.isHeapRoot());
-        }
-
         if (parameters.getShowAOTInited() != null) {
             result = result.filter(e -> {
                 if (e instanceof InstanceObject io) {
@@ -314,15 +305,6 @@ public class Information {
                 } else {
                     return true;
                 }
-            });
-        }
-
-        if (parameters.useArrays()!= null && !parameters.useArrays()) {
-            result = result.filter(e -> {
-                if (e instanceof ClassObject classObject) {
-                    return !classObject.isArray();
-                }
-                return true;
             });
         }
 
@@ -335,25 +317,23 @@ public class Information {
         }
 
         if (!parameters.getLambdas()) {
-            result = result
-                    .filter(e -> {
-                        if (e instanceof ClassObject classObject) {
-                            return !classObject.getName().contains("$$Lambda");
-                        } else {
-                            return true;
-                        }
-                    });
+            result = result.filter(e -> {
+                if (e instanceof ClassObject classObject) {
+                    return !classObject.getName().contains("$$Lambda");
+                } else {
+                    return true;
+                }
+            });
         }
 
         if (!parameters.getInnerClasses()) {
-            result = result
-                    .filter(e -> {
-                        if (e instanceof ClassObject classObject) {
-                            return !classObject.getName().contains("$");
-                        } else {
-                            return true;
-                        }
-                    });
+            result = result.filter(e -> {
+                if (e instanceof ClassObject classObject) {
+                    return !classObject.getName().contains("$");
+                } else {
+                    return true;
+                }
+            });
         }
 
         if (parameters.getReferencing() != null) {
@@ -402,39 +382,118 @@ public class Information {
     }
 
     public Collection<Element> getAll() {
-        return elements.values();
-    }
-
-    public Configuration getConfiguration() {
-        return configuration;
-    }
-
-    public Configuration getStatistics() {
-        return statistics;
+        return elementRepository().findAllCached();
     }
 
     public List<String> getAllTypes() {
-        return this.elements.keySet()
-                .parallelStream().map(key -> key.type).distinct().toList();
+        AtomicReference<List<String>> res = new AtomicReference<>();
+        io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> res.set(elementRepository().findAllTypes()));
+        return res.get();
     }
 
     public List<String> getAllPackages() {
-        return this.elements.entrySet()
-                .parallelStream()
-                .filter((entry) -> entry.getValue() instanceof ClassObject)
-                .map(entry -> ((ClassObject) entry.getValue()).getPackageName())
-                .distinct()
-                .toList();
+        AtomicReference<List<String>> res = new AtomicReference<>();
+        io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> res.set(elementRepository().findAllPackages()));
+        return res.get();
     }
 
     public Collection<String> getIdentifiers() {
-        return List.copyOf(identifiers);
+
+        AtomicReference<List<String>> res = new AtomicReference<>();
+        io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> res.set(elementRepository().findAllClassIdentifiers()));
+        return res.get();
     }
 
     public List<String> getAddressess() {
-        return List.copyOf(elementsByAddress.keySet());
+        return elementRepository().findHeapRootAddresses();
     }
 
-    public record Key(String identifier, String type) {
+    public Collection<Element> getWhoReferencesMe(Element element) {
+        return elementRepository().findWhoReferencesMe(element);
+    }
+
+    public long getCount() {
+        return elementRepository().count();
+    }
+
+    public long getPackagesCount() {
+        return elementRepository().count("SELECT DISTINCT e.packageName FROM Element e");
+    }
+
+    public long getTypesCount() {
+        CriteriaBuilder cb = elementRepository().getEntityManager()
+                .getCriteriaBuilder();
+        CriteriaQuery<Long> query = cb.createQuery(Long.class);
+        Root<Element> root = query.from(Element.class);
+        query.select(cb.countDistinct(root.get("type")));
+        TypedQuery<Long> typedQuery = elementRepository().getEntityManager().createQuery(query);
+        return typedQuery.getSingleResult();
+    }
+
+    public Map<String, Long> getDetailedCount() {
+        var res = new HashMap<String, Long>();
+        var list = elementRepository().getEntityManager()
+                .createQuery("SELECT e.type, Count(*) as count FROM Element e GROUP BY type")
+                .getResultList();
+        for (Object o : list) {
+            var data = (Object[]) o;
+            res.put((String) data[0], (Long) data[1]);
+        }
+        return res;
+    }
+
+    //Use it only on tests if needed
+    public void flush() {
+        io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting()
+                .run(() ->elementRepository().getEntityManager().flush());
+    }
+
+    public Element refresh(Element re) {
+        return elementRepository().findById(re.getDbId());
+    }
+
+    public void addRelationship(ReferencingElement ref, Element e) {
+        if (ref == null || e == null || ref.equals(e)) {
+            return;
+        }
+        if (ref.getDbId() == null) {
+            ref = (ReferencingElement) updateElement(ref);
+        }
+        if (e.getDbId() == null) {
+            e = updateElement(e);
+        }
+        elementRepository().addRelationship(ref.getDbId(), e.getDbId());
+    }
+    public void addSource(Element e, String source) {
+        if (source == null || e == null) {
+            return;
+        }
+        if (e.getDbId() == null) {
+            e = updateElement(e);
+        }
+        elementRepository().addSource(e.getDbId(), source);
+    }
+
+    public void replacePlaceHolders() {
+        elementRepository().replacePlaceHolders();
+    }
+
+    public PlaceHolderElement getPlaceholder(String address) {
+        return this.placeholders.entrySet().stream()
+                .filter(e -> e.getKey().equalsIgnoreCase(address))
+                .map(e -> e.getValue())
+                .findAny().orElse(null);
+    }
+
+    public void replacePlaceHolder(PlaceHolderElement placeholder, Element asset) {
+        elementRepository().replacePlaceHolder(placeholder, asset);
+    }
+
+    public void addPlaceholder(PlaceHolderElement e) {
+        this.placeholders.put(e.getAddress(), e);
+    }
+
+    public void removePlaceholder(String address) {
+        this.placeholders.remove(address);
     }
 }

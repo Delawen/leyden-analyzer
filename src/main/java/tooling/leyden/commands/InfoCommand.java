@@ -57,22 +57,10 @@ class InfoCommand extends BaseCommand {
     }
 
     public void count() {
-        CommonParameters params = new CommonParameters();
-        params.setUse(CommonParameters.ElementsToUse.both);
-        params.setUseArrays(true);
-        Stream<Element> elements = parent.getInformation().getElements(params);
-        final var counts = new HashMap<String, AtomicInteger>();
-
-        for (Element item : elements.toList()) {
-            var value = counts.putIfAbsent(item.getType(), new AtomicInteger(1));
-            if (value != null) {
-                value.incrementAndGet();
-            }
-        }
-
+        Map<String, Long> counts = parent.getInformation().getDetailedCount();
         counts.entrySet().stream().sorted(Map.Entry.comparingByKey())
                 .forEach(entry -> parent.getOut()
-                        .println(String.format("%1$25s", entry.getKey()) + " => " + entry.getValue().get()));
+                        .println(String.format("%1$25s", entry.getKey()) + " => " + entry.getValue()));
     }
 
     private boolean shouldShow(String s) {
@@ -80,17 +68,16 @@ class InfoCommand extends BaseCommand {
                 || Arrays.asList(this.whatToShow).contains(s);
     }
 
-    private void print(String title, Configuration configuration) {
+    private void print(String title, List<Configuration> configuration) {
         parent.getOut().println('\n' + title + ": ");
         parent.getOut().println("  _________");
-        configuration.getKeys().stream().sorted()
-                .forEachOrdered(key -> parent.getOut().println("  | " + key + " -> " +
-                        configuration.getValue(key)));
+        for (Configuration config : configuration) {
+            parent.getOut().println("  | " + config.getKey() + " -> " + config.getValue());
+        }
         parent.getOut().println("  |________");
     }
 
     private void printSummary() {
-        var stats = parent.getInformation().getStatistics();
 
         //Some formatting output utilities
         final var percentFormat = NumberFormat.getPercentInstance();
@@ -98,41 +85,35 @@ class InfoCommand extends BaseCommand {
         percentFormat.setMinimumFractionDigits(2);
 
         //Get information from log
-        var extClasses = Double.valueOf(stats.getValue("[LOG] Classes not loaded from AOT Cache", -1).toString());
-        var extLambdas = Double.valueOf(stats.getValue("[LOG] Lambda Methods not loaded from AOT Cache", 0).toString());
-        var classesLog = Double.valueOf(stats.getValue("[LOG] Classes loaded from AOT Cache", -1).toString());
+        var extClasses = Double.valueOf(parent.getInformation().getStatistic("[LOG] Classes not loaded from AOT Cache", -1).getValue());
+        var extLambdas = Double.valueOf(parent.getInformation().getStatistic("[LOG] Lambda Methods not loaded from AOT Cache", 0).getValue());
+        var classesLog = Double.valueOf(parent.getInformation().getStatistic("[LOG] Classes loaded from AOT Cache", -1).getValue());
 
         CommonParameters params = new CommonParameters();
         params.setUse(CommonParameters.ElementsToUse.cached);
-        params.setUseArrays(false);
         params.setTypes(new String[] { "Class" });
         var futureClasses = parent.getInformation().getFutureElements(params);
         params = new CommonParameters();
         params.setLoaded(WhichRun.training);
         params.setUse(CommonParameters.ElementsToUse.cached);
-        params.setUseArrays(false);
         params.setTypes(new String[] { "Class" });
         var futureClassesCachedNotUsed = parent.getInformation().getFutureElements(params);
         params = new CommonParameters();
-        params.setUseArrays(true);
         params.setTypes(new String[] { "Object" });
         params.setUse(CommonParameters.ElementsToUse.cached);
         var futureObjectCount = parent.getInformation().getFutureElements(params);
         params = new CommonParameters();
-        params.setUseArrays(true);
         params.setTypes(new String[] { "Object" });
         params.setUse(CommonParameters.ElementsToUse.cached);
         params.setShowAOTInited(true);
         var futureAotInited = parent.getInformation().getFutureElements(params);
         params = new CommonParameters();
-        params.setUseArrays(true);
         params.setTypes(new String[] { "Object" });
         params.setUse(CommonParameters.ElementsToUse.cached);
         params.setShowAOTInited(null);
         params.setInstanceOf("java.lang.Class");
         var futureClassInstances = parent.getInformation().getFutureElements(params);
         params = new CommonParameters();
-        params.setUseArrays(true);
         params.setTypes(new String[] { "Object" });
         params.setUse(CommonParameters.ElementsToUse.cached);
         params.setShowAOTInited(null);
@@ -187,7 +168,7 @@ class InfoCommand extends BaseCommand {
         params.setTypes(new String[] { "C2Blob" });
         var futureC2Blob = parent.getInformation().getFutureElements(params);
 
-    var lambdas = Double.valueOf(stats.getValue("[LOG] Lambda Methods loaded from AOT Cache", 0).toString());
+    var lambdas = Double.valueOf(parent.getInformation().getStatistic("[LOG] Lambda Methods loaded from AOT Cache", 0).getValue());
         final double methodsSize = getFutureDouble(futureMethodsSize);
 
         (new AttributedString("PRODUCTION RUN: ", blueFormat)).println(parent.getTerminal());
@@ -298,7 +279,7 @@ class InfoCommand extends BaseCommand {
             try {
                 futureMethods.get().forEach(e -> {
                     MethodObject method = (MethodObject) e;
-                    for (Map.Entry<Integer, Element> entry : method.getCompileTrainingData().entrySet()) {
+                    for (Map.Entry<Integer, Element> entry : method.getCompileTrainingDataElements().entrySet()) {
                         trainingCompilationLevels.putIfAbsent(entry.getKey(), 0);
                         trainingCompilationLevels.replace(entry.getKey(), trainingCompilationLevels.get(entry.getKey()) + 1);
                     }

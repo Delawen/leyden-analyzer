@@ -1,12 +1,24 @@
 package tooling.leyden.aotcache;
 
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ManyToOne;
+
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 
+@Entity
+@DiscriminatorValue("InstanceObject")
 public class InstanceObject extends ReferencingElement {
     private Boolean isAOTinited = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     private ClassObject instanceOf;
+
+    public InstanceObject() {
+    }
 
     public InstanceObject(String identifier) {
         super(identifier, "Object");

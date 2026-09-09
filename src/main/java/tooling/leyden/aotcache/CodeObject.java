@@ -1,5 +1,8 @@
 package tooling.leyden.aotcache;
 
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
@@ -7,9 +10,14 @@ import org.jline.utils.AttributedStyle;
 /**
  * This class represents an element on the Code Cache
  */
+@Entity
+@DiscriminatorValue("CodeObject")
 public class CodeObject extends ReferencingElement {
 
     private Integer id = null;
+
+    public CodeObject() {
+    }
 
     CodeObject(String identifier, String type) {
         super(identifier, type);

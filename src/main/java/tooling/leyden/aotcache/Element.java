@@ -2,6 +2,9 @@ package tooling.leyden.aotcache;
 
 import java.util.*;
 
+import jakarta.persistence.*;
+
+import org.hibernate.annotations.ColumnDefault;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
@@ -9,18 +12,64 @@ import org.jline.utils.AttributedStyle;
 /**
  * Elements that can be found on the Information.
  **/
+@Entity
+@Table(name = "elements",
+        indexes = {
+                @Index(name = "element_db_id_index", columnList = "dbId"),
+                @Index(name = "element_db_id_type_index", columnList = "dbId, type"),
+                @Index(name = "element_key_type_index", columnList = "element_key, type"),
+                @Index(name = "element_key_type_cache_index", columnList = "element_key, type, in_cache"),
+                @Index(name = "element_address_index", columnList = "address, type"),
+                @Index(name = "element_type_index", columnList = "type")})
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "dtype")
 public abstract class Element {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long dbId;
+
+    @jakarta.persistence.Column(name = "element_key", length = 4096)
+    private String key;
+
     private String type;
+
     private Boolean isHeapRoot = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "loaded", columnDefinition = "varchar(11)")
     private WhichRun loaded = WhichRun.None;
-    private final List<String> whereDoesItComeFrom = new ArrayList<>();
-    private final List<String> source = new ArrayList<>();
-    private final Set<Element> whoReferencesMe =  Collections.synchronizedSet(new HashSet<>());
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "element_sources",
+            joinColumns = @JoinColumn(name = "dbId"),
+            indexes = {
+                    @Index(name = "element_sources_id_index", columnList = "dbId")
+    })
+    @Column(name = "source", length = 1000, nullable = false)
+    private Set<String> source = new HashSet<>();
+
     /**
      * Address where an element can be found
      */
     private String address;
+
+    @Column(name = "in_cache", nullable = false)
+    @ColumnDefault("false")
+    private boolean inCache;
+
+    public boolean isInCache() {
+        return inCache;
+    }
+
+    public void setInCache(boolean inCache) {
+        this.inCache = inCache;
+    }
+
+    public Long getDbId() {
+        return dbId;
+    }
 
     public Boolean isHeapRoot() {
         return isHeapRoot;
@@ -28,19 +77,6 @@ public abstract class Element {
 
     public void setHeapRoot(Boolean heapRoot) {
         isHeapRoot = heapRoot;
-    }
-
-    /**
-     * Do we know why this element was stored in the cache?
-     *
-     * @return reason why it was stored
-     */
-    public List<String> getWhereDoesItComeFrom() {
-        return whereDoesItComeFrom;
-    }
-
-    public final void addWhereDoesItComeFrom(String whereDoesItComeFrom) {
-        this.whereDoesItComeFrom.add(whereDoesItComeFrom);
     }
 
     /**
@@ -123,13 +159,7 @@ public abstract class Element {
     }
 
     public Collection<Element> getWhoReferencesMe() {
-        return whoReferencesMe;
-    }
-
-    public final void markAsReferenced(Element e) {
-        if (e != this) {
-            this.whoReferencesMe.add(e);
-        }
+        return Information.getMyself().getWhoReferencesMe(this);
     }
 
     /**
@@ -137,12 +167,19 @@ public abstract class Element {
      *
      * @return The key that identifies the element
      */
-    public abstract String getKey();
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
 
     public void addSource(String source) {
-        if (!this.source.contains(source)) {
-            this.source.add(source);
+        if (source.length() > 1000) {
+            source = source.substring(0, 1000);
         }
+        Information.getMyself().addSource(this, source);
     }
 
     /**
@@ -151,7 +188,7 @@ public abstract class Element {
      *
      * @return Where this element comes from
      */
-    public List<String> getSources() {
+    public Set<String> getSources() {
         return this.source;
     }
 
@@ -189,7 +226,7 @@ public abstract class Element {
 
         String padding = "";
 
-        if (Information.getMyself().cacheContains(this)) {
+        if (this.isInCache()) {
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.GREEN));
             sb.append("[Cached]");
             padding += "  ";

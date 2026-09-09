@@ -19,7 +19,7 @@ public abstract class LogParser extends Parser {
     }
 
     @Override
-    public void accept(String content) {
+    public void actualAccept(String content) {
         processLine(extractLineInformation(content));
     }
 
@@ -47,5 +47,10 @@ public abstract class LogParser extends Parser {
     }
 
     protected record Line(String content, String[] tags, String level, String message, String trimmedMessage) {
+    }
+
+    @Override
+    public void actualPostProcessing() {
+
     }
 }
