@@ -16,6 +16,12 @@ import tooling.leyden.commands.LoadFileCommand;
  */
 public class AOTMapParser extends Parser {
 
+    private String name = null;
+
+    // AOT cache map for ab.aot.config
+    // AOT cache map for ab.aot
+    private final Pattern regexpNewAOTCache = Pattern.compile("AOT cache map for (?<name>.*)");
+
     private final String regexpAddress = "(?<address>0[xX][0-9a-fA-F]+)";
 
     // 0x0000000800868d58: @@ Class             520 java.lang.constant.ClassDesc
@@ -112,7 +118,27 @@ public class AOTMapParser extends Parser {
 
     @Override
     public void accept(String content) {
-        Matcher m = assetHeader.matcher(content);
+        Matcher m = regexpNewAOTCache.matcher(content);
+        if (m.matches()) {
+            if (name != null) {
+                (new AttributedString("ERROR: Found two AOT Cache maps in the same file. "
+                        + "Going to clean up the stored information and start from scratch to  process "
+                        + m.group("name"),
+                        AttributedStyle.DEFAULT.foreground(AttributedStyle.RED).bold()))
+                        .println(loadFile.getParent().getTerminal());
+                (new AttributedString("ERROR: You must re-load all the log files to get all the information right.",
+                        AttributedStyle.DEFAULT.foreground(AttributedStyle.RED).bold()))
+                        .println(loadFile.getParent().getTerminal());
+                Information.getMyself().clear();
+            }
+            name = m.group("name");
+            (new AttributedString("Parsing AOT Cache Map for " + name,
+                    AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN).bold()))
+                    .println(loadFile.getParent().getTerminal());
+            return;
+        }
+
+        m = assetHeader.matcher(content);
         if (m.matches()) {
             processAssetHeader(
                     m.group("address"), m.group("type"), m.group("size"), m.group("identifier"),
