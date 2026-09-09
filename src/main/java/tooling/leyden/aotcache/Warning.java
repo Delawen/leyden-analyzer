@@ -33,11 +33,16 @@ public class Warning {
         this.element = new ArrayList<>();
         this.element.addAll(e);
         //If the element is a Symbol with a class, add the class to the list too:
-        List.copyOf(this.element).stream()
-                .filter(el -> el.getType().equalsIgnoreCase("Symbol"))
-                .forEach(el -> ((ReferencingElement) el).getReferences().stream()
-                        .filter(c -> c.getType().equalsIgnoreCase("Class"))
-                        .forEach(this.element::add));
+        for (Element el : List.copyOf(this.element)) {
+                if (el.getType().equalsIgnoreCase("Symbol")){
+                    el = Information.getMyself().refresh(el);
+                    for (Element ref : ((ReferencingElement) el).getReferences()) {
+                        if (ref instanceof ClassObject) {
+                            this.element.add(ref);
+                        }
+                    }
+            }
+        }
         this.type = type;
         this.message = message;
         this.setId(idGenerator.getAndIncrement());

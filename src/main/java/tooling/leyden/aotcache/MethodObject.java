@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.persistence.*;
+
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
@@ -12,18 +14,48 @@ import org.jline.utils.AttributedStyle;
 /**
  * This class represents a method inside the AOT Cache.
  */
+@Entity
+@DiscriminatorValue("MethodObject")
 public class MethodObject extends ReferencingElement {
 
-    private ClassObject classObject;
-    private BasicObject constMethod;
-    private Element methodData;
-    private Element methodCounters;
-    private Element methodTrainingData;
-    private final Map<Integer, Element> compileTrainingData = new HashMap<>();
-    private String adapterSignature;
+    @ManyToOne(fetch = FetchType.LAZY)
+    public ClassObject classObject;
 
-    private String returnType;
-    private final List<String> parameters = new ArrayList<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    public BasicObject constMethod;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    public Element methodData;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    public Element methodCounters;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    public ReferencingElement methodTrainingData;
+
+    // Maps compilation level (Integer) -> CompileTrainingData element dbId (Long)
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "method_compile_training",
+            joinColumns = @JoinColumn(name = "method_id"),
+            indexes = {
+                    @Index(name = "method_compile_training_index", columnList = "method_id")
+            })
+    @MapKeyColumn(name = "compile_level")
+    @Column(name = "element_db_id")
+    public final Map<Integer, Long> compileTrainingDataIds = new HashMap<>();
+
+    public String adapterSignature;
+
+    public String returnType;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "method_parameters", joinColumns = @JoinColumn(name = "method_id"))
+    @Column(name = "parameter_key")
+    public final List<String> parameters = new ArrayList<>();
+
+    public MethodObject() {
+    }
 
     MethodObject(String identifier) {
         super(identifier, "Method");
@@ -36,6 +68,16 @@ public class MethodObject extends ReferencingElement {
         this.fillReturnClass(identifier);
         this.fillClass(className);
         this.procesParameters(identifier);
+
+
+        StringBuilder sb = new StringBuilder(getReturnType() + " ");
+        sb.append((getClassObject() != null) ? getClassObject().getKey() + "." + getName() : getName());
+        sb.append("(");
+        if (!parameters.isEmpty()) {
+            sb.append(String.join(", ", parameters));
+        }
+        sb.append(")");
+        setKey(sb.toString());
     }
 
     public ClassObject getClassObject() {
@@ -71,20 +113,33 @@ public class MethodObject extends ReferencingElement {
         this.methodCounters = methodCounters;
     }
 
-    public Element getMethodTrainingData() {
+    public ReferencingElement getMethodTrainingData() {
         return methodTrainingData;
     }
 
-    public void setMethodTrainingData(Element methodTrainingData) {
+    public void setMethodTrainingData(ReferencingElement methodTrainingData) {
         this.methodTrainingData = methodTrainingData;
     }
 
-    public Map<Integer, Element> getCompileTrainingData() {
-        return compileTrainingData;
+    public Map<Integer, Long> getCompileTrainingData() {
+       return compileTrainingDataIds;
+    }
+
+    @Transient
+    public Map<Integer, Element> getCompileTrainingDataElements() {
+        // Resolve stored dbIds back to Element instances
+        Map<Integer, Element> result = new HashMap<>();
+        for (Map.Entry<Integer, Long> entry : getCompileTrainingData().entrySet()) {
+            Element e = Information.getMyself().getByDbId(entry.getValue());
+            if (e != null) {
+                result.put(entry.getKey(), e);
+            }
+        }
+        return result;
     }
 
     public void addCompileTrainingData(Integer level, Element compileTrainingData) {
-        this.compileTrainingData.put(level, compileTrainingData);
+        this.compileTrainingDataIds.put(level, compileTrainingData.getDbId());
     }
 
     public void addParameter(Element parameter) {
@@ -108,18 +163,6 @@ public class MethodObject extends ReferencingElement {
 
     public String getAdapterSignature() {
         return adapterSignature;
-    }
-
-    @Override
-    public String getKey() {
-        StringBuilder sb = new StringBuilder(getReturnType() + " ");
-        sb.append((getClassObject() != null) ? getClassObject().getKey() + "." + getName() : getName());
-        sb.append("(");
-        if (!parameters.isEmpty()) {
-            sb.append(String.join(", ", parameters));
-        }
-        sb.append(")");
-        return sb.toString();
     }
 
     @Override
@@ -217,7 +260,7 @@ public class MethodObject extends ReferencingElement {
             sb.style(AttributedStyle.DEFAULT);
             sb.append(" associated to it on level:");
             sb.style(AttributedStyle.DEFAULT.bold());
-            for (Integer level : this.compileTrainingData.keySet()) {
+            for (Integer level : this.getCompileTrainingData().keySet()) {
                 sb.append(" ").append(String.valueOf(level));
             }
             if (verbose) {
@@ -301,7 +344,7 @@ public class MethodObject extends ReferencingElement {
                 .split(", ");
         for (String parameter : parameters) {
             if (!parameter.isBlank()) {
-                var classes = Information.getMyself().getElements(parameter, null, null, true, true, "Class").toList();
+                var classes = Information.getMyself().getElements(parameter, null, null, true, "Class").toList();
                 classes.forEach(this::addParameter);
                 if (classes.isEmpty()) {
                     this.addParameter(parameter);
@@ -309,7 +352,7 @@ public class MethodObject extends ReferencingElement {
                     if (parameter.endsWith("[]")) {
                         parameter = parameter.substring(0, parameter.length() - 2);
                         Information.getMyself()
-                                .getElements(parameter, null, null, true, true, "Class")
+                                .getElements(parameter, null, null, true, "Class")
                                 .forEachOrdered(this::addReference);
                     }
                 }
@@ -332,15 +375,18 @@ public class MethodObject extends ReferencingElement {
     }
 
     private void fillClass(String className) {
+        Information.getMyself().updateElement(this);
         classObject = (ClassObject) ElementFactory.getOrCreate(className, "Class", null);
         classObject.addMethod(this);
+        Information.getMyself().updateElement(classObject);
     }
 
     private void fillReturnClass(String identifier) {
+        Information.getMyself().updateElement(this);
         if (identifier.indexOf(" ") > 0) {
             this.setReturnType(identifier.substring(0, identifier.indexOf(" ")));
             Information.getMyself()
-                    .getElements(this.getReturnType(), null, null, true, true, "Class")
+                    .getElements(this.getReturnType(), null, null, true, "Class")
                     .forEach(this::addReference);
         }
     }

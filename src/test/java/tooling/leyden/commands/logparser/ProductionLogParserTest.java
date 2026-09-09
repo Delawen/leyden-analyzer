@@ -16,6 +16,7 @@ import tooling.leyden.aotcache.Element;
 import tooling.leyden.aotcache.ElementFactory;
 import tooling.leyden.aotcache.Information;
 import tooling.leyden.aotcache.WarningType;
+import tooling.leyden.commands.CommonParameters;
 import tooling.leyden.commands.DefaultTest;
 import tooling.leyden.commands.LoadFileCommand;
 
@@ -83,22 +84,22 @@ class ProductionLogParserTest extends DefaultTest {
                 ".StatusLogger$PropertiesUtilsDouble$$Lambda/0x0000000805001228 source: org.apache.logging.log4j" +
                 ".status.StatusLogger$PropertiesUtilsDouble");
 
-        assertFalse(Information.getMyself().getStatistics().getKeys().isEmpty());
+        assertFalse(Information.getMyself().getStatistic().isEmpty());
         assertFalse(Information.getMyself().getAll().isEmpty());
-        assertFalse(Information.getMyself().getExternalElements().isEmpty());
 
-        final int extClasses = Integer.parseInt(
-                Information.getMyself().getStatistics().getValue("[LOG] Classes not loaded from AOT Cache").toString());
-        final int extLambdas = Integer.parseInt(
-                Information.getMyself().getStatistics().getValue("[LOG] Lambda Methods not loaded from AOT Cache").toString());
-        final int classes = Integer
-                .parseInt(Information.getMyself().getStatistics().getValue("[LOG] Classes loaded from AOT Cache").toString());
-        final int lambdas = Integer.parseInt(
-                Information.getMyself().getStatistics().getValue("[LOG] Lambda Methods loaded from AOT Cache").toString());
+        final int extClasses =
+                Information.getMyself().getStatistic("[LOG] Classes not loaded from AOT Cache", null).getValue();
+        final int extLambdas =
+                Information.getMyself().getStatistic("[LOG] Lambda Methods not loaded from AOT Cache", null).getValue();
+        final int classes = Information.getMyself().getStatistic("[LOG] Classes loaded from AOT Cache", null).getValue();
+        final int lambdas =
+                Information.getMyself().getStatistic("[LOG] Lambda Methods loaded from AOT Cache", null).getValue();
 
-        assertEquals(extClasses, Information.getMyself().getExternalElements().size());
-        assertEquals(classes, Information.getMyself().getElements(null, null, null, true, false, "Class").count());
-        assertEquals(extClasses + classes, Information.getMyself().getElements(null, null, null, true, true, "Class").count());
+        CommonParameters commonParameters = new CommonParameters();
+        commonParameters.setUse(CommonParameters.ElementsToUse.notCached);
+        assertEquals(extClasses, Information.getMyself().getElements(commonParameters).count());
+        assertEquals(classes, Information.getMyself().getElements(null, null, null, false, "Class").count());
+        assertEquals(extClasses + classes, Information.getMyself().getElements(null, null, null, true, "Class").count());
 
         assertEquals(8, extClasses);
         assertEquals(6, extLambdas);
@@ -111,10 +112,7 @@ class ProductionLogParserTest extends DefaultTest {
             assertNotNull(e.getKey());
             assertNull(e.getSize()); //Log doesn't provide this
             assertEquals("Class", e.getType());
-            assertEquals(1, e.getWhereDoesItComeFrom().size());
-            //Sometimes due to the order of the log,
-            //we will have more than one source here
-            assertFalse(e.getSources().isEmpty());
+            assertEquals(2, e.getSources().size());
         }
 
         //Just check we didn't create something unexpectedly
@@ -141,22 +139,17 @@ class ProductionLogParserTest extends DefaultTest {
         parser.accept("[debug][aot,codecache,init]   C2 Blobs: total=30");
         parser.accept("[debug][aot,codecache,init]   AOT code cache size: 598432 bytes");
 
-        assertEquals("553", Information.getMyself().getStatistics()
-                .getValue("[LOG] [CodeCache] Loaded AOT code entries"));
-        assertEquals("493", Information.getMyself().getStatistics()
-                .getValue("[LOG] [CodeCache] Loaded Adapters"));
-        assertEquals("10", Information.getMyself().getStatistics()
-                .getValue("[LOG] [CodeCache] Loaded Shared Blobs"));
-        assertEquals("20", Information.getMyself().getStatistics()
-                .getValue("[LOG] [CodeCache] Loaded C1 Blobs"));
-        assertEquals("30", Information.getMyself().getStatistics()
-                .getValue("[LOG] [CodeCache] Loaded C2 Blobs"));
-        assertEquals("598432 bytes", Information.getMyself().getStatistics()
-                .getValue("[LOG] [CodeCache] AOT code cache size"));
+        assertEquals(553, Information.getMyself().getStatistic("[LOG] [CodeCache] Loaded AOT code entries", null).getValue());
+        assertEquals(493, Information.getMyself().getStatistic("[LOG] [CodeCache] Loaded Adapters", null).getValue());
+        assertEquals(10, Information.getMyself().getStatistic("[LOG] [CodeCache] Loaded Shared Blobs", null).getValue());
+        assertEquals(20, Information.getMyself().getStatistic("[LOG] [CodeCache] Loaded C1 Blobs", null).getValue());
+        assertEquals(30, Information.getMyself().getStatistic("[LOG] [CodeCache] Loaded C2 Blobs", null).getValue());
+        assertEquals(598432, Information.getMyself().getStatistic("[LOG] [CodeCache] AOT code cache size", null).getValue());
     }
 
     @Test
     void whereWereYouLoadedFrom() {
+        io.quarkus.narayana.jta.QuarkusTransaction.begin();
         Element e = ElementFactory.getOrCreate("org.cutecats.Test", "Class", null);
 
         e.setLoaded(Element.WhichRun.Training);

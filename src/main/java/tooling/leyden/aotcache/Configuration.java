@@ -1,8 +1,18 @@
 package tooling.leyden.aotcache;
 
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapKeyColumn;
+import jakarta.persistence.Table;
 
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStyle;
@@ -10,40 +20,39 @@ import org.jline.utils.AttributedStyle;
 import tooling.leyden.QuarkusPicocliLineApp;
 import tooling.leyden.StatusMessage;
 
+@Entity
+@Table(name = "configuration")
 public class Configuration {
 
-    private final Map<String, Object> configuration = new ConcurrentHashMap<>();
+    @Id
+    @Column(name = "config_name", nullable = false, unique = true)
+    private String key;
 
-    public void addValue(String key, Object value) {
-        if (configuration.containsKey(key) && !configuration.get(key).equals(value)) {
-            QuarkusPicocliLineApp.addStatusMessage(new StatusMessage(System.currentTimeMillis(),
-                    new AttributedString(
-                            "Rewriting value for '" + key + "' previously it was '" + configuration.get(key) + "'.",
-                            AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.RED))));
-        }
-        configuration.put(key.trim(), value);
+
+    @Column(name = "config_value")
+    private String value;
+
+    public Configuration() {
     }
 
-    public void incrementValue(String key) {
-        if (!configuration.containsKey(key)) {
-            configuration.put(key, 0);
-        }
-        configuration.compute(key, (k, val) -> ((Integer) val) + 1);
+    public Configuration(String configName, String value) {
+        this.key = configName;
+        this.value = value;
     }
 
-    public Object getValue(String key) {
-        return configuration.getOrDefault(key, "unknown");
+    public String getKey() {
+        return key;
     }
 
-    public Object getValue(String key, Object defaultValue) {
-        return configuration.getOrDefault(key, defaultValue);
+    public void setKey(String key) {
+        this.key = key;
     }
 
-    public Set<String> getKeys() {
-        return configuration.keySet();
+    public String getValue() {
+        return value;
     }
 
-    public void clear() {
-        configuration.clear();
+    public void setValue(String value) {
+        this.value = value;
     }
 }

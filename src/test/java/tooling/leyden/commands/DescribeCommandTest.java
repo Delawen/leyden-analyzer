@@ -82,6 +82,7 @@ class DescribeCommandTest extends DefaultTest {
                     Assets referenced from this asset:\s
                        [Cached][Untrained][Class]   java.math.BigInteger
                     Assets that refer to this one:\s
+                       [Cached][Untrained][Class]   java.math.BigInteger
                        [Cached][Trained][NMethod]     (4) [1298] java.math.BigInteger.subtract([I[I)[I
                        [Cached][Trained][NMethod]     (4) [3154] java.math.BigInteger.subtract([I[I)[I
                 
