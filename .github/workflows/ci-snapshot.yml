@@ -39,7 +39,7 @@ jobs:
       with:
         files: target/*.jar
         prerelease: true
-        make_latest: true
+        make_latest: false
         generate_release_notes: false
         draft: false
         body: "This is a nightly snapshot for testing purposes."
