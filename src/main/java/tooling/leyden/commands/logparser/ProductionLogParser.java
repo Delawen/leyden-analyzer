@@ -50,17 +50,12 @@ public class ProductionLogParser extends LogParser {
         return "Production log";
     }
 
-    @Override
-    public void postProcessing() {
-
-    }
-
     private void processClassLoad(Line line) {
         if (line.message().contains(" source: ")) {
             String className = line.message().substring(0, line.message().indexOf("source: ")).trim();
             Element e;
             if (line.message().indexOf("source: shared objects file") > 0) {
-                var classes = information.getElements(className, null, null, true, true, "Class").findAny();
+                var classes = information.getElements(className, null, null, true, "Class").findAny();
                 //WARNING: create should be covered by the aot map file
                 //we are assuming no aot map file was loaded at this point
                 //so we create a basic placeholder

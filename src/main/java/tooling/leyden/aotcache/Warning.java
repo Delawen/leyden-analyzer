@@ -35,9 +35,10 @@ public class Warning {
         //If the element is a Symbol with a class, add the class to the list too:
         List.copyOf(this.element).stream()
                 .filter(el -> el.getType().equalsIgnoreCase("Symbol"))
-                .forEach(el -> ((ReferencingElement) el).getReferences().stream()
-                        .filter(c -> c.getType().equalsIgnoreCase("Class"))
-                        .forEach(this.element::add));
+                .forEach(el -> ((ReferencingElement) Information.getMyself().refresh(el))
+                        .getReferences().stream()
+                            .filter(c -> c.getType().equalsIgnoreCase("Class"))
+                            .forEach(this.element::add));
         this.type = type;
         this.message = message;
         this.setId(idGenerator.getAndIncrement());

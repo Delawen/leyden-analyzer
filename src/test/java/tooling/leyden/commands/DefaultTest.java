@@ -16,12 +16,14 @@ import org.jline.reader.Parser;
 import org.jline.reader.impl.DefaultParser;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 
 import io.quarkus.test.junit.QuarkusTest;
 import picocli.CommandLine;
 import picocli.shell.jline3.PicocliCommands;
+import tooling.leyden.QuarkusPicocliLineAppTest;
 
 @QuarkusTest
 public class DefaultTest {
@@ -43,8 +45,13 @@ public class DefaultTest {
         getDefaultCommand().getInformation().clear();
     }
 
+    @AfterEach
+    void printStatusMessages() {
+        QuarkusPicocliLineAppTest.printStatusMessages();
+    }
+
     @BeforeAll
-    static void readLog() {
+    static void setup() throws IOException {
 
         Supplier<Path> workDir = () -> Paths.get(System.getProperty("user.dir"));
         // set up JLine built-in commands
@@ -58,9 +65,11 @@ public class DefaultTest {
         PicocliCommands picocliCommands = new PicocliCommands(cmd);
 
         Parser parser = new DefaultParser();
-        try (Terminal terminal = TerminalBuilder.builder()
+        Terminal terminal = TerminalBuilder.builder()
+                .nativeSignals(true)
                 .name("testTerminal")
-                .encoding(StandardCharsets.UTF_8).build()) {
+                .signalHandler(Terminal.SignalHandler.SIG_IGN)
+                .encoding(StandardCharsets.UTF_8).build();
             systemRegistry = new SystemRegistryImpl(parser, terminal, workDir, null);
             systemRegistry.setCommandRegistries(builtins, picocliCommands);
 
@@ -73,10 +82,5 @@ public class DefaultTest {
             builtins.setLineReader(reader);
             defaultCommand.setReader(reader);
             factory.setTerminal(terminal);
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
-
-}

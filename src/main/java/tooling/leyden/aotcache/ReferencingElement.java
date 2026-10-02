@@ -2,16 +2,38 @@ package tooling.leyden.aotcache;
 
 import java.util.*;
 
+import jakarta.persistence.*;
+
 /**
  * Elements that refer to other types of elements. For example: An element in the ConstantPool may be of certain
  * class, which is defined and loaded on the Information independently.
  **/
+@Entity
+@DiscriminatorValue("ReferencingElement")
 public class ReferencingElement extends Element {
-    private final Set<Element> references = Collections.synchronizedSet(new HashSet<>());
-    private String name;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "element_references",
+        joinColumns = @JoinColumn(name = "source_id"),
+        inverseJoinColumns = @JoinColumn(name = "target_id"),
+            indexes = {
+                    @Index(name = "idx_references_source_id", columnList = "source_id"),
+                    @Index(name = "idx_references_target_id", columnList = "target_id"),
+                    @Index(name = "idx_references", columnList = "source_id, target_id"),
+        }
+    )
+    private final Set<Element> references = new HashSet<>();
+
+    @jakarta.persistence.Column(length = 4096)
+    protected String name;
+
+    public ReferencingElement() {
+    }
 
     public ReferencingElement(String name, String type) {
         this.setName(name);
+        this.setKey(name);
         this.setType(type);
     }
 
@@ -23,29 +45,11 @@ public class ReferencingElement extends Element {
         this.name = name;
     }
 
-    @Override
-    public String getKey() {
-        return name;
-    }
-
-    public List<Element> getReferences() {
-        return this.references.stream().sorted(Comparator.comparing(Element::getType)).toList();
+    public Set<Element> getReferences() {
+        return this.references;
     }
 
     public void addReference(Element reference) {
-        if (!this.references.contains(reference) && this != reference) {
-            this.references.add(reference);
-            reference.markAsReferenced(this);
-        }
-    }
-
-    public void resolvePlaceholders() {
-        List<Element> refs = new ArrayList<>(references);
-        refs.replaceAll(
-                element -> (element instanceof PlaceHolderElement) ? Information.getMyself().getByAddress(element.getAddress())
-                        : element);
-        references.clear();
-        references.addAll(refs);
-        references.remove(null);
+        Information.getMyself().addRelationship(this, reference);
     }
 }

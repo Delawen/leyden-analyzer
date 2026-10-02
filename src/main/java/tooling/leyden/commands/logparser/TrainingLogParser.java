@@ -36,11 +36,6 @@ public class TrainingLogParser extends LogParser {
         return "Training log";
     }
 
-    @Override
-    public void postProcessing() {
-
-    }
-
     private void processAOT(Line line) {
         if (containsTags(line.tags(), "resolve")) {
             if (line.level().equals("trace")) {
@@ -251,7 +246,7 @@ public class TrainingLogParser extends LogParser {
         // We will do the heavy creation work on AOT Parser, if any is loaded
         // because at this point, we don't know anything about the class... except the name
         final var className = symbol.getKey().replaceAll("/", ".");
-        var classObj = information.getElements(className, null, null, true, true,
+        var classObj = information.getElements(className, null, null, true,
                 "Class").findAny();
         ClassObject classObject;
         if (classObj.isPresent()) {
@@ -259,7 +254,7 @@ public class TrainingLogParser extends LogParser {
         } else if (className.startsWith("L") && className.endsWith(";") && !className.contains("(")) {
             classObj = this.information.getElements(className.substring(1, className.length() - 1),
                     null,
-                    null, true,
+                    null,
                     true,
                     "Class").findAny();
 
@@ -273,7 +268,7 @@ public class TrainingLogParser extends LogParser {
 
         if (classObject != null) {
             classObject.addSymbol(symbol);
-            symbol.addReference(classObject);
+            symbol.getReferences().add(classObject);
             classObject.addSource(getSource());
         }
         return symbol;
@@ -287,7 +282,7 @@ public class TrainingLogParser extends LogParser {
         // If a class already exists with this Symbol, link it. If not, ignore it.
         // We will fill it when an AOT Cache loads, if it loads
         // (maybe it is not even a class, so don't care if this fails)
-        var classObj = information.getElements(symbolName.replaceAll("/", "."), null, null, true, true,
+        var classObj = information.getElements(symbolName.replaceAll("/", "."), null, null, true,
                 "Class").findAny();
         if (classObj.isPresent()) {
             ((ClassObject) classObj.get()).addSymbol(referencedSymbol);
@@ -296,7 +291,7 @@ public class TrainingLogParser extends LogParser {
         } else if (symbolName.startsWith("L") && symbolName.endsWith(";")) {
             classObj = this.information.getElements(symbolName.replaceAll("/", ".").substring(1, symbolName.length() - 1),
                     null,
-                    null, true,
+                    null,
                     true,
                     "Class").findAny();
             if (classObj.isPresent()) {

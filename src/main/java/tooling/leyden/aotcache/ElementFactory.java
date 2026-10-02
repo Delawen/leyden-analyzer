@@ -4,7 +4,7 @@ public class ElementFactory {
 
     public static Element getOrCreate(String identifier, String type, String address) {
         return Information.getMyself()
-                .getElements(identifier, null, null, true, true, type)
+                .getElements(identifier, null, null, true, type)
                 .findAny()
                 .orElseGet(() -> getElement(identifier, type, address));
     }
@@ -12,7 +12,7 @@ public class ElementFactory {
     private static Element getElement(String identifier, String type, String address) {
         Element e;
 
-        if (address != null && Information.getMyself().getByAddress(address) != null) {
+        if (address != null && !type.equals("PlaceHolder") && Information.getMyself().getByAddress(address) != null) {
             Information.getMyself().addWarning(Information.getMyself().getByAddress(address),
                     "Address collision at " + address, WarningType.CacheCreation);
         }
@@ -27,20 +27,31 @@ public class ElementFactory {
             case "Nmethod" -> e = new NMethodObject(identifier);
             case "StubGenBlob", "SharedBlob", "C1Blob", "C2Blob",
                  "Adapter", "EmbeddedStub" -> e = new CodeObject(identifier, type);
+            case "PlaceHolder" -> {
+                e = Information.getMyself().getByAddress(address);
+                if (e == null) {
+                    e = new PlaceHolderElement(address);
+                    Information.getMyself().addPlaceholder((PlaceHolderElement) e);
+                }
+            }
             default -> {
                 e = new BasicObject(identifier);
                 e.setType(type);
             }
         }
 
-        //By default, all elements go here
-        Information.getMyself().addExternalElement(e);
-        //When we mark them as saved in the cache, we will move them from here
-
         if (address != null) {
             e.setAddress(address);
         }
 
+        e = Information.getMyself().updateElement(e);
+
+        if (! (e instanceof PlaceHolderElement) && e.getAddress() != null) {
+             PlaceHolderElement placeholder = Information.getMyself().getPlaceholder(e.getAddress());
+            if (placeholder != null) {
+                Information.getMyself().replacePlaceHolder(placeholder, e);
+            }
+        }
         return e;
     }
 }

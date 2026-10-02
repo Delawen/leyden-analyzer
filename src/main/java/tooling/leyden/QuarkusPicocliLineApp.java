@@ -1,7 +1,9 @@
 package tooling.leyden;
 
 import io.quarkus.runtime.QuarkusApplication;
+import io.quarkus.runtime.Startup;
 import io.quarkus.runtime.annotations.QuarkusMain;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jline.builtins.ConfigurationPath;
 import org.jline.console.SystemRegistry;
@@ -41,6 +43,8 @@ import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+@Startup
+@ApplicationScoped
 @QuarkusMain
 @CommandLine.Command(name = "leyden-analyzer", mixinStandardHelpOptions = true)
 public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
@@ -60,43 +64,52 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
     private static Status status;
     private static Information information;
     public final static AtomicInteger loadingFiles = new AtomicInteger();
+    private static Terminal terminal;
 
-    private final static List<StatusMessage> statusMessages = Collections.synchronizedList(new ArrayList<>());
+    protected final static List<StatusMessage> statusMessages = Collections.synchronizedList(new ArrayList<>());
 
     public static void addStatusMessage(StatusMessage sm) {
         statusMessages.add(sm);
     }
 
     public static void updateStatus() {
-        List<AttributedString> statusList = new ArrayList<>();
-        statusMessages.removeIf(sm -> sm.timestamp() < System.currentTimeMillis() - 1000 * 10);
-        for (StatusMessage sm : statusMessages) {
-            statusList.add(sm.message());
-        }
+        try {
+            io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> {
+                List<AttributedString> statusList = new ArrayList<>();
+                statusMessages.removeIf(sm -> sm.timestamp() < System.currentTimeMillis() - 1000 * 10);
+                for (StatusMessage sm : statusMessages) {
+                    statusList.add(sm.message());
+                }
 
-        if (loadingFiles.get() > 0) {
+                if (loadingFiles.get() > 0) {
+                    AttributedStringBuilder asb = new AttributedStringBuilder();
+                    asb.style(AttributedStyle.BOLD)
+                            .append("Currently loading " + loadingFiles + " file(s) into the playground.");
+                    statusList.add(asb.toAttributedString());
+                }
+
+                AttributedStringBuilder asb = new AttributedStringBuilder();
+                asb.append("Playground contains: ");
+                asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
+                        .append(String.valueOf(information.getCount())).append(" assets");
+                asb.style(AttributedStyle.DEFAULT).append(" | ");
+                asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
+                        .append(String.valueOf(information.getPackagesCount())).append(" packages");
+                asb.style(AttributedStyle.DEFAULT).append(" | ");
+                asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
+                        .append(String.valueOf(information.getTypesCount())).append(" asset types");
+                asb.style(AttributedStyle.DEFAULT).append(" | ");
+                asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.RED))
+                        .append(String.valueOf(information.getWarnings().size())).append(" warnings")
+                        .toAttributedString();
+                statusList.add(asb.toAttributedString());
+                status.update(statusList, true);
+            });
+        } catch (Exception e) {
             AttributedStringBuilder asb = new AttributedStringBuilder();
-            asb.style(AttributedStyle.BOLD)
-                    .append("Currently loading " + loadingFiles + " file(s) into the playground.");
-            statusList.add(asb.toAttributedString());
+            asb.style(AttributedStyle.BOLD).append("ERROR: Updating status. " + e.getMessage());
+            asb.print(terminal);
         }
-
-        AttributedStringBuilder asb = new AttributedStringBuilder();
-        asb.append("Playground contains: ");
-        asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
-                .append(String.valueOf(information.getAll().size())).append(" assets");
-        asb.style(AttributedStyle.DEFAULT).append(" | ");
-        asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
-                .append(String.valueOf(information.getAllPackages().size())).append(" packages");
-        asb.style(AttributedStyle.DEFAULT).append(" | ");
-        asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
-                .append(String.valueOf(information.getAllTypes().size())).append(" asset types");
-        asb.style(AttributedStyle.DEFAULT).append(" | ");
-        asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.RED))
-                .append(String.valueOf(information.getWarnings().size())).append(" warnings")
-                .toAttributedString();
-        statusList.add(asb.toAttributedString());
-        status.update(statusList, true);
     }
 
     @Override
@@ -116,8 +129,9 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
             PicocliCommands picocliCommands = new PicocliCommands(cmd);
 
             Parser parser = new DefaultParser();
-            try (Terminal terminal = TerminalBuilder.builder().nativeSignals(true)
+            try (Terminal t = TerminalBuilder.builder().nativeSignals(true)
                     .signalHandler(Terminal.SignalHandler.SIG_IGN).build()) {
+                terminal = t;
                 // Display banner
                 printBanner(terminal);
 
@@ -160,11 +174,12 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
                 String line;
                 if (aotCache != null) {
                     for (Path p : aotCache) {
-                        String command = "load --background aotCache " + p.toString();
+                        String command = "load aotCache " + p.toString();
                         AttributedStringBuilder builder = new AttributedStringBuilder();
                         builder.style(AttributedStyle.BOLD.italic());
                         builder.append("[auto] > ").append(command);
                         builder.toAttributedString().println(terminal);
+                        terminal.flush();
                         systemRegistry.execute(command);
                     }
                 }
