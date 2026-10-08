@@ -203,6 +203,9 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
                         systemRegistry.execute(command);
                     }
                 }
+                if(aotCache != null || productionLog != null || trainingLog != null) {
+                    Thread.sleep(1000);
+                }
                 boolean shouldContinue = true;
                 if (instructions != null) {
                     AttributedStringBuilder builder = new AttributedStringBuilder();

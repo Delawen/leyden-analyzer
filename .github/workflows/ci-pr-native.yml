@@ -152,12 +152,12 @@ jobs:
           set "PATH=%JAVA_HOME%\bin;%PATH%"
           if not exist "%GRAALVM_HOME%\bin\native-image.cmd" ( echo "Cannot find native-image tool. Quitting..." & exit 1 )
           cmd /C native-image --version
-          cmd /C mvn clean verify --batch-mode -Pnative
+          cmd /C mvn clean verify --batch-mode -Pnative -Dquarkus.datasource.jdbc.url=jdbc:h2:./leyden-analyzer.db
       - name: Build and Test Native (Linux)
         if: runner.os == 'Linux'
         run: |
           native-image --version
-          ./mvnw clean verify -B -Pnative
+          ./mvnw clean verify -B -Pnative -Dquarkus.datasource.jdbc.url=jdbc:h2:./leyden-analyzer.db
 
       - name: Summary
         run: |
