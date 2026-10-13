@@ -119,7 +119,7 @@ class DescribeCommandTest extends DefaultTest {
                  > AOT Map
         
                This element has the following warnings:\s
-                 > 0001 [CacheCreation] This nmethod does not have an adapter.
+                 > 0003 [CacheCreation] This nmethod does not have an adapter.
              -----
              """;
         assertEquals(output, command.searchAndPrintElements().toString());

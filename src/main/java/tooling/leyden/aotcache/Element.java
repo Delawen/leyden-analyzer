@@ -4,7 +4,10 @@ import java.util.*;
 
 import jakarta.persistence.*;
 
+import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
@@ -32,6 +35,10 @@ public abstract class Element {
     @jakarta.persistence.Column(name = "element_key", length = 4096)
     private String key;
 
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "playground_id")
+    private Playground playground;
+
     private String type;
 
     private Boolean isHeapRoot = false;
@@ -48,6 +55,7 @@ public abstract class Element {
                     @Index(name = "element_sources_id_index", columnList = "dbId")
     })
     @Column(name = "source", length = 1000, nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<String> source = new HashSet<>();
 
     /**
@@ -219,6 +227,14 @@ public abstract class Element {
 
     public boolean isTraineable() {
         return false;
+    }
+
+    public Playground getPlayground() {
+        return playground;
+    }
+
+    public void setPlayground(Playground playground) {
+        this.playground = playground;
     }
 
     public AttributedString toAttributedString() {

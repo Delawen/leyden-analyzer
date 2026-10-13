@@ -63,16 +63,16 @@ class TreeCommandTest extends DefaultTest {
         command.level = 2;
         command.max = 100;
 
-        Element root = Information.getMyself()
-                .getElements("org.infinispan.rest.framework.impl.InvocationImpl", null, null, true, "Class")
-                .findAny().get();
+        CommonParameters params = new CommonParameters();
+        params.setName("org.infinispan.rest.framework.impl.InvocationImpl");
+        params.setTypes(new String[]{"Class"});
+        Element root = Information.getMyself().getElements(params).findAny().get();
         Set<Element> elements = command.getElementsReferencingThisOne(root, new HashSet<>());
         assertEquals(4, elements.size());
         elements.stream().allMatch(e -> e.getType().equalsIgnoreCase("Class") || e.getType().equalsIgnoreCase("Object"));
 
-        Element reversedRoot = Information.getMyself()
-                .getElements("java.util.Set", null, null, true, "Class")
-                .findAny().get();
+        params.setName("java.util.Set");
+        Element reversedRoot = Information.getMyself().getElements(params).findAny().get();
         command.reverse = true;
         elements = command.getElementsReferencingThisOne(reversedRoot, new HashSet<>());
         assertEquals(1, elements.size());

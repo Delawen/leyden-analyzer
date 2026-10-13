@@ -7,6 +7,7 @@ import org.jline.utils.AttributedStyle;
 import tooling.leyden.QuarkusPicocliLineApp;
 import tooling.leyden.StatusMessage;
 import tooling.leyden.aotcache.Information;
+import tooling.leyden.aotcache.Playground;
 import tooling.leyden.commands.LoadFileCommand;
 
 /**
@@ -16,10 +17,16 @@ public abstract class Parser implements Consumer<String> {
 
     protected final Information information;
     protected final LoadFileCommand loadFile;
+    private Playground playground;
 
-    public Parser(LoadFileCommand loadFile) {
+    public Parser(LoadFileCommand loadFile, Playground playground) {
         this.information = loadFile.getParent().getInformation();
         this.loadFile = loadFile;
+        this.playground = playground;
+    }
+
+    public final Playground getPlayground() {
+        return Information.getMyself().refresh(playground);
     }
 
     @Override
@@ -31,8 +38,6 @@ public abstract class Parser implements Consumer<String> {
                 QuarkusPicocliLineApp.addStatusMessage(new StatusMessage(System.currentTimeMillis(),
                         new AttributedString("ERROR: processing line '" + s + "'. " + e.getMessage(),
                                 AttributedStyle.DEFAULT.foreground(AttributedStyle.RED).bold())));
-                e.printStackTrace();
-                this.loadFile.stop();
             }
         }
     }
@@ -46,4 +51,8 @@ public abstract class Parser implements Consumer<String> {
     }
 
     public abstract void actualPostProcessing();
+
+    public void updatePlayground() {
+        this.playground = Information.getMyself().getPlaygroundObject();
+    }
 }

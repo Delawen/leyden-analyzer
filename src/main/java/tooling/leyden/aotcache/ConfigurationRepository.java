@@ -13,4 +13,12 @@ public class ConfigurationRepository implements PanacheRepository<Configuration>
     public Optional<Configuration> findByName(String name) {
         return find("key", name).firstResultOptional();
     }
+
+    public void deleteAll(Playground playground) {
+        getEntityManager()
+                .createNativeQuery("DELETE FROM Configuration WHERE playground = :playground")
+                .setParameter("playground", playground.getDbId())
+                .executeUpdate();
+        flush();
+    }
 }

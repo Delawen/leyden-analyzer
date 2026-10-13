@@ -84,12 +84,18 @@ public class QuarkusPicocliLineApp implements Runnable, QuarkusApplication {
                 if (loadingFiles.get() > 0) {
                     AttributedStringBuilder asb = new AttributedStringBuilder();
                     asb.style(AttributedStyle.BOLD)
-                            .append("Currently loading " + loadingFiles + " file(s) into the playground.");
+                            .append("Currently loading ");
+                    asb.append(loadingFiles.toString());
+                    asb.append(" file(s).");
                     statusList.add(asb.toAttributedString());
                 }
 
                 AttributedStringBuilder asb = new AttributedStringBuilder();
-                asb.append("Playground contains: ");
+                asb.append("Playground ");
+                asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.GREEN));
+                asb.append(Information.getMyself().getPlayground());
+                asb.style(AttributedStyle.DEFAULT);
+                asb.append(" contains: ");
                 asb.style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
                         .append(String.valueOf(information.getCount())).append(" assets");
                 asb.style(AttributedStyle.DEFAULT).append(" | ");

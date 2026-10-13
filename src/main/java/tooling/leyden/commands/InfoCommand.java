@@ -11,10 +11,7 @@ import org.jline.utils.AttributedStyle;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
-import tooling.leyden.aotcache.Configuration;
-import tooling.leyden.aotcache.Element;
-import tooling.leyden.aotcache.MethodObject;
-import tooling.leyden.aotcache.NMethodObject;
+import tooling.leyden.aotcache.*;
 import tooling.leyden.commands.autocomplete.InfoCommandTypes;
 import tooling.leyden.commands.autocomplete.WhichRun;
 
@@ -57,7 +54,7 @@ class InfoCommand extends BaseCommand {
     }
 
     public void count() {
-        Map<String, Long> counts = parent.getInformation().getDetailedCount();
+        Map<String, Long> counts = parent.getInformation().getDetailedCount(Information.getMyself().getPlaygroundObject());
         counts.entrySet().stream().sorted(Map.Entry.comparingByKey())
                 .forEach(entry -> parent.getOut()
                         .println(String.format("%1$25s", entry.getKey()) + " => " + entry.getValue()));

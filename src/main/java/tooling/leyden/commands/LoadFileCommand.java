@@ -17,6 +17,8 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import tooling.leyden.QuarkusPicocliLineApp;
 import tooling.leyden.StatusMessage;
+import tooling.leyden.aotcache.Information;
+import tooling.leyden.aotcache.Playground;
 import tooling.leyden.commands.logparser.AOTMapParser;
 import tooling.leyden.commands.logparser.Parser;
 import tooling.leyden.commands.logparser.ProductionLogParser;
@@ -157,6 +159,7 @@ public class LoadFileCommand extends BaseCommand {
     public void productionLog(
             @CommandLine.Parameters(arity = "1..*", paramLabel = "<file>", description = "files to load") Path[] files) {
         setupHandle();
+        addSourceToPlayground(files);
         load(new ProductionLogParser(this), files);
     }
 
@@ -165,6 +168,7 @@ public class LoadFileCommand extends BaseCommand {
     public void trainingLog(
             @CommandLine.Parameters(arity = "1..*", paramLabel = "<file>", description = "files to load") Path[] files) {
         setupHandle();
+        addSourceToPlayground(files);
         load(new TrainingLogParser(this), files);
     }
 
@@ -174,5 +178,15 @@ public class LoadFileCommand extends BaseCommand {
 
     public void setParent(DefaultCommand parent) {
         this.parent = parent;
+    }
+
+    private static void addSourceToPlayground(Path[] files) {
+        io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
+            Playground playground = Information.getMyself().getPlaygroundObject();
+            for (Path p : files) {
+                playground.getSources().add(p.toString());
+            }
+            Information.getMyself().flush();
+        });
     }
 }

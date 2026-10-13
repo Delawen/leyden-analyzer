@@ -14,6 +14,7 @@ import org.jline.utils.AttributedStyle;
 public class Warning {
 
     private String id;
+    private String playground;
 
     private final WarningType type;
 
@@ -45,6 +46,7 @@ public class Warning {
         }
         this.type = type;
         this.message = message;
+        this.playground = Information.getMyself().getPlayground();
         this.setId(idGenerator.getAndIncrement());
     }
 
@@ -74,6 +76,7 @@ public class Warning {
 
     public boolean affects(String id) {
         return !this.element.isEmpty()
+                && this.playground.equalsIgnoreCase(Information.getMyself().getPlayground())
                 && this.element.stream().anyMatch(element -> element.getKey().equalsIgnoreCase(id));
     }
 
@@ -94,5 +97,9 @@ public class Warning {
 
     public String toString() {
         return message.toString();
+    }
+
+    public boolean isInPlayground(String playground) {
+        return this.playground.equalsIgnoreCase(playground);
     }
 }

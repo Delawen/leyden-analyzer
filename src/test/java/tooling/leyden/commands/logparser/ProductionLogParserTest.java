@@ -34,6 +34,7 @@ class ProductionLogParserTest extends DefaultTest {
 
     @Test
     void acceptGenericLine() {
+        parser.updatePlayground();
         var line = parser.extractLineInformation("[info ][class,load         ] java.lang.Object source: shared objects file");
 
         assertEquals("info", line.level());
@@ -54,6 +55,7 @@ class ProductionLogParserTest extends DefaultTest {
 
     @Test
     void productionLogCheckClassLoad() {
+        parser.updatePlayground();
         parser.accept("[info ][class,load         ] java.lang.Object source: shared objects file");
         parser.accept("[info ][class,load         ] java.io.Serializable source: shared objects file");
         parser.accept("[info ][class,load         ] java.lang.Comparable source: shared objects file");
@@ -98,8 +100,11 @@ class ProductionLogParserTest extends DefaultTest {
         CommonParameters commonParameters = new CommonParameters();
         commonParameters.setUse(CommonParameters.ElementsToUse.notCached);
         assertEquals(extClasses, Information.getMyself().getElements(commonParameters).count());
-        assertEquals(classes, Information.getMyself().getElements(null, null, null, false, "Class").count());
-        assertEquals(extClasses + classes, Information.getMyself().getElements(null, null, null, true, "Class").count());
+        commonParameters.setUse(CommonParameters.ElementsToUse.cached);
+        commonParameters.setTypes(new String[] {"Class"});
+        assertEquals(classes, Information.getMyself().getElements(commonParameters).count());
+        commonParameters.setUse(CommonParameters.ElementsToUse.both);
+        assertEquals(extClasses + classes, Information.getMyself().getElements(commonParameters).count());
 
         assertEquals(8, extClasses);
         assertEquals(6, extLambdas);
@@ -121,6 +126,7 @@ class ProductionLogParserTest extends DefaultTest {
 
     @Test
     void warnings() {
+        parser.updatePlayground();
         parser.accept("[error][aot] Loading static archive failed.");
         parser.accept("[warning][aot       ] Preload Warning: Verification failed for org.apache.logging.log4j.core" +
                 ".async.AsyncLoggerContext");
@@ -132,6 +138,7 @@ class ProductionLogParserTest extends DefaultTest {
 
     @Test
     void statistics() {
+        parser.updatePlayground();
         parser.accept("[info ][aot,codecache,init] Loaded 553 AOT code entries from AOT Code Cache");
         parser.accept("[debug][aot,codecache,init]   Adapters:  total=493");
         parser.accept("[debug][aot,codecache,init]   Shared Blobs: total=10");
@@ -150,14 +157,14 @@ class ProductionLogParserTest extends DefaultTest {
     @Test
     void whereWereYouLoadedFrom() {
         io.quarkus.narayana.jta.QuarkusTransaction.begin();
-        Element e = ElementFactory.getOrCreate("org.cutecats.Test", "Class", null);
+        Element e = ElementFactory.getOrCreate("org.cutecats.Test", "Class", null, Information.getMyself().getPlaygroundObject());
 
         e.setLoaded(Element.WhichRun.Training);
         assertEquals(Element.WhichRun.Training, e.wasLoaded());
         e.setLoaded(Element.WhichRun.Production);
         assertEquals(Element.WhichRun.Both, e.wasLoaded());
 
-        e = ElementFactory.getOrCreate("org.cutecats.Test2", "Class", null);
+        e = ElementFactory.getOrCreate("org.cutecats.Test2", "Class", null, Information.getMyself().getPlaygroundObject());
 
         e.setLoaded(Element.WhichRun.Production);
         assertEquals(Element.WhichRun.Production, e.wasLoaded());

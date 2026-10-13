@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.junit.QuarkusTest;
+import tooling.leyden.aotcache.Information;
 import tooling.leyden.aotcache.Warning;
 import tooling.leyden.commands.logparser.AOTMapParser;
 import tooling.leyden.commands.logparser.TrainingLogParser;
@@ -32,6 +33,7 @@ class WarningCommandTest extends DefaultTest {
 
     @Test
     void checkUsedAndNotTrained() {
+        aotCacheParser.updatePlayground();
         aotCacheParser.accept("0x0000000801711128: @@ Class             624 org.infinispan.xsite.NoOpBackupSender");
 
         //Method not called
@@ -64,7 +66,7 @@ class WarningCommandTest extends DefaultTest {
 
     @Test
     void filter() {
-
+        trainingParser.updatePlayground();
         trainingParser.accept("[warning][aot] Skipping org/apache/logging/log4j/core/async/AsyncLoggerContext: Failed " +
                 "verification");
         trainingParser.accept("[warning][aot] Skipping com/thoughtworks/xstream/security/ForbiddenClassException: Unlinked " +
@@ -91,6 +93,7 @@ class WarningCommandTest extends DefaultTest {
 
     @Test
     void testRevertedAot() {
+        trainingParser.updatePlayground();
         trainingParser.accept("[trace  ][aot,resolve ] reverted indy   CP entry [129]: " +
                 "org/infinispan/notifications/cachelistener/BaseQueueingSegmentListener (1)    " +
                 "java/lang/invoke/LambdaMetafactory.metafactory:(Ljava/lang/invoke/MethodHandles$Lookup;" +

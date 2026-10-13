@@ -7,9 +7,12 @@ import java.util.Map;
 
 import jakarta.persistence.*;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
+import tooling.leyden.commands.CommonParameters;
 
 /**
  * This class represents a method inside the AOT Cache.
@@ -43,6 +46,7 @@ public class MethodObject extends ReferencingElement {
             })
     @MapKeyColumn(name = "compile_level")
     @Column(name = "element_db_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     public final Map<Integer, Long> compileTrainingDataIds = new HashMap<>();
 
     public String adapterSignature;
@@ -52,13 +56,15 @@ public class MethodObject extends ReferencingElement {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "method_parameters", joinColumns = @JoinColumn(name = "method_id"))
     @Column(name = "parameter_key")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     public final List<String> parameters = new ArrayList<>();
 
     public MethodObject() {
     }
 
-    MethodObject(String identifier) {
+    MethodObject(String identifier, Playground playground) {
         super(identifier, "Method");
+        this.setPlayground(playground);
         String qualifiedName = identifier.substring(identifier.indexOf(" ") + 1);
         if (qualifiedName.contains("(")) {
             qualifiedName = qualifiedName.substring(0, qualifiedName.indexOf("("));
@@ -344,15 +350,19 @@ public class MethodObject extends ReferencingElement {
                 .split(", ");
         for (String parameter : parameters) {
             if (!parameter.isBlank()) {
-                var classes = Information.getMyself().getElements(parameter, null, null, true, "Class").toList();
+                CommonParameters params = new CommonParameters();
+                params.setName(parameter);
+                params.setTypes(new String[]{"Class"});
+                var classes = Information.getMyself().getElements(params, this.getPlayground()).toList();
                 classes.forEach(this::addParameter);
                 if (classes.isEmpty()) {
                     this.addParameter(parameter);
                     //Maybe it was an array:
                     if (parameter.endsWith("[]")) {
                         parameter = parameter.substring(0, parameter.length() - 2);
+                        params.setName(parameter);
                         Information.getMyself()
-                                .getElements(parameter, null, null, true, "Class")
+                                .getElements(params, this.getPlayground())
                                 .forEachOrdered(this::addReference);
                     }
                 }
@@ -376,7 +386,7 @@ public class MethodObject extends ReferencingElement {
 
     private void fillClass(String className) {
         Information.getMyself().updateElement(this);
-        classObject = (ClassObject) ElementFactory.getOrCreate(className, "Class", null);
+        classObject = (ClassObject) ElementFactory.getOrCreate(className, "Class", null, this.getPlayground());
         classObject.addMethod(this);
         Information.getMyself().updateElement(classObject);
     }
@@ -385,8 +395,11 @@ public class MethodObject extends ReferencingElement {
         Information.getMyself().updateElement(this);
         if (identifier.indexOf(" ") > 0) {
             this.setReturnType(identifier.substring(0, identifier.indexOf(" ")));
+            CommonParameters params = new CommonParameters();
+            params.setName(this.getReturnType());
+            params.setTypes(new String[]{"Class"});
             Information.getMyself()
-                    .getElements(this.getReturnType(), null, null, true, "Class")
+                    .getElements(params, this.getPlayground())
                     .forEach(this::addReference);
         }
     }

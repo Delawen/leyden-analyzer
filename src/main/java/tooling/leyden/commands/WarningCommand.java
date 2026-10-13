@@ -13,11 +13,7 @@ import org.jline.utils.AttributedStyle;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
-import tooling.leyden.aotcache.ClassObject;
-import tooling.leyden.aotcache.Element;
-import tooling.leyden.aotcache.MethodObject;
-import tooling.leyden.aotcache.Warning;
-import tooling.leyden.aotcache.WarningType;
+import tooling.leyden.aotcache.*;
 import tooling.leyden.commands.autocomplete.Identifiers;
 
 @Command(name = "warning", mixinStandardHelpOptions = true, version = "1.0", description = {
@@ -58,6 +54,9 @@ class WarningCommand extends BaseCommand {
         List<Warning> wa = new ArrayList<>();
         wa.addAll(parent.getInformation().getWarnings());
         wa.addAll(parent.getInformation().getAutoWarnings());
+        var playground = Information.getMyself().getPlayground();
+
+        wa.removeIf(w -> !w.isInPlayground(playground));
 
         if (types != null && types.length > 0) {
             wa.removeIf(warning -> Arrays.stream(types).noneMatch(t -> t.equalsIgnoreCase(warning.getType().name())));

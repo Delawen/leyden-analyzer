@@ -13,15 +13,11 @@ import tooling.leyden.commands.autocomplete.WhichRun;
 @Unremovable
 public class ElementRepository implements PanacheRepository<Element> {
 
-    /** Find an element (cached or external) by key and type. */
-    public Optional<Element> findAny(String key, String type) {
-        return find("type = ?1 and name = ?2", type, key).firstResultOptional();
-    }
-
     /** Find an element by its memory address. */
-    public Optional<Element> findByAddress(String address) {
-        return find("address = :address AND type <> :type",
-                Map.of("address", address, "type", "Placeholder"))
+    public Optional<Element> findByAddress(String address, Playground playground) {
+        return find("address = :address AND type <> :type AND playground = :playground",
+                Map.of("address", address, "type", "Placeholder",
+                        "playground", playground))
                 .firstResultOptional();
     }
 
@@ -31,19 +27,16 @@ public class ElementRepository implements PanacheRepository<Element> {
     }
 
     /** All elements in the AOT cache. */
-    public List<Element> findAllCached() {
-        return list("inCache = true");
-    }
-
-    /** All elements NOT in the AOT cache (external). */
-    public List<Element> findAllExternal() {
-        return list("inCache = false");
+    public List<Element> findAllCached(Playground playground) {
+        CommonParameters parameters = new CommonParameters();
+        parameters.setUse(CommonParameters.ElementsToUse.cached);
+        return findByParameters(parameters, playground);
     }
 
     /** All distinct types among cached elements. */
     public List<String> findAllTypes() {
         return getEntityManager()
-                .createQuery("SELECT DISTINCT e.type FROM Element e WHERE e.inCache = true", String.class)
+                .createQuery("SELECT DISTINCT e.type FROM Element e", String.class)
                 .getResultList();
     }
 
@@ -51,8 +44,9 @@ public class ElementRepository implements PanacheRepository<Element> {
     public List<String> findAllPackages() {
         return getEntityManager()
                 .createQuery(
-                        "SELECT DISTINCT c.packageName FROM ClassObject c WHERE c.inCache = true",
+                        "SELECT DISTINCT c.packageName FROM ClassObject c WHERE playground = :playground",
                         String.class)
+                .setParameter("playground", Information.getMyself().getPlaygroundObject())
                 .getResultList();
     }
 
@@ -60,8 +54,9 @@ public class ElementRepository implements PanacheRepository<Element> {
     public List<String> findAllClassIdentifiers() {
         return getEntityManager()
                 .createQuery(
-                        "SELECT e.name FROM Element e WHERE e.type = 'Class' AND e.inCache = true",
+                        "SELECT e.name FROM Element e WHERE e.type = 'Class' AND playground = :playground",
                         String.class)
+                .setParameter("playground", Information.getMyself().getPlaygroundObject())
                 .getResultList();
     }
 
@@ -79,24 +74,22 @@ public class ElementRepository implements PanacheRepository<Element> {
     public List<String> findHeapRootAddresses() {
         return getEntityManager()
                 .createQuery(
-                        "SELECT e.address FROM Element e WHERE e.isHeapRoot = true AND e.address IS NOT NULL",
+                        "SELECT e.address FROM Element e WHERE e.isHeapRoot = true AND e.address IS NOT NULL AND playground = :playground",
                         String.class)
+                .setParameter("playground", Information.getMyself().getPlaygroundObject())
                 .getResultList();
     }
 
     private void addWhere(StringBuilder where, String s) {
-        if (where.isEmpty()) {
-            where.append(" WHERE ");
-        } else {
-            where.append(" AND ");
-        }
+        where.append(" AND ");
         where.append(s);
     }
 
-    public List<Element> findByParameters(CommonParameters parameters) {
+    public List<Element> findByParameters(CommonParameters parameters, Playground playground) {
         Map<String, Object> params = new HashMap<>();
         StringBuilder where = new StringBuilder("");
-        String select = "SELECT e FROM Element e";
+        String select = "SELECT e FROM Element e WHERE playground = :playground";
+        params.put("playground", playground);
 
         if (parameters.getName() != null && !parameters.getName().isBlank()) {
             addWhere(where, "e.key = :key");
@@ -105,12 +98,7 @@ public class ElementRepository implements PanacheRepository<Element> {
 
         if (parameters.getTypes() != null && parameters.getTypes().length > 0) {
             int i = 0;
-            if (where.isEmpty()) {
-                where.append(" WHERE ");
-            } else {
-                where.append(" AND ");
-            }
-            where.append("(");
+            where.append(" AND (");
             for (String type : parameters.getTypes()) {
                 if (i > 0) {
                     where.append(" OR ");
@@ -122,7 +110,7 @@ public class ElementRepository implements PanacheRepository<Element> {
             where.append(")");
         }
 
-        if (parameters.getUse() != CommonParameters.ElementsToUse.both) {
+        if (parameters.getUse() != null && parameters.getUse() != CommonParameters.ElementsToUse.both) {
             addWhere(where, "e.inCache = :inCache");
             params.put("inCache", parameters.getUse() == CommonParameters.ElementsToUse.cached);
         }
@@ -136,12 +124,7 @@ public class ElementRepository implements PanacheRepository<Element> {
 
         if (packageName != null && packageName.length > 0) {
             int i = 0;
-            if (where.isEmpty()) {
-                where.append(" WHERE ");
-            } else {
-                where.append(" AND ");
-            }
-            where.append("(");
+            where.append(" AND (");
             for (String pn : packageName) {
                 if (i > 0) {
                     where.append(" OR ");
@@ -162,12 +145,7 @@ public class ElementRepository implements PanacheRepository<Element> {
         var excludePackageName = parameters.getExcludePackageName();
         if (excludePackageName != null && excludePackageName.length > 0) {
             int i = 0;
-            if (where.isEmpty()) {
-                where.append(" WHERE ");
-            } else {
-                where.append(" AND ");
-            }
-            where.append("NOT (");
+            where.append(" AND NOT (");
             for (String pn : excludePackageName) {
                 if (i > 0) {
                     where.append(" OR ");
@@ -223,7 +201,7 @@ public class ElementRepository implements PanacheRepository<Element> {
         }
 
         if (parameters.getReferencing() != null) {
-            select = "SELECT e FROM ReferencingElement e JOIN e.references ref ";
+            select = "SELECT e FROM ReferencingElement e JOIN e.references ref WHERE e.playground = :playground";
             addWhere(where, "ref.key = :referencing ");
             params.putIfAbsent("referencing", parameters.getReferencing());
         }
@@ -271,7 +249,7 @@ public class ElementRepository implements PanacheRepository<Element> {
         getEntityManager().flush();
     }
 
-    public void replacePlaceHolders() {
+    public void replacePlaceHolders(Playground playground) {
         flush();
         // Get the rows we need to update
         //The full query with everything at the same time just takes minutes and times out
@@ -279,14 +257,16 @@ public class ElementRepository implements PanacheRepository<Element> {
                 .createNativeQuery(
                         "SELECT DISTINCT placeholder.dbId as placeholderID "
                                 + " FROM Elements placeholder "
-                                + " WHERE placeholder.dtype = 'PlaceHolderElement'")
+                                + " WHERE placeholder.dtype = 'PlaceHolderElement'"
+                                + " AND placeholder.playground_id = :playground")
+                .setParameter("playground", playground.getDbId())
                 .setTimeout(600000)
                 .getResultList();
 
         for (Object row : placeholders) {
             io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
                 var placeholder = Information.getMyself().getByDbId((Long) row);
-                var assetId = Information.getMyself().getByAddress(placeholder.getAddress());
+                var assetId = Information.getMyself().getByAddress(placeholder.getAddress(), playground);
                 if (assetId != null) {
                     getEntityManager()
                             .createNativeQuery(
@@ -310,14 +290,27 @@ public class ElementRepository implements PanacheRepository<Element> {
                 .createNativeQuery(
                         "DELETE FROM element_references "
                                 + "WHERE target_id = ANY"
-                                + "(SELECT e.dbId FROM Elements e WHERE e.dtype = 'PlaceHolderElement') ")
+                                + "(SELECT e.dbId FROM Elements e WHERE e.dtype = 'PlaceHolderElement' "
+                                + " AND playground_id = :playground )")
+                .setParameter("playground", playground.getDbId())
                 .executeUpdate();
 
         // Remove all placeholders elements
         // (which shouldn't have any relationship at this point)
         getEntityManager()
-                .createNativeQuery("DELETE FROM Elements WHERE dtype = 'PlaceHolderElement'")
+                .createNativeQuery("DELETE FROM Elements WHERE dtype = 'PlaceHolderElement'"
+                        + " AND playground_id = :playground")
+                .setParameter("playground", playground.getDbId())
                 .executeUpdate();
+    }
+
+    public void deleteAll(Playground playground) {
+        getEntityManager()
+                .createNativeQuery("DELETE FROM Elements "
+                        + " WHERE playground_id = :playground")
+                .setParameter("playground", playground.getDbId())
+                .executeUpdate();
+        flush();
     }
 
     public void replacePlaceHolder(PlaceHolderElement placeholder, Element asset) {
