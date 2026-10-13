@@ -34,7 +34,7 @@ class ListCommandTest extends DefaultTest {
         aotCacheParser
                 .accept("0x0000000801711668: @@ Method            88 void org.infinispan.xsite.NoOpBackupSender.<clinit>()");
 
-        var detailedCount = Information.getMyself().getDetailedCount();
+        var detailedCount = Information.getMyself().getDetailedCount(aotCacheParser.getPlayground());
         assertTrue(detailedCount.containsKey("Class"));
         assertTrue(detailedCount.containsKey("ConstantPool"));
         assertTrue(detailedCount.containsKey("Method"));

@@ -6,6 +6,7 @@ import org.jline.utils.AttributedStyle;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
+import tooling.leyden.commands.CommonParameters;
 
 /**
  * This element represents an Object of the ConstantPool(Cache) inside the AOT Cache.
@@ -36,8 +37,11 @@ public class ConstantPoolObject extends Element {
 
     public ClassObject getPoolHolder() {
         if (poolHolderKey == null) return null;
+        CommonParameters params = new CommonParameters();
+        params.setName(poolHolderKey);
+        params.setTypes(new String[]{"Class"});
         return (ClassObject) Information.getMyself()
-                .getElements(poolHolderKey, null, null, true, "Class")
+                .getElements(params, this.getPlayground())
                 .findAny().orElse(null);
     }
 

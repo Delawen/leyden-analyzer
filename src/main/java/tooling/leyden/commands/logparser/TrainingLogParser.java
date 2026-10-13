@@ -6,12 +6,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.jline.utils.AttributedString;
 
 import tooling.leyden.aotcache.*;
+import tooling.leyden.commands.CommonParameters;
 import tooling.leyden.commands.LoadFileCommand;
 
 public class TrainingLogParser extends LogParser {
 
     public TrainingLogParser(LoadFileCommand loadFile) {
-        super(loadFile);
+        super(loadFile, Information.getMyself().getPlaygroundObject());
     }
 
     @Override
@@ -55,7 +56,7 @@ public class TrainingLogParser extends LogParser {
     private void processClassLoad(Line line) {
         if (line.message().contains(" source: ")) {
             String className = line.message().substring(0, line.message().indexOf("source: ")).trim();
-            Element e = ElementFactory.getOrCreate(className, "Class", null);
+            Element e = ElementFactory.getOrCreate(className, "Class", null, super.getPlayground());
             e.addSource("Loaded during training from "
                     + line.content().substring(line.content().indexOf("source: ")));
             e.setLoaded(Element.WhichRun.Training);
@@ -239,15 +240,17 @@ public class TrainingLogParser extends LogParser {
 
         io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
             final var className = symbol.getKey().replaceAll("/", ".");
-            var classObj = information.getElements(className, null, null, true,
-                    "Class").findAny();
+            var params = new CommonParameters();
+            params.setName(className);
+            params.setTypes(new String[]{"Class"});
+            var classObj = information.getElements(params, super.getPlayground()).findAny();
             ClassObject classObject;
             if (classObj.isPresent()) {
                 classObject = (ClassObject) classObj.get();
             } else if (className.startsWith("L") && className.endsWith(";") && !className.contains("(")) {
-                classObject = (ClassObject) ElementFactory.getOrCreate(className.substring(1, className.length() - 1), "Class", null);
+                classObject = (ClassObject) ElementFactory.getOrCreate(className.substring(1, className.length() - 1), "Class", null, super.getPlayground());
             } else if (className.contains(".") && !className.contains("(")) {
-                classObject = (ClassObject) ElementFactory.getOrCreate(className, "Class", null);
+                classObject = (ClassObject) ElementFactory.getOrCreate(className, "Class", null, super.getPlayground());
             } else {
                 classObject = null;
             }
@@ -275,18 +278,18 @@ public class TrainingLogParser extends LogParser {
             // If a class already exists with this Symbol, link it. If not, ignore it.
             // We will fill it when an AOT Cache loads, if it loads
             // (maybe it is not even a class, so don't care if this fails)
-            var classObj = information.getElements(symbolName.replaceAll("/", "."), null, null, true,
-                    "Class").findAny();
+            var params = new CommonParameters();
+            params.setName(symbolName.replaceAll("/", "."));
+            params.setUse(CommonParameters.ElementsToUse.both);
+            params.setTypes(new String[] {"Class"});
+            var classObj = information.getElements(params, super.getPlayground()).findAny();
             if (classObj.isPresent()) {
                 referencedSymbol.addReference(classObj.get());
                 classObj.get().addSource("Referenced by " + trimmedMessage + ".");
                 Information.getMyself().updateElement(classObj.get());
             } else if (symbolName.startsWith("L") && symbolName.endsWith(";")) {
-                classObj = this.information.getElements(symbolName.replaceAll("/", ".").substring(1, symbolName.length() - 1),
-                        null,
-                        null,
-                        true,
-                        "Class").findAny();
+                params.setName(symbolName.replaceAll("/", ".").substring(1, symbolName.length() - 1));
+                classObj = this.information.getElements(params, super.getPlayground()).findAny();
                 if (classObj.isPresent()) {
                     referencedSymbol.addReference(classObj.get());
                     classObj.get().addSource("Referenced by " + trimmedMessage + ".");
@@ -309,7 +312,7 @@ public class TrainingLogParser extends LogParser {
         AtomicReference<Element> result = new AtomicReference<>();
 
         io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
-            ReferencingElement symbol = (ReferencingElement) ElementFactory.getOrCreate(symbolName, "Symbol", null);
+            ReferencingElement symbol = (ReferencingElement) ElementFactory.getOrCreate(symbolName, "Symbol", null, super.getPlayground());
 
             symbol.addSource(getSource());
             if (source != null) {
@@ -328,7 +331,7 @@ public class TrainingLogParser extends LogParser {
     private void processSkipping(String message) {
         String[] msg = message.trim().split("\\s+");
         String className = msg[1].replace("/", ".").replace(":", "").trim();
-        final var aClass = ElementFactory.getOrCreate(className, "Class", null);
+        final var aClass = ElementFactory.getOrCreate(className, "Class", null, super.getPlayground());
         aClass.addSource(getSource());
         Information.getMyself().updateElement(aClass);
         information.addWarning(aClass, message, WarningType.CacheCreation);
@@ -340,7 +343,7 @@ public class TrainingLogParser extends LogParser {
             if (className.contains(" ")) {
                 className = className.substring(0, className.indexOf(" "));
             }
-            final var aClass = ElementFactory.getOrCreate(className, "Class", null);
+            final var aClass = ElementFactory.getOrCreate(className, "Class", null, super.getPlayground());
             aClass.addSource(getSource());
             Information.getMyself().updateElement(aClass);
             this.information.addWarning(aClass, trimmedMessage, WarningType.CacheCreation);
@@ -388,7 +391,7 @@ public class TrainingLogParser extends LogParser {
         } else if (trimmedMessage.startsWith("JVM_StartThread() ignored:")) {
             //[info][aot       ] JVM_StartThread() ignored: java.lang.ref.Reference$ReferenceHandler
             var className = trimmedMessage.substring(trimmedMessage.indexOf("ignored: ") + 9);
-            final var aClass = ElementFactory.getOrCreate(className, "Class", null);
+            final var aClass = ElementFactory.getOrCreate(className, "Class", null, super.getPlayground());
             aClass.addSource(getSource());
             Information.getMyself().updateElement(aClass);
             this.information.addWarning(aClass, trimmedMessage, WarningType.CacheCreation);

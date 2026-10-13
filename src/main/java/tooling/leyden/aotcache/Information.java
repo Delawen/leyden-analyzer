@@ -21,7 +21,10 @@ import tooling.leyden.commands.CommonParameters;
 @Unremovable
 public class Information {
 
+    private Playground currentPlayground = null;
+
     private ElementRepository elementRepository;
+    private PlaygroundRepository playgroundRepository;
     private ConfigurationRepository configurationRepository;
     private StatisticRepository statisticRepository;
 
@@ -46,6 +49,7 @@ public class Information {
     }
 
     public Information() {
+        io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> changePlayground("default"));
     }
 
     private ElementRepository elementRepository() {
@@ -59,6 +63,11 @@ public class Information {
         if (e == null){
             return e;
         }
+
+        if (e.getPlayground() == null) {
+            e.setPlayground(Information.getMyself().getPlaygroundObject());
+        }
+
         if (e.getDbId() == null) {
             elementRepository().getEntityManager().persist(e);
         } else {
@@ -73,6 +82,13 @@ public class Information {
             configurationRepository = lookupRepository(ConfigurationRepository.class);
         }
         return configurationRepository;
+    }
+
+    private PlaygroundRepository playgroundRepository() {
+        if (playgroundRepository == null) {
+            playgroundRepository = lookupRepository(PlaygroundRepository.class);
+        }
+        return playgroundRepository;
     }
 
     private StatisticRepository statisticRepository() {
@@ -93,16 +109,22 @@ public class Information {
         return configurationRepository().findAll().list();
     }
     public Configuration getConfiguration(String key, String defaultValue) {
-        return configurationRepository().findByName(key).orElseGet(() -> new Configuration(key, defaultValue));
+        return configurationRepository().findByName(key)
+                .orElseGet(() -> new Configuration(key, defaultValue, getPlaygroundObject()));
     }
 
     public void update(Configuration config) {
+        if (config.getPlayground() == null) {
+            config.setPlayground(getPlaygroundObject());
+        }
         configurationRepository().getEntityManager().merge(config);
     }
 
     public void update(Statistic stat) {
+        if (stat.getPlayground() == null) {
+            stat.setPlayground(getPlaygroundObject());
+        }
         configurationRepository().getEntityManager().merge(stat);
-        statisticRepository().getEntityManager().flush();
     }
 
     public void incrementStatistic(String key) {
@@ -110,7 +132,7 @@ public class Information {
     }
 
     public synchronized Statistic getStatistic(String key, Integer defaultValue) {
-        statisticRepository().createStatistic(key);
+        statisticRepository().createStatistic(key, defaultValue);
         return statisticRepository().findByName(key).get();
     }
 
@@ -151,18 +173,40 @@ public class Information {
         this.warnings.add(new Warning(element, reason, warningType));
     }
 
+    public void clearHeapRoots() {
+        heapRootAddresses.clear();
+        heapRoot = null;
+    }
+
+    public void clear(String playground_name) {
+
+        io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> {
+            var playground = Information.getMyself().playgroundRepository().find("identifier", playground_name).firstResultOptional();
+            if (playground.isPresent()) {
+                elementRepository().deleteAll(playground.get());
+                configurationRepository().deleteAll(playground.get());
+                statisticRepository().deleteAll(playground.get());
+                playgroundRepository().deleteById(playground.get().getDbId());
+            }
+            warnings.removeIf(w -> w.isInPlayground(playground_name));
+            autoWarnings.removeIf(w -> w.isInPlayground(playground_name));
+            if (playground_name.equalsIgnoreCase(this.getPlayground())) {
+                changePlayground("default");
+            }
+        });
+    }
+
     public void clear() {
 
         io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> {
             elementRepository().deleteAll();
             configurationRepository().deleteAll();
             statisticRepository().deleteAll();
-            flush();
+            playgroundRepository().deleteAll();
+            changePlayground("default");
 
             warnings.clear();
             autoWarnings.clear();
-            heapRootAddresses.clear();
-            heapRoot = null;
         });
     }
 
@@ -174,26 +218,12 @@ public class Information {
         return getElements(parameters).findAny().isPresent();
     }
 
-    public Element getByAddress(String address) {
-        return elementRepository().findByAddress(address).orElse(null);
+    public Element getByAddress(String address, Playground playground) {
+        return elementRepository().findByAddress(address, playground).orElse(null);
     }
 
     public Element getByDbId(Long dbId) {
         return elementRepository().findByDbId(dbId).orElse(null);
-    }
-
-    public Stream<Element> getElements(String key, String[] packageName, String[] excludePackageName,
-                                       Boolean includeExternalElements, String... type) {
-        CommonParameters parameters = new CommonParameters();
-        parameters.setName(key);
-        parameters.setPackageName(packageName);
-        parameters.setExcludePackageName(excludePackageName);
-        parameters.setTypes(type);
-        parameters.setUse(includeExternalElements
-                ? CommonParameters.ElementsToUse.both
-                : CommonParameters.ElementsToUse.cached);
-
-        return getElements(parameters);
     }
 
     public Future<Stream<Element>> getFutureElements(CommonParameters parameters) {
@@ -205,7 +235,11 @@ public class Information {
     }
 
     public Stream<Element> getElements(CommonParameters parameters) {
-        return elementRepository().findByParameters(parameters).stream();
+        return getElements(parameters, Information.getMyself().getPlaygroundObject());
+    }
+
+    public Stream<Element> getElements(CommonParameters parameters, Playground playground) {
+        return elementRepository().findByParameters(parameters, playground).stream();
     }
 
     public static Stream<Element> filterByParams(String[] packageName,
@@ -381,8 +415,12 @@ public class Information {
         return autoWarnings;
     }
 
+    public Collection<Element> getAll(Playground playground) {
+        return elementRepository().findAllCached(playground);
+    }
+
     public Collection<Element> getAll() {
-        return elementRepository().findAllCached();
+        return elementRepository().findAllCached(getPlaygroundObject());
     }
 
     public List<String> getAllTypes() {
@@ -413,27 +451,30 @@ public class Information {
     }
 
     public long getCount() {
-        return elementRepository().count();
+        return elementRepository().count(
+                "SELECT e FROM Element e WHERE playground = :playground",
+                Map.of("playground", currentPlayground));
     }
 
     public long getPackagesCount() {
-        return elementRepository().count("SELECT DISTINCT e.packageName FROM Element e");
+        return elementRepository().count(
+                "SELECT DISTINCT e.packageName FROM Element e WHERE playground = :playground",
+                Map.of("playground", currentPlayground));
     }
 
     public long getTypesCount() {
-        CriteriaBuilder cb = elementRepository().getEntityManager()
-                .getCriteriaBuilder();
-        CriteriaQuery<Long> query = cb.createQuery(Long.class);
-        Root<Element> root = query.from(Element.class);
-        query.select(cb.countDistinct(root.get("type")));
-        TypedQuery<Long> typedQuery = elementRepository().getEntityManager().createQuery(query);
-        return typedQuery.getSingleResult();
+        return elementRepository().count(
+                "SELECT DISTINCT e.type FROM Element e WHERE playground = :playground",
+                Map.of("playground", currentPlayground));
     }
 
-    public Map<String, Long> getDetailedCount() {
+    public Map<String, Long> getDetailedCount(Playground playground) {
         var res = new HashMap<String, Long>();
         var list = elementRepository().getEntityManager()
-                .createQuery("SELECT e.type, Count(*) as count FROM Element e GROUP BY type")
+                .createQuery("SELECT e.type, Count(*) as count FROM Element e "
+                        + " WHERE playground = :playground "
+                        + "GROUP BY type")
+                .setParameter("playground", playground)
                 .getResultList();
         for (Object o : list) {
             var data = (Object[]) o;
@@ -450,6 +491,16 @@ public class Information {
 
     public Element refresh(Element re) {
         return elementRepository().findById(re.getDbId());
+    }
+
+    public Playground refresh(Playground p) {
+        if (p != null && p.getDbId() == null) {
+            playgroundRepository().persist(p);
+        } else if (p != null) {
+            p = playgroundRepository().findById(p.getDbId());
+        }
+
+        return p;
     }
 
     public void addRelationship(ReferencingElement ref, Element e) {
@@ -474,8 +525,8 @@ public class Information {
         elementRepository().addSource(e.getDbId(), source);
     }
 
-    public void replacePlaceHolders() {
-        elementRepository().replacePlaceHolders();
+    public void replacePlaceHolders(Playground playground) {
+        elementRepository().replacePlaceHolders(playground);
     }
 
     public PlaceHolderElement getPlaceholder(String address) {
@@ -495,5 +546,37 @@ public class Information {
 
     public void removePlaceholder(String address) {
         this.placeholders.remove(address);
+    }
+
+    public String getPlayground() {
+        return this.currentPlayground.getIdentifier();
+    }
+    
+    public Playground getPlayground(String identifier) {
+        return this.playgroundRepository().findByIdentifier(identifier).orElse(null);
+    }
+    public List<String> getPlaygrounds() {
+        return this.playgroundRepository().findAll().stream().map(p -> p.getIdentifier()).toList();
+    }
+
+    public Playground getPlaygroundObject() {
+        io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(
+                () -> this.currentPlayground = refresh(this.currentPlayground));
+        return this.currentPlayground;
+    }
+
+    public void changePlayground(String identifier) {
+        io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> {
+            var pl = playgroundRepository().findByIdentifier(identifier);
+            if (pl.isEmpty()) {
+                var p = new Playground();
+                p.setIdentifier(identifier);
+                playgroundRepository().getEntityManager().persist(p);
+                playgroundRepository().flush();
+                this.currentPlayground = p;
+            } else {
+                this.currentPlayground = pl.get();
+            }
+        });
     }
 }

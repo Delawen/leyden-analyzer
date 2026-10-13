@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import tooling.leyden.aotcache.Information;
+import tooling.leyden.aotcache.Playground;
 import tooling.leyden.commands.LoadFileCommand;
 
 /**
@@ -14,8 +16,8 @@ public abstract class LogParser extends Parser {
     final Pattern linePattern = Pattern
             .compile("(?<timestamp>\\[(?:\\d|,)+s\\])?\\[(?<level>\\w+)\\s*\\]\\[(?<tags>[^,\\]\\s]+(,[^,\\]\\s]+)*)\\s*\\](?<message>.*)");
 
-    public LogParser(LoadFileCommand loadFile) {
-        super(loadFile);
+    public LogParser(LoadFileCommand loadFile, Playground playground) {
+        super(loadFile, playground);
     }
 
     @Override

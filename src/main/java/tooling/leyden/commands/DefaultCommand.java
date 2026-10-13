@@ -23,6 +23,7 @@ import tooling.leyden.aotcache.Information;
                         LoadFileCommand.class,
                         MethodCommand.class,
                         PicocliCommands.ClearScreen.class,
+                        PlaygroundCommand.class,
                         TreeCommand.class,
                         CommandLine.HelpCommand.class })
 public class DefaultCommand implements Runnable {

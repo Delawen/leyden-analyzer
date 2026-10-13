@@ -55,7 +55,7 @@ public class NMethodObject extends CodeObject {
         // java.math.BigInteger.subtract(Ljava/math/BigInteger;)Ljava/math/BigInteger;
         // java.math.BigInteger java.math.BigInteger.subtract(java.math.BigInteger)
         String methodIdentifier = returnType + " " + signature + "(" + parameters + ")";
-        this.method = (MethodObject) ElementFactory.getOrCreate(methodIdentifier, "Method", null);
+        this.method = (MethodObject) ElementFactory.getOrCreate(methodIdentifier, "Method", null, this.getPlayground());
         this.addReference(this.getMethod());
 
         //Search for the adapter, which should come first on the code cache

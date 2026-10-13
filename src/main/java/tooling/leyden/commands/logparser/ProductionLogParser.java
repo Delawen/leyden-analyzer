@@ -1,12 +1,13 @@
 package tooling.leyden.commands.logparser;
 
 import tooling.leyden.aotcache.*;
+import tooling.leyden.commands.CommonParameters;
 import tooling.leyden.commands.LoadFileCommand;
 
 public class ProductionLogParser extends LogParser {
 
     public ProductionLogParser(LoadFileCommand loadFile) {
-        super(loadFile);
+        super(loadFile, Information.getMyself().getPlaygroundObject());
     }
 
     @Override
@@ -52,11 +53,14 @@ public class ProductionLogParser extends LogParser {
             String className = line.message().substring(0, line.message().indexOf("source: ")).trim();
             Element e;
             if (line.message().indexOf("source: shared objects file") > 0) {
-                var classes = information.getElements(className, null, null, true, "Class").findAny();
+                var params = new CommonParameters();
+                params.setName(className);
+                params.setTypes(new String[]{"Class"});
+                var classes = information.getElements(params, super.getPlayground()).findAny();
                 //WARNING: create should be covered by the aot map file
                 //we are assuming no aot map file was loaded at this point
                 //so we create a basic placeholder
-                e = classes.orElseGet(() -> ElementFactory.getOrCreate(className, "Class", null));
+                e = classes.orElseGet(() -> ElementFactory.getOrCreate(className, "Class", null, super.getPlayground()));
                 information.incrementStatistic("[LOG] Classes loaded from AOT Cache");
                 if (className.contains("$$Lambda/")) {
                     //This is a lambda
@@ -66,7 +70,7 @@ public class ProductionLogParser extends LogParser {
 
             } else {
                 // else this wasn't loaded from the aot cache
-                e = ElementFactory.getOrCreate(className, "Class", null);
+                e = ElementFactory.getOrCreate(className, "Class", null, super.getPlayground());
                 e.addSource(getSource());
                 if (className.contains("$$Lambda/")) {
                     information.incrementStatistic("[LOG] Lambda Methods not loaded from AOT Cache");

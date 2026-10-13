@@ -8,10 +8,12 @@ import java.util.List;
 import java.util.regex.Matcher;
 
 import org.hibernate.Hibernate;
+import org.hibernate.type.descriptor.java.CalendarTimeJavaType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.junit.QuarkusTest;
+import tooling.leyden.QuarkusPicocliLineApp;
 import tooling.leyden.aotcache.*;
 import tooling.leyden.commands.CommonParameters;
 import tooling.leyden.commands.DefaultTest;
@@ -33,6 +35,17 @@ class AOTCacheParserTest extends DefaultTest {
         aotCacheParser = new AOTMapParser(loadFile);
     }
 
+
+//    @Test
+//    void acceptExternalMap() throws Exception {
+//        final var aotCache = getDefaultCommand().getInformation();
+//        getSystemRegistry().execute("load aotCache ../cache-or-not/target/aot.map" );
+//        while (QuarkusPicocliLineApp.loadingFiles.get() > 0){
+//            Thread.sleep(500);
+//        }
+//        assertFalse(aotCache.getAll().isEmpty());
+//    }
+
     @Test
     void accept() throws Exception {
         File file = new File(getClass().getResource("aot.map").getPath());
@@ -53,18 +66,26 @@ class AOTCacheParserTest extends DefaultTest {
                         "We shouldn't have more than one source here " + e.getSources().stream().reduce((s, s2) -> s + ", " + s2));
             }
         }
-
-        assertEquals(655, aotCache.getElements(null, null, null, false, "Symbol").count());
-        assertEquals(114, aotCache.getElements(null, null, null, false, "ConstantPool").count());
-        assertEquals(494 + 5, aotCache.getElements(null, null, null, true, "Class").count());
-        assertEquals(5927, aotCache.getElements(null, null, null, false, "Method").count());
-        assertEquals(1385, aotCache.getElements(null, null, null, false, "ConstMethod").count());
+        CommonParameters params = new CommonParameters();
+        params.setTypes(new String[]{"Symbol"});
+        params.setUse(CommonParameters.ElementsToUse.cached);
+        assertEquals(655, aotCache.getElements(params).count());
+        params.setTypes(new String[]{"ConstantPool"});
+        assertEquals(114, aotCache.getElements(params).count());
+        params.setTypes(new String[]{"Class"});
+        params.setUse(CommonParameters.ElementsToUse.both);
+        assertEquals(494 + 5, aotCache.getElements(params).count());
+        params.setTypes(new String[]{"Method"});
+        assertEquals(5927, aotCache.getElements(params).count());
+        params.setTypes(new String[]{"ConstMethod"});
+        assertEquals(1385, aotCache.getElements(params).count());
     }
 
     @Test
     void acceptMiscData() {
+        aotCacheParser.updatePlayground();
         aotCacheParser.accept("0x00000008049a8410: @@ Misc data 1985520 bytes");
-        Element e = information.getByAddress("0x00000008049a8410");
+        Element e = information.getByAddress("0x00000008049a8410", aotCacheParser.getPlayground());
         assertNotNull(e);
         assertEquals("Misc-data", e.getType());
         assertEquals(1985520, e.getSize());
@@ -73,14 +94,15 @@ class AOTCacheParserTest extends DefaultTest {
 
     @Test
     void acceptObjectsWithReferences() {
+        aotCacheParser.updatePlayground();
         io.quarkus.narayana.jta.QuarkusTransaction.begin();
-        var classObject = ElementFactory.getOrCreate("java.lang.Float", "Class", null);
+        var classObject = ElementFactory.getOrCreate("java.lang.Float", "Class", null, Information.getMyself().getPlaygroundObject());
         information.addAOTCacheElement(classObject, "test");
 
-        classObject = ElementFactory.getOrCreate("java.lang.String", "Class", null);
+        classObject = ElementFactory.getOrCreate("java.lang.String", "Class", null, Information.getMyself().getPlaygroundObject());
         information.addAOTCacheElement(classObject, "test");
 
-        classObject = ElementFactory.getOrCreate("java.lang.String$CaseInsensitiveComparator", "Class", null);
+        classObject = ElementFactory.getOrCreate("java.lang.String$CaseInsensitiveComparator", "Class", null, Information.getMyself().getPlaygroundObject());
         information.addAOTCacheElement(classObject, "test");
         io.quarkus.narayana.jta.QuarkusTransaction.commit();
 
@@ -92,8 +114,13 @@ class AOTCacheParserTest extends DefaultTest {
         aotCacheParser.accept("0x00000000ffd07d48: @@ Object (0xffd07d48) java.lang.String \"    \"");
 
         assertEquals(9, information.getAll().size());
-        final var objects = information.getElements(null, null, null, false, "Object").toList();
-        assertEquals(6, information.getElements(null, null, null, false, "Object").count());
+
+        CommonParameters params = new CommonParameters();
+        params.setTypes(new String[]{"Object"});
+        params.setUse(CommonParameters.ElementsToUse.cached);
+
+        final var objects = information.getElements(params).toList();
+        assertEquals(6, objects.size());
         for (Element e : objects) {
             assertInstanceOf(ReferencingElement.class, e);
             ReferencingElement re = (ReferencingElement) e;
@@ -107,24 +134,31 @@ class AOTCacheParserTest extends DefaultTest {
 
     @Test
     void acceptSymbol() {
+        aotCacheParser.updatePlayground();
         aotCacheParser.accept("0x0000000800dae648: @@ Class             616 java.security.InvalidAlgorithmParameterException");
         aotCacheParser.accept("0x00000008020acbe8: @@ Symbol            56 java/security/InvalidAlgorithmParameterException");
         aotCacheParser.accept("0x000000080225a980: @@ Symbol            56 Ljava/security/InvalidAlgorithmParameterException;");
 
         assertEquals(3, information.getAll().size());
-        assertEquals(2, information.getElements(null, null, null, false, "Symbol").count());
-        assertEquals(1, information.getElements(null, null, null, false, "Class").count());
-        for (Element e : information.getElements(null, null, null, false, "Symbol").toList()) {
+        CommonParameters params = new CommonParameters();
+        params.setTypes(new String[]{"Symbol"});
+        params.setUse(CommonParameters.ElementsToUse.cached);
+        var symbols = information.getElements(params).toList();
+        assertEquals(2, symbols.size());
+        for (Element e : symbols) {
             assertInstanceOf(ReferencingElement.class, e);
             assertEquals(1, ((ReferencingElement) e).getReferences().size());
         }
-        ClassObject classObject = (ClassObject) information.getElements(null, null, null, false, "Class").findAny().get();
+        params.setTypes(new String[]{"Class"});
+        assertEquals(1, information.getElements(params).count());
+        ClassObject classObject = (ClassObject) information.getElements(params).findAny().get();
         assertEquals(2, classObject.getReferences().size());
 
     }
 
     @Test
     void acceptObjectsWithExplicitReference() {
+        aotCacheParser.updatePlayground();
 
         aotCacheParser.accept("0x0000000803459784: @@ Class             536 java.lang.String");
         aotCacheParser.accept("0x0000000801de8110: @@ Symbol            24 java/lang/String");
@@ -181,30 +215,36 @@ class AOTCacheParserTest extends DefaultTest {
         aotCacheParser.accept("0x00000000ffefd1e8: @@ Object (0xffefd1e8) java.lang.Class Lsun/util/locale/BaseLocale;");
         aotCacheParser.accept("0x00000000ffefd288: @@ Object (0xffefd288) java.lang.Class [Lsun/util/locale/BaseLocale;");
 
-        assertEquals(2, information.getElements(null, null, null, false, "ConstantPool").count());
-        assertTrue(information.getElements(null, null, null, false, "ConstantPool")
+        CommonParameters params = new CommonParameters();
+        params.setUse(CommonParameters.ElementsToUse.cached);
+        params.setTypes(new String[]{"ConstantPool"});
+        assertEquals(2, information.getElements(params).count());
+        assertTrue(information.getElements(params)
                 .allMatch(cp -> ((ConstantPoolObject) cp).getConstantPoolCacheAddress() != null));
 
-        assertEquals(20, information.getElements(null, null, null, false, "Symbol").count());
-        assertEquals(8, information.getElements(null, null, null, false, "Object").count());
+        params.setTypes(new String[]{"Symbol"});
+        assertEquals(20, information.getElements(params).count());
+        params.setTypes(new String[]{"Object"});
+        assertEquals(8, information.getElements(params).count());
 
-        for (Element e : information.getElements(null, null, null, false,
-                "Object").toList()) {
+        params.setTypes(new String[]{"Object"});
+        for (Element e : information.getElements(params).toList()) {
             assertInstanceOf(ReferencingElement.class, e);
             assertFalse(((ReferencingElement) e).getReferences().isEmpty(), e + " should have at least a reference");
         }
 
-        assertEquals(3 + 1, information.getElements(null, null, null, false, "Class").count());
-        information.getElements(null, null, null, false, "Class")
-                .noneMatch(c -> ((ClassObject) c).getReferences().isEmpty());
+        params.setTypes(new String[]{"Class"});
+        assertEquals(3 + 1, information.getElements(params).count());
+        information.getElements(params).noneMatch(c -> ((ClassObject) c).getReferences().isEmpty());
 
-        //Make sure we didn'0t create unexpected assets in the cache:
+        //Make sure we didn't create unexpected assets in the cache:
         assertEquals(2 + 20 + 8 + 3 + 1, information.getAll().size());
 
     }
 
     @Test
     void acceptMethodDataAndMethodCounters() {
+        aotCacheParser.updatePlayground();
 
         aotCacheParser.accept("0x0000000800772d58: @@ Class             528 java.lang.Object");
         aotCacheParser.accept("0x0000000800799620: @@ Class             528 jdk.internal.misc.CDS");
@@ -242,13 +282,17 @@ class AOTCacheParserTest extends DefaultTest {
         aotCacheParser.accept(
                 "0x0000000801f898d8: @@ MethodCounters    64 java.util.List java.lang.VersionProps.parseVersionNumbers(java.lang.String)");
 
-        var elements = information.getElements(null, null, null, false, "MethodData").toList();
+        var params = new CommonParameters();
+        params.setUse(CommonParameters.ElementsToUse.cached);
+        params.setTypes(new String[]{"MethodData"});
+        var elements = information.getElements(params).toList();
         assertEquals(9, elements.size());
         for (Element e : elements) {
             assertFalse(((ReferencingElement) e).getReferences().isEmpty());
         }
 
-        elements = information.getElements(null, null, null, false, "MethodCounters").toList();
+        params.setTypes(new String[]{"MethodCounters"});
+        elements = information.getElements(params).toList();
         assertEquals(7, elements.size());
         assertTrue(elements.stream()
                 //hibernate sometimes return proxies....
@@ -256,13 +300,15 @@ class AOTCacheParserTest extends DefaultTest {
                 .noneMatch(
                 e ->((ReferencingElement) e).getReferences().isEmpty()));
 
-        elements = information.getElements("void jdk.internal.misc.CDS.keepAlive(java.lang.Object)",
-                null, null, false, "Method").toList();
+        params.setName("void jdk.internal.misc.CDS.keepAlive(java.lang.Object)");
+        params.setTypes(new String[]{"Method"});
+        elements = information.getElements(params).toList();
         var method = elements.getFirst();
         assertNotNull(method.getClass());
         assertEquals("jdk.internal.misc.CDS", ((MethodObject) method).getClassObject().getKey());
-        elements = information.getElements("void jdk.internal.misc.CDS.keepAlive(java.lang.Object)",
-                null, null, false, "ConstMethod", "MethodData", "MethodCounters").toList();
+        params.setName("void jdk.internal.misc.CDS.keepAlive(java.lang.Object)");
+        params.setTypes(new String[]{"ConstMethod", "MethodData", "MethodCounters"});
+        elements = information.getElements(params).toList();
 
         assertEquals(3, elements.size());
         assertTrue(elements.stream()
@@ -274,6 +320,7 @@ class AOTCacheParserTest extends DefaultTest {
 
     @Test
     void acceptLambda() {
+        aotCacheParser.updatePlayground();
         aotCacheParser.accept("0x0000000800ede8d0: @@ Class             1248 sun.security.pkcs11.SunPKCS11");
         aotCacheParser.accept("0x00000008019c1890: @@ Class             584 sun.security.pkcs11.SunPKCS11$$Lambda/0x8000000cf");
         aotCacheParser.accept(
@@ -281,14 +328,21 @@ class AOTCacheParserTest extends DefaultTest {
         aotCacheParser.accept(
                 "0x00000008019c1be0: @@ Method            88 java.lang.Object sun.security.pkcs11.SunPKCS11$$Lambda/0x8000000cf.apply(java.lang.Object)");
 
-        var sunPKCS = information.getElements("sun.security.pkcs11.SunPKCS11", null, null, false, "Class").toList();
-        var lambdaClass = information
-                .getElements("sun.security.pkcs11.SunPKCS11$$Lambda/0x8000000cf", null, null, false, "Class").toList();
+        var params = new CommonParameters();
+        params.setName("sun.security.pkcs11.SunPKCS11");
+        params.setTypes(new String[]{"Class"});
+        params.setUse(CommonParameters.ElementsToUse.cached);
+        var sunPKCS = information.getElements(params).toList();
+
+        params.setName("sun.security.pkcs11.SunPKCS11$$Lambda/0x8000000cf");
+        var lambdaClass = information.getElements(params).toList();
         assertFalse(lambdaClass.isEmpty());
         ReferencingElement lambda = (ReferencingElement) lambdaClass.getFirst();
         assertEquals(3, lambda.getReferences().size());
         assertTrue(lambda.getReferences().contains(sunPKCS.getFirst()));
-        var methods = information.getElements(null, null, null, false, "Method").toList();
+        params.setName(null);
+        params.setTypes(new String[]{"Method"});
+        var methods = information.getElements(params).toList();
         for (Element method : methods) {
             assertEquals(lambda, ((MethodObject) method).getClassObject());
         }
@@ -296,6 +350,7 @@ class AOTCacheParserTest extends DefaultTest {
 
     @Test
     void acceptTrainingData() {
+        aotCacheParser.updatePlayground();
         aotCacheParser.accept("0x0000000800ede8d0: @@ Class             1248 java.util.logging.LogManager");
         aotCacheParser.accept("0x0000000801bc7e40: @@ KlassTrainingData 40 java.util.logging.LogManager");
         aotCacheParser
@@ -307,7 +362,10 @@ class AOTCacheParserTest extends DefaultTest {
         aotCacheParser.accept(
                 "0x0000000801a23fc8: @@ MethodTrainingData 96 org.apache.logging.log4j.spi.LoggerContext org.apache.logging.log4j.LogManager.getContext(boolean)");
 
-        var klassTrainingData = information.getElements(null, null, null, false, "KlassTrainingData").toList();
+        var params = new CommonParameters();
+        params.setUse(CommonParameters.ElementsToUse.both);
+        params.setTypes(new String[]{"KlassTrainingData"});
+        var klassTrainingData = information.getElements(params).toList();
         assertEquals(2, klassTrainingData.size());
 
         for (Element e : klassTrainingData) {
@@ -318,7 +376,8 @@ class AOTCacheParserTest extends DefaultTest {
             assertEquals(classObj.getKey(), re.getKey());
         }
 
-        var methodTrainingData = information.getElements(null, null, null, false, "MethodTrainingData").toList();
+        params.setTypes(new String[]{"MethodTrainingData"});
+        var methodTrainingData = information.getElements(params).toList();
         assertEquals(1, methodTrainingData.size());
 
         for (Element e : methodTrainingData) {
@@ -330,11 +389,12 @@ class AOTCacheParserTest extends DefaultTest {
         //Now check we don't break on empty class name
         information.clear();
 
+        aotCacheParser.updatePlayground();
         aotCacheParser.accept("0x0000000801d14768: @@ KlassTrainingData 40");
         aotCacheParser.accept("0x0000000801cd0518: @@ MethodTrainingData 96");
 
-        var trainingData = information.getElements(null, null, null, false, "MethodTrainingData",
-                "KlassTrainingData").toList();
+        params.setTypes(new String[]{"MethodTrainingData", "KlassTrainingData"});
+        var trainingData = information.getElements(params).toList();
         assertEquals(2, trainingData.size());
 
         for (Element e : trainingData) {
@@ -345,6 +405,7 @@ class AOTCacheParserTest extends DefaultTest {
 
     @Test
     void acceptCompileTrainingData() {
+        aotCacheParser.updatePlayground();
         aotCacheParser.accept("0x00000008007cd538: @@ Class             1448 java.util.concurrent.ConcurrentHashMap");
         aotCacheParser
                 .accept("0x00000008019d8e00: @@ MethodTrainingData 96 int java.util.concurrent.ConcurrentHashMap.spread(int)");
@@ -363,12 +424,14 @@ class AOTCacheParserTest extends DefaultTest {
         aotCacheParser
                 .accept("0x000000080471b9c8: @@ ConstMethod       88 int java.util.concurrent.ConcurrentHashMap.spread(int)");
 
-        var compileTrainingData = information.getElements(null, null, null, false, "CompileTrainingData").toList();
+        var params = new CommonParameters();
+        params.setTypes(new String[]{"CompileTrainingData"});
+        var compileTrainingData = information.getElements(params).toList();
         assertEquals(2, compileTrainingData.size());
 
-        MethodObject method = (MethodObject) information.getElements("int java.util.concurrent.ConcurrentHashMap.spread(int)",
-                null, null, false, "Method")
-                .findAny().get();
+        params.setTypes(new String[]{"Method"});
+        params.setName("int java.util.concurrent.ConcurrentHashMap.spread(int)");
+        MethodObject method = (MethodObject) information.getElements(params).findAny().get();
         assertEquals(2, method.getCompileTrainingDataElements().size());
         assertNotNull(method.getCompileTrainingData().get(3));
         assertNotNull(method.getCompileTrainingData().get(4));
@@ -382,9 +445,12 @@ class AOTCacheParserTest extends DefaultTest {
         //Now check we don't break on empty class name
         information.clear();
 
+        aotCacheParser.updatePlayground();
         aotCacheParser.accept("0x0000000801cb2438: @@ CompileTrainingData 80");
 
-        var trainingData = information.getElements(null, null, null, true, "CompileTrainingData").toList();
+        params.setName(null);
+        params.setTypes(new String[]{"CompileTrainingData"});
+        var trainingData = information.getElements(params).toList();
         assertEquals(1, trainingData.size());
 
         for (Element e : trainingData) {
@@ -395,6 +461,7 @@ class AOTCacheParserTest extends DefaultTest {
 
     @Test
     void detectClassLoaders() {
+        aotCacheParser.updatePlayground();
         String mapfile = """
                 0x00000008007f4290: @@ Class             688 java.lang.String
                 0x00000008008057c8: @@ Class             560 java.lang.module.ModuleDescriptor
@@ -410,17 +477,19 @@ class AOTCacheParserTest extends DefaultTest {
         BufferedReader reader = new BufferedReader(new StringReader(mapfile));
         reader.lines().forEach(aotCacheParser::accept);
 
-        assertEquals(9, information.getElements(null, null, null, true, "Class").count());
-        assertEquals(4, information.getElements(null, null, null, true, "Class")
-                .filter(e -> ((ClassObject) e).isClassLoader()).count());
+        var params = new CommonParameters();
+        params.setTypes(new String[]{"Class"});
+        assertEquals(9, information.getElements(params).count());
+        assertEquals(4, information.getElements(params).filter(e -> ((ClassObject) e).isClassLoader()).count());
 
-        assertTrue(information.getElements(null, null, null, true, "Class")
+        assertTrue(information.getElements(params)
                 .filter(e -> ((ClassObject) e).isClassLoader())
                 .allMatch(e -> ((ClassObject) e).getPackageName().equalsIgnoreCase("jdk.internal.loader")));
     }
 
     @Test
     void objectBasedDependencyGraph() {
+        aotCacheParser.updatePlayground();
         String mapfile = """
                 0x00000008007f4290: @@ Class             688 java.lang.String
                 0x00000008007eee30: @@ Class             512 [Ljava.lang.Object;
@@ -540,12 +609,14 @@ class AOTCacheParserTest extends DefaultTest {
         BufferedReader reader = new BufferedReader(new StringReader(mapfile));
         reader.lines().forEach(aotCacheParser::accept);
         aotCacheParser.postProcessing();
-        Information.getMyself().flush();
 
-        assertEquals(14, information.getElements(null, null, null, true, "Class").count());
-        assertEquals(11, information.getElements(null, null, null, true, "Object").count());
+        var params = new CommonParameters();
+        params.setTypes(new String[]{"Class"});
+        assertEquals(14, information.getElements(params).count());
+        params.setTypes(new String[]{"Object"});
+        assertEquals(11, information.getElements(params).count());
 
-        Element e = information.getByAddress("0x00000000ffd00000");
+        Element e = information.getByAddress("0x00000000ffd00000", aotCacheParser.getPlayground());
         assertEquals("Object", e.getType());
         assertTrue(e.isHeapRoot());
         assertTrue(((ReferencingElement) e).getReferences().stream()
@@ -553,11 +624,11 @@ class AOTCacheParserTest extends DefaultTest {
         assertTrue(((ReferencingElement) e).getReferences().stream()
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd05450")));
         assertEquals(2, ((ReferencingElement) e).getReferences().size());
-        assertEquals(1, ((ReferencingElement) information.getByAddress("0x0000000802ce4ea8")).getReferences().size());
-        assertTrue(((ReferencingElement) information.getByAddress("0x0000000802ce4ea8")).getReferences().stream()
+        assertEquals(1, ((ReferencingElement) information.getByAddress("0x0000000802ce4ea8", aotCacheParser.getPlayground())).getReferences().size());
+        assertTrue(((ReferencingElement) information.getByAddress("0x0000000802ce4ea8", aotCacheParser.getPlayground())).getReferences().stream()
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008007eee30")));
 
-        e = information.getByAddress("0x00000000ffd05450");
+        e = information.getByAddress("0x00000000ffd05450", aotCacheParser.getPlayground());
         assertEquals("Object", e.getType());
         assertTrue(e.isHeapRoot());
         assertTrue(((ReferencingElement) e).getReferences().stream()
@@ -566,7 +637,7 @@ class AOTCacheParserTest extends DefaultTest {
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffe5d0a0")));
         assertEquals(2, ((ReferencingElement) e).getReferences().size());
 
-        e = information.getByAddress("0x00000000ffd074c0");
+        e = information.getByAddress("0x00000000ffd074c0", aotCacheParser.getPlayground());
         assertEquals("Object", e.getType());
         assertFalse(e.isHeapRoot());
         assertTrue(((ReferencingElement) e).getReferences().stream()
@@ -577,9 +648,9 @@ class AOTCacheParserTest extends DefaultTest {
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd07518")));
         assertTrue(((ReferencingElement) e).getReferences().stream()
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008007f4290")));
-        assertEquals(5, ((ReferencingElement) e).getReferences().size());
+        assertEquals(4, ((ReferencingElement) e).getReferences().size());
 
-        e = information.getByAddress("0x00000000ffd07500");
+        e = information.getByAddress("0x00000000ffd07500", aotCacheParser.getPlayground());
         assertEquals("Object", e.getType());
         assertFalse(e.isHeapRoot());
         assertTrue(((ReferencingElement) e).getReferences().stream()
@@ -588,14 +659,14 @@ class AOTCacheParserTest extends DefaultTest {
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffe61c80")));
         assertEquals(2, ((ReferencingElement) e).getReferences().size());
 
-        e = information.getByAddress("0x00000000ffe61c80");
+        e = information.getByAddress("0x00000000ffe61c80", aotCacheParser.getPlayground());
         assertEquals("Object", e.getType());
         assertFalse(e.isHeapRoot());
         assertTrue(((ReferencingElement) e).getReferences().stream()
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000008007f08c0")));
         assertEquals(1, ((ReferencingElement) e).getReferences().size());
 
-        e = information.getByAddress("0x00000000ffd07ba0");
+        e = information.getByAddress("0x00000000ffd07ba0", aotCacheParser.getPlayground());
         assertEquals("Object", e.getType());
         assertFalse(e.isHeapRoot());
         assertTrue(((ReferencingElement) e).getReferences().stream()
@@ -604,7 +675,7 @@ class AOTCacheParserTest extends DefaultTest {
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd07500")));
         assertEquals(2, ((ReferencingElement) e).getReferences().size());
 
-        e = information.getByAddress("0x00000000ffd07518");
+        e = information.getByAddress("0x00000000ffd07518", aotCacheParser.getPlayground());
         assertEquals("Object", e.getType());
         assertFalse(e.isHeapRoot());
         assertTrue(((ReferencingElement) e).getReferences().stream()
@@ -613,9 +684,9 @@ class AOTCacheParserTest extends DefaultTest {
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd07550")));
         assertTrue(((ReferencingElement) e).getReferences().stream()
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd07ba0")));
-        assertEquals(4, ((ReferencingElement) e).getReferences().size());
+        assertEquals(3, ((ReferencingElement) e).getReferences().size());
 
-        e = information.getByAddress("0x00000000ffd07550");
+        e = information.getByAddress("0x00000000ffd07550", aotCacheParser.getPlayground());
         assertEquals("Object", e.getType());
         assertFalse(e.isHeapRoot());
         assertTrue(((ReferencingElement) e).getReferences().stream()
@@ -624,7 +695,7 @@ class AOTCacheParserTest extends DefaultTest {
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffd07568")));
         assertEquals(2, ((ReferencingElement) e).getReferences().size());
 
-        e = information.getByAddress("0x00000000ffd07568");
+        e = information.getByAddress("0x00000000ffd07568", aotCacheParser.getPlayground());
         assertEquals("Object", e.getType());
         assertFalse(e.isHeapRoot());
         assertTrue(((ReferencingElement) e).getReferences().stream()
@@ -633,7 +704,7 @@ class AOTCacheParserTest extends DefaultTest {
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x00000000ffe5d0a0")));
         assertEquals(2, ((ReferencingElement) e).getReferences().size());
 
-        e = information.getByAddress("0x00000000ffe5d0a0");
+        e = information.getByAddress("0x00000000ffe5d0a0", aotCacheParser.getPlayground());
         assertEquals("Object", e.getType());
         assertFalse(e.isHeapRoot());
         assertFalse(((InstanceObject) e).isAOTinited());
@@ -641,7 +712,7 @@ class AOTCacheParserTest extends DefaultTest {
                 .anyMatch(ref -> ref.getAddress().equalsIgnoreCase("0x000000080081b748")));
         assertEquals(1, ((ReferencingElement) e).getReferences().size());
 
-        e = information.getByAddress("0x00000000ffdf4f38");
+        e = information.getByAddress("0x00000000ffdf4f38", aotCacheParser.getPlayground());
         assertEquals("Object", e.getType());
         assertFalse(e.isHeapRoot());
         assertTrue(((InstanceObject) e).isAOTinited());
@@ -697,6 +768,7 @@ class AOTCacheParserTest extends DefaultTest {
 
     @Test
     void test_jdk_8374549() {
+        aotCacheParser.updatePlayground();
         String mapfile = """
                 0x0000000800e78dd8: @@ CArray            24
                 0x0000000800eaab70: @@ GrowableArray     16 15 (15)
@@ -719,29 +791,29 @@ class AOTCacheParserTest extends DefaultTest {
         param.setTypes(new String[] { "ModuleEntry" });
         assertEquals(2, information.getElements(param).count());
 
-        Element e = information.getByAddress("0x0000000800e78dd8");
+        Element e = information.getByAddress("0x0000000800e78dd8", aotCacheParser.getPlayground());
         assertEquals("CArray", e.getType());
         assertFalse(e.isHeapRoot());
         assertEquals(24, e.getSize());
 
-        e = information.getByAddress("0x0000000800eaab70");
+        e = information.getByAddress("0x0000000800eaab70", aotCacheParser.getPlayground());
         assertEquals("GrowableArray", e.getType());
         assertFalse(e.isHeapRoot());
         assertEquals(16, e.getSize());
 
-        e = information.getByAddress("0x0000000800d13580");
+        e = information.getByAddress("0x0000000800d13580", aotCacheParser.getPlayground());
         assertEquals("PackageEntry", e.getType());
         assertFalse(e.isHeapRoot());
         assertEquals(48, e.getSize());
         assertEquals("jdk.jlink - jdk/tools/jimage", e.getKey());
 
-        e = information.getByAddress("0x00000008001188c8");
+        e = information.getByAddress("0x00000008001188c8", aotCacheParser.getPlayground());
         assertEquals("ModuleEntry", e.getType());
         assertFalse(e.isHeapRoot());
         assertEquals(80, e.getSize());
         assertEquals("0x00000008001188c8", e.getKey());
 
-        e = information.getByAddress("0x0000000800336a58");
+        e = information.getByAddress("0x0000000800336a58", aotCacheParser.getPlayground());
         assertEquals("ModuleEntry", e.getType());
         assertFalse(e.isHeapRoot());
         assertEquals(80, e.getSize());
@@ -751,6 +823,7 @@ class AOTCacheParserTest extends DefaultTest {
 
     @Test
     void codeCache() {
+        aotCacheParser.updatePlayground();
         String mapfile = """
 0x00000008003eb000: @@ Class             1000 java.math.BigInteger
 0x00000008003ed000: @@ Class             520 [Ljava.math.BigInteger;
@@ -799,7 +872,7 @@ class AOTCacheParserTest extends DefaultTest {
         param.setTypes(new String[] { "Adapter" });
         assertEquals(4, information.getElements(param).count());
 
-        NMethodObject e = (NMethodObject) information.getByAddress("0x00007fe0fbff6b70");
+        NMethodObject e = (NMethodObject) information.getByAddress("0x00007fe0fbff6b70", aotCacheParser.getPlayground());
         assertEquals("NMethod", e.getType());
         assertFalse(e.isHeapRoot());
         assertEquals(15469, e.getSize());
@@ -811,7 +884,7 @@ class AOTCacheParserTest extends DefaultTest {
         assertEquals("0x00000008003eecd8", e.getMethod().getAddress());
         assertNull(e.getAdapter());
 
-        e = (NMethodObject) information.getByAddress("0x00007fe0fbfe8890");
+        e = (NMethodObject) information.getByAddress("0x00007fe0fbfe8890", aotCacheParser.getPlayground());
         assertEquals("NMethod", e.getType());
         assertFalse(e.isHeapRoot());
         assertEquals(6552, e.getSize());
@@ -825,7 +898,7 @@ class AOTCacheParserTest extends DefaultTest {
         assertEquals("0x00007fbcf7ffbd98", e.getAdapter().getAddress());
 
 
-        e = (NMethodObject) information.getByAddress("0x00007fe0fbfe28d4");
+        e = (NMethodObject) information.getByAddress("0x00007fe0fbfe28d4", aotCacheParser.getPlayground());
         assertEquals("NMethod", e.getType());
         assertFalse(e.isHeapRoot());
         assertEquals(11533, e.getSize());
@@ -837,7 +910,7 @@ class AOTCacheParserTest extends DefaultTest {
         assertEquals("0x00000008003eecd8", e.getMethod().getAddress());
         assertNull(e.getAdapter());
 
-        e = (NMethodObject) information.getByAddress("0x00007f9ab3fe6c60");
+        e = (NMethodObject) information.getByAddress("0x00007f9ab3fe6c60", aotCacheParser.getPlayground());
         assertEquals("NMethod", e.getType());
         assertFalse(e.isHeapRoot());
         assertEquals(2444, e.getSize());
@@ -854,6 +927,7 @@ class AOTCacheParserTest extends DefaultTest {
 
     @Test
     void stubGenBlobsAndEmbedded() {
+        aotCacheParser.updatePlayground();
         String mapfile = """
               0x00007fd2fbffefe4: @@ StubGenBlob       24452 id=73 initial_blob (stub gen)
               0x00007fd2dbfff05b: @@ EmbeddedStub      276 id=77 blob=73 call_stub_stub (stub gen)
@@ -895,7 +969,7 @@ class AOTCacheParserTest extends DefaultTest {
         param.setTypes(new String[] { "EmbeddedStub" });
         assertEquals(27, information.getElements(param).count());
 
-        CodeObject e = (CodeObject) information.getByAddress("0x00007fd2fbffefe4");
+        CodeObject e = (CodeObject) information.getByAddress("0x00007fd2fbffefe4", aotCacheParser.getPlayground());
         assertEquals("StubGenBlob", e.getType());
         assertFalse(e.isHeapRoot());
         assertEquals(24452, e.getSize());
@@ -905,7 +979,7 @@ class AOTCacheParserTest extends DefaultTest {
         assertEquals(0, e.getReferences().size());
 
         // 0x00007fd2dbfff05b: @@ EmbeddedStub      276 id=77 blob=73 call_stub_stub (stub gen)
-        e = (CodeObject) information.getByAddress("0x00007fd2dbfff05b");
+        e = (CodeObject) information.getByAddress("0x00007fd2dbfff05b", aotCacheParser.getPlayground());
         assertEquals("EmbeddedStub", e.getType());
         assertFalse(e.isHeapRoot());
         assertEquals(276, e.getSize());
@@ -916,7 +990,7 @@ class AOTCacheParserTest extends DefaultTest {
         assertEquals(0, e.getWhoReferencesMe().size());
 
         // 0x00007fd2dbfff010: @@ EmbeddedStub      75 id=78 blob=73 forward_exception_stub (stub gen)
-        e = (CodeObject) information.getByAddress("0x00007fd2dbfff010");
+        e = (CodeObject) information.getByAddress("0x00007fd2dbfff010", aotCacheParser.getPlayground());
         assertEquals("EmbeddedStub", e.getType());
         assertFalse(e.isHeapRoot());
         assertEquals(75, e.getSize());

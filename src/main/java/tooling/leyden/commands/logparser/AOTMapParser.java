@@ -3,21 +3,19 @@ package tooling.leyden.commands.logparser;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jakarta.transaction.Transactional;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStyle;
 
 import tooling.leyden.QuarkusPicocliLineApp;
 import tooling.leyden.StatusMessage;
 import tooling.leyden.aotcache.*;
+import tooling.leyden.commands.CommonParameters;
 import tooling.leyden.commands.LoadFileCommand;
 
 /**
  * This class is capable of parsing the AOT Cache map file.
  */
 public class AOTMapParser extends Parser {
-
-    private String name = null;
 
     // AOT cache map for ab.aot.config
     // AOT cache map for ab.aot
@@ -100,7 +98,7 @@ public class AOTMapParser extends Parser {
     private Element current = null;
 
     public AOTMapParser(LoadFileCommand loadFile) {
-        super(loadFile);
+        super(loadFile, Information.getMyself().getPlaygroundObject());
     }
 
     @Override
@@ -111,28 +109,32 @@ public class AOTMapParser extends Parser {
     @Override
     public void actualPostProcessing() {
         //Due to ordering on the map file, we may have some unresolved placeholder elements
-        Information.getMyself().replacePlaceHolders();
+        Information.getMyself().replacePlaceHolders(super.getPlayground());
+        Information.getMyself().clearHeapRoots();
     }
 
     @Override
     public void actualAccept(String content) {
         Matcher m = regexpNewAOTCache.matcher(content);
         if (m.matches()) {
-            if (name != null) {
-                (new AttributedString("ERROR: Found two AOT Cache maps in the same file. "
-                        + "Going to clean up the stored information and start from scratch to  process "
-                        + m.group("name"),
-                        AttributedStyle.DEFAULT.foreground(AttributedStyle.RED).bold()))
+            var playground = m.group("name");
+            if (!Information.getMyself().getPlayground().equalsIgnoreCase(playground)) {
+                (new AttributedString("Found a new playground on this AOT map file. "
+                        + "Going to change the playground to " + playground,
+                        AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW).bold()))
                         .println(loadFile.getParent().getTerminal());
-                (new AttributedString("ERROR: You must re-load all the log files to get all the information right.",
-                        AttributedStyle.DEFAULT.foreground(AttributedStyle.RED).bold()))
+                (new AttributedString(
+                        "You must make sure no log files were being loaded concurrently to get all the information right.",
+                        AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN).bold()))
                         .println(loadFile.getParent().getTerminal());
-                Information.getMyself().clear();
             }
-            name = m.group("name");
-            (new AttributedString("Parsing AOT Cache Map for " + name,
+            Information.getMyself().changePlayground(playground);
+            (new AttributedString("Parsing AOT Cache Map for " + playground,
                     AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN).bold()))
                     .println(loadFile.getParent().getTerminal());
+            Information.getMyself().getPlaygroundObject().getSources().add(content);
+            Information.getMyself().flush();
+            super.updatePlayground();
             return;
         }
 
@@ -171,7 +173,7 @@ public class AOTMapParser extends Parser {
         Matcher m = array.matcher(content);
         if (m.matches()) {
             ((ReferencingElement) current).addReference(
-                    ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address")));
+                    ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address"), super.getPlayground()));
             return true;
         }
         return false;
@@ -185,7 +187,7 @@ public class AOTMapParser extends Parser {
                 //The references set of current may become huge
                 //let's update manually the database instead of going
                 //through the many-to-many relationship
-                var placeholder = ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address"));
+                var placeholder = ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address"), super.getPlayground());
                 Information.getMyself().addRelationship(re, placeholder);
                 if (!information.isHeapRootSet()) {
                     re = (ReferencingElement) Information.getMyself().refresh(re);
@@ -208,7 +210,7 @@ public class AOTMapParser extends Parser {
         if (m.matches()) {
             if (m.group("address") != null) {
                 ((ReferencingElement) current).addReference(
-                        ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address")));
+                        ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address"), super.getPlayground()));
             }
             return true;
         }
@@ -221,10 +223,13 @@ public class AOTMapParser extends Parser {
             current = Information.getMyself().refresh(current);
             if (m.group("address") != null) {
                 ((ReferencingElement) current).addReference(
-                        ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address")));
+                        ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address"), super.getPlayground()));
             } else {
+                var params = new CommonParameters();
+                params.setName(m.group("classname").replaceAll("/", "."));
+                params.setTypes(new String[] {"Class"});
                 var classObj = information
-                        .getElements(m.group("classname").replaceAll("/", "."), null, null, true, "Class").findAny();
+                        .getElements(params, super.getPlayground()).findAny();
                 classObj.ifPresent(element -> ((ReferencingElement) current).addReference(element));
             }
 
@@ -234,12 +239,18 @@ public class AOTMapParser extends Parser {
                 if (end.startsWith("java.lang.Class")) {
                     if (end.contains(";")) {
                         end = end.substring(16, end.indexOf(";") + 1);
-                        var classObj = information.getElements(end.replaceAll("/", "."), null, null, true, "Symbol").findAny();
+                        var params = new CommonParameters();
+                        params.setName(end.replaceAll("/", "."));
+                        params.setTypes(new String[]{"Symbol"});
+                        var classObj = information.getElements(params, super.getPlayground()).findAny();
                         classObj.ifPresent(element -> ((ReferencingElement) current).addReference(element));
                     } // else it is a primitive
                 } else if (!end.equalsIgnoreCase("null") && !end.contains(" ")) {
                     //It may be that the instance class linked is a subclass of the one defined in m.group("classname")
-                    var classObj = information.getElements(end, null, null, true, "Class").findAny();
+                    var params = new CommonParameters();
+                    params.setName(end);
+                    params.setTypes(new String[]{"Symbol"});
+                    var classObj = information.getElements(params, super.getPlayground()).findAny();
                     classObj.ifPresent(element -> ((ReferencingElement) current).addReference(element));
                 }
             }
@@ -250,7 +261,7 @@ public class AOTMapParser extends Parser {
             if (m.group("address") != null) {
                 current = Information.getMyself().refresh(current);
                 ((ReferencingElement) current).addReference(
-                        ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address")));
+                        ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address"), super.getPlayground()));
             }
             return true;
         }
@@ -262,10 +273,10 @@ public class AOTMapParser extends Parser {
         if (m.matches()) {
             current = Information.getMyself().refresh(current);
             final var address = m.group("address");
-            Element e = information.getByAddress(address);
+            Element e = information.getByAddress(address, super.getPlayground());
             if (e == null) {
                 ((ReferencingElement) current).addReference(
-                        ElementFactory.getOrCreate(address, "PlaceHolder", address));
+                        ElementFactory.getOrCreate(address, "PlaceHolder", address, super.getPlayground()));
             } else if (!e.getKey().equalsIgnoreCase(m.group("class").replaceAll("/", "."))
                     || !e.getType().equalsIgnoreCase("Class")) {
                 (new AttributedString("ERROR: Was expecting class " + m.group(1)
@@ -280,10 +291,10 @@ public class AOTMapParser extends Parser {
             m = klassArray.matcher(content);
             if (m.matches()) {
                 current = Information.getMyself().refresh(current);
-                Element e = information.getByAddress(m.group("address"));
+                Element e = information.getByAddress(m.group("address"), super.getPlayground());
                 if (e == null) {
                     ((ReferencingElement) current).addReference(
-                            ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address")));
+                            ElementFactory.getOrCreate(m.group("address"), "PlaceHolder", m.group("address"), super.getPlayground()));
                 } else {
                     ((ReferencingElement) current).addReference(e);
                 }
@@ -312,7 +323,7 @@ public class AOTMapParser extends Parser {
                 //					0x0000000800831250: @@ Method            88 void java.lang.management.MemoryUsage.<init>(javax.management.openmbean.CompositeData)
                 // 					0x000000080082ac80: @@ Method            88 char example.Class.example(long)
                 //				 	0x0000000800773ea0: @@ Method            88 boolean java.lang.Object.equals(java.lang.Object)
-                element = ElementFactory.getOrCreate(identifier, "Method", address);
+                element = ElementFactory.getOrCreate(identifier, "Method", address, super.getPlayground());
             } else if (type.equalsIgnoreCase("ConstMethod")) {
                 //					 0x0000000804990600: @@ ConstMethod       88 void jdk.internal.access.SharedSecrets.setJavaNetHttpCookieAccess(jdk.internal.access.JavaNetHttpCookieAccess)
                 element = processConstMethod(identifier, address);
@@ -370,13 +381,13 @@ public class AOTMapParser extends Parser {
             //					0x0000000802bf50f0: @@ Annotations       32
             //					0x0000000802bf50f0:   0000000802b719a0 0000000000000000 0000000000000000 0000000000000000   ................................
             ) {
-                element = ElementFactory.getOrCreate(identifier.isBlank() ? address : identifier, type, address);
+                element = ElementFactory.getOrCreate(identifier.isBlank() ? address : identifier, type, address, super.getPlayground());
             } else if (type.equalsIgnoreCase("Misc")) {
                 //					0x00000008049a8410: @@ Misc data 1985520 bytes
                 //					0x00000008049a8410:   0000000000000005 0000000801e563d0 0000000801e56600 0000000801e56420   .........c.......f...... d......
                 //					0x00000008049a8430:   0000000801e543a8 0000000801e548a8 0000000000000005 0000000801e58dc0   .C.......H................
                 type = "Misc-data";
-                element = ElementFactory.getOrCreate(address, type, address);
+                element = ElementFactory.getOrCreate(address, type, address, super.getPlayground());
             } else if (type.equalsIgnoreCase("Object")) {
                 //Instances of classes:
                 //				0x00000000fff69c68: @@ Object (0xfff69c68) [B length: 45
@@ -392,16 +403,16 @@ public class AOTMapParser extends Parser {
                 //0x0000000802309870: @@ ModuleEntry       80 jdk.jpackage
                 //0x00000008001188c8: @@ ModuleEntry       80 unnamed module
                 element = ElementFactory.getOrCreate(
-                        (identifier.equalsIgnoreCase("unnamed module") ? address : identifier), type, address);
+                        (identifier.equalsIgnoreCase("unnamed module") ? address : identifier), type, address, super.getPlayground());
             } else if (type.equalsIgnoreCase("PackageEntry")) {
                 //0x0000000800d13358: @@ PackageEntry      48 jdk.jlink - jdk/tools/jmod
-                element = ElementFactory.getOrCreate(identifier, type, address);
+                element = ElementFactory.getOrCreate(identifier, type, address, super.getPlayground());
             } else if (type.equalsIgnoreCase("GrowableArray")) {
                 //0x0000000800eaab70: @@ GrowableArray     16 15 (15)
-                element = ElementFactory.getOrCreate(address, type, address);
+                element = ElementFactory.getOrCreate(address, type, address, super.getPlayground());
             } else if (type.equalsIgnoreCase("CArray")) {
                 //0x0000000800439bb8: @@ CArray            24
-                element = ElementFactory.getOrCreate(address, type, address);
+                element = ElementFactory.getOrCreate(address, type, address, super.getPlayground());
             }  else if (type.equalsIgnoreCase("Nmethod")) {
                 //0x00007fbcf7fe5500: @@ Nmethod           2788 level=2 id=2906 java.util.concurrent.ConcurrentHashMap$MapEntry.<init>(Ljava/lang/Object;Ljava/lang/Object;Ljava/util/concurrent/ConcurrentHashMap;)V
                 //0x00007fbcf7fe54d4: @@ Nmethod           5552 level=2 id=2905 java.util.concurrent.ConcurrentHashMap$EntryIterator.next()Ljava/util/Map$Entry;
@@ -414,7 +425,7 @@ public class AOTMapParser extends Parser {
                 int id = Integer.valueOf(identifier.substring(3, index));
                 var methodIdentifier = identifier.substring(index + 1);
                 identifier = "(" + compilationLevel + ") " + "[" + id + "] " + methodIdentifier;
-                element = ElementFactory.getOrCreate(identifier, type, address);
+                element = ElementFactory.getOrCreate(identifier, type, address, super.getPlayground());
                 ((NMethodObject)element).setCompilationLevel(compilationLevel);
                 ((NMethodObject)element).setId(id);
                 ((NMethodObject)element).setMethod(methodIdentifier);
@@ -441,7 +452,7 @@ public class AOTMapParser extends Parser {
                 int id = Integer.valueOf(identifier.substring(3, index));
                 identifier = identifier.substring(index + 1);
                 identifier = "[" + id + "] " + identifier;
-                element = ElementFactory.getOrCreate(identifier, type, address);
+                element = ElementFactory.getOrCreate(identifier, type, address, super.getPlayground());
                 ((CodeObject)element).setId(id);
             } else if (type.equalsIgnoreCase("EmbeddedStub")) {
                 // 0x00007fd2dbfff350: @@ EmbeddedStub      612 id=80 blob=73 updateBytesCRC32_stub (stub gen)
@@ -453,16 +464,18 @@ public class AOTMapParser extends Parser {
                 int sgbid = Integer.valueOf(identifier.substring(5, index));
                 identifier = identifier.substring(index + 1);
                 identifier = "[" + id + "] " + identifier;
-                element = ElementFactory.getOrCreate(identifier, type, address);
+                element = ElementFactory.getOrCreate(identifier, type, address, super.getPlayground());
                 ((CodeObject)element).setId(id);
                 //Search for the StubGenBlob associated and reference it
-                this.information.getElements(null, null, null, true, "StubGenBlob")
+                var params = new CommonParameters();
+                params.setTypes(new String[]{"StubGenBlob"});
+                this.information.getElements(params, super.getPlayground())
                         .filter(sgb -> ((CodeObject)sgb).getId().equals(sgbid))
                         .forEach(sgb -> ((CodeObject) element).addReference(sgb));
             }
             else {
                 loadFile.getParent().getOut().println("Unidentified: " + type + " at address " + address);
-                element = ElementFactory.getOrCreate(address, type, address);
+                element = ElementFactory.getOrCreate(address, type, address, super.getPlayground());
             }
             element.setSize(size);
             this.information.addAOTCacheElement(element, getSource());
@@ -480,7 +493,7 @@ public class AOTMapParser extends Parser {
 
     private Element processObject(String identifier, String miniaddress, String address) {
         var id = miniaddress + " " + identifier;
-        InstanceObject element = (InstanceObject) ElementFactory.getOrCreate(id, "Object", address);
+        InstanceObject element = (InstanceObject) ElementFactory.getOrCreate(id, "Object", address, super.getPlayground());
 
         if (identifier.endsWith("(aot-inited)")) {
             element.setAOTinited(true);
@@ -490,16 +503,21 @@ public class AOTMapParser extends Parser {
 
         //Link to corresponding assets:
         final var className = contentParts[0];
+        var params = new CommonParameters();
         if (!identifier.contains(" ") || className.equalsIgnoreCase("java.lang.String")) {
             //0x00000007ffd66460: @@ Object (0xfffacc8c) jdk.internal.misc.Unsafe
             //0x00000007ffc90208: @@ Object (0xfff92041) java.lang.String "javax.crypto.spec.SecretKeySpec"
-            this.information.getElements(className, null, null, true, "Class")
+            params.setName(className);
+            params.setTypes(new String[]{"Class"});
+            this.information.getElements(params, super.getPlayground())
                     .findAny().ifPresent(c -> element.setInstanceOf((ClassObject) c));
         } else if (className.equalsIgnoreCase("java.lang.Class")) {
             //0x00000007ffd02620: @@ Object (0xfffa04c4) java.lang.Class Ljava/lang/ProcessEnvironment;
             //0x00000007ffd026c0: @@ Object (0xfffa04d8) java.lang.Class Ljava/lang/invoke/LambdaForm$DMH+0x800000073; (aot-inited)
             //0x00000007ffd02b10: @@ Object (0xfffa0562) java.lang.Class J
-            this.information.getElements(className, null, null, true, "Class")
+            params.setName(className);
+            params.setTypes(new String[]{"Class"});
+            this.information.getElements(params, super.getPlayground())
                     .findAny().ifPresent(c -> element.setInstanceOf((ClassObject) c));
             var targetClass = contentParts[1];
             if (contentParts[1].contains(";")) {
@@ -507,21 +525,23 @@ public class AOTMapParser extends Parser {
                 targetClass = targetClass.substring(0, contentParts[1].indexOf(";") + 1);
             }
             //This class refers to... the class behind the symbol
-            this.information.getElements(targetClass, null, null, true,
-                    "Symbol").forEach(element::addReference);
+            params.setName(targetClass);
+            params.setTypes(new String[] {"Symbol"});
+            this.information.getElements(params, super.getPlayground()).forEach(element::addReference);
         } else if (className.startsWith("[")) {
             //0x00000007ffd666b0: @@ Object (0xfffaccd6) [Ljava.lang.ref.SoftReference; length: 26
             //0x00000007ffd66728: @@ Object (0xfffacce5) [I length: 0
             var targetClass = className.replaceAll("\\.", "/");
-            this.information.getElements(targetClass.trim(), null, null, true,
-                    "Symbol").forEach(element::addReference);
+            params.setName(targetClass.trim());
+            params.setTypes(new String[] {"Symbol"});
+            this.information.getElements(params, super.getPlayground()).forEach(element::addReference);
         }
 
         return element;
     }
 
     private Element processSymbol(String identifier, String address) {
-        Element element = ElementFactory.getOrCreate(identifier, "Symbol", address);
+        Element element = ElementFactory.getOrCreate(identifier, "Symbol", address, super.getPlayground());
 
         if (identifier.startsWith("(")) {
             // Link method signatures to their corresponding symbols
@@ -532,15 +552,19 @@ public class AOTMapParser extends Parser {
             Matcher m = methodSignature1.matcher(identifier);
             if (m.matches()) {
                 //Link to Symbol for return type
-                this.information.getElements(m.group("return"), null, null, true,
-                        "Symbol").findAny().ifPresent(symbol -> ((ReferencingElement) element).addReference(symbol));
+                var params = new CommonParameters();
+                params.setName(m.group("return"));
+                params.setTypes(new String[] {"Symbol"});
+                this.information.getElements(params, super.getPlayground()).findAny()
+                        .ifPresent(symbol -> ((ReferencingElement) element).addReference(symbol));
 
                 m = listOfClasses.matcher(m.group("parameters"));
                 int start = 0;
                 while (m.find(start)) {
                     var found = m.group("class") + (m.group("type") != null ? m.group("type") : "") + ";";
-                    this.information.getElements(found, null, null, true,
-                            "Symbol").findAny().ifPresent(symbol -> ((ReferencingElement) element).addReference(symbol));
+                    params.setName(found);
+                    this.information.getElements(params, super.getPlayground()).findAny()
+                            .ifPresent(symbol -> ((ReferencingElement) element).addReference(symbol));
                     start = (m.group("type") != null ? m.end("type") : m.end());
                 }
             }
@@ -551,15 +575,19 @@ public class AOTMapParser extends Parser {
                 //Ljava/util/function/Supplier<Ljavax/script/ScriptEngine;>;
                 Matcher m = listOfClasses.matcher(identifier);
                 while (m.find()) {
-                    this.information.getElements(convertSymbolSignatureToClassQualifiedName(m.group("class")), null,
-                            null, true, "Class")
+                    var params = new CommonParameters();
+                    params.setName(convertSymbolSignatureToClassQualifiedName(m.group("class")));
+                    params.setTypes(new String[] {"Class"});
+                    this.information.getElements(params, super.getPlayground())
                             .findAny().ifPresent(classObj -> ((ReferencingElement) element).addReference(classObj));
                 }
             } else {
                 //else 0x0000000803be1968: @@ Symbol            56 java/lang/invoke/LambdaForm$DMH+0x8000000ed
                 //Try to associate it to the corresponding class:
-                this.information.getElements(convertSymbolSignatureToClassQualifiedName(identifier),
-                        null, null, true, "Class")
+                var params = new CommonParameters();
+                params.setName(convertSymbolSignatureToClassQualifiedName(identifier));
+                params.setTypes(new String[] {"Class"});
+                this.information.getElements(params, super.getPlayground())
                         .findAny().ifPresent(classObj -> {
                             ((ReferencingElement) element).addReference(classObj);
                             ((ClassObject) classObj).addReference(element);
@@ -585,9 +613,9 @@ public class AOTMapParser extends Parser {
 
     private Element processMethodDataAndCounter(String identifier, String address, String type) {
         ReferencingElement result = (ReferencingElement) ElementFactory.getOrCreate(identifier.isBlank() ? address : identifier,
-                type, address);
+                type, address, super.getPlayground());
         if (!identifier.isBlank()) {
-            MethodObject method = (MethodObject) ElementFactory.getOrCreate(identifier, "Method", null);
+            MethodObject method = (MethodObject) ElementFactory.getOrCreate(identifier, "Method", null, super.getPlayground());
             result.addReference(method);
 
             if (type.equalsIgnoreCase("MethodData")) {
@@ -604,7 +632,10 @@ public class AOTMapParser extends Parser {
         //Usually we get the ConstantPoolCache before the ConstantPool
         //So this should not find anything
         ConstantPoolObject e = null;
-        var cp = this.information.getElements(identifier, null, null, true, "ConstantPool").findAny();
+        var params = new CommonParameters();
+        params.setName(identifier);
+        params.setTypes(new String[] {"ConstantPool"});
+        var cp = this.information.getElements(params, super.getPlayground()).findAny();
         if (cp.isPresent()) {
             e = (ConstantPoolObject) cp.get();
         }
@@ -621,11 +652,15 @@ public class AOTMapParser extends Parser {
     }
 
     private Element processConstantPool(String identifier, String address) {
-        ConstantPoolObject cp = (ConstantPoolObject) ElementFactory.getOrCreate(identifier, "ConstantPool", address);
+        ConstantPoolObject cp = (ConstantPoolObject) ElementFactory.getOrCreate(identifier, "ConstantPool", address, super.getPlayground());
 
         if (cp.getPoolHolder() == null) {
             //Try to associate it to the corresponding class:
-            var element = this.information.getElements(identifier, null, null, true, "Class").findAny();
+
+            var params = new CommonParameters();
+            params.setName(identifier);
+            params.setTypes(new String[] {"Class"});
+            var element = this.information.getElements(params, super.getPlayground()).findAny();
             element.ifPresent(value -> cp.setPoolHolder((ClassObject) value));
         }
 
@@ -637,10 +672,10 @@ public class AOTMapParser extends Parser {
         //0x0000000801bbd700: @@ KlassTrainingData 40 sun.util.calendar.ZoneInfo
 
         ReferencingElement e = (ReferencingElement) ElementFactory.getOrCreate(identifier.isBlank() ? address : identifier,
-                "KlassTrainingData", address);
+                "KlassTrainingData", address, super.getPlayground());
         //Looking for the Class
         if (!identifier.isBlank()) {
-            ClassObject classObject = (ClassObject) ElementFactory.getOrCreate(identifier, "Class", null);
+            ClassObject classObject = (ClassObject) ElementFactory.getOrCreate(identifier, "Class", null, super.getPlayground());
             classObject.setKlassTrainingData(e);
             e.addReference(classObject);
             classObject.addSource("Referenced from a KlassTrainingData.");
@@ -657,11 +692,11 @@ public class AOTMapParser extends Parser {
         //0x0000000801c4d7a8: @@ MethodTrainingData 96 void java.util.concurrent.atomic.AtomicLong.lazySet(long)
 
         ReferencingElement e = (ReferencingElement) ElementFactory.getOrCreate(identifier.isBlank() ? address : identifier,
-                "MethodTrainingData", address);
+                "MethodTrainingData", address, super.getPlayground());
 
         //Looking for the Method
         if (!identifier.isBlank()) {
-            MethodObject method = (MethodObject) ElementFactory.getOrCreate(identifier, "Method", null);
+            MethodObject method = (MethodObject) ElementFactory.getOrCreate(identifier, "Method", null, super.getPlayground());
 
             e.addReference(method);
             method.setMethodTrainingData(e);
@@ -674,7 +709,7 @@ public class AOTMapParser extends Parser {
         // 0x0000000801a41200: @@ CompileTrainingData 80 3 org.apache.logging.log4j.spi.LoggerContext org.apache.logging.log4j.LogManager.getContext(boolean)
 
         ReferencingElement e = (ReferencingElement) ElementFactory.getOrCreate(content.isBlank() ? address : content,
-                "CompileTrainingData", address);
+                "CompileTrainingData", address, super.getPlayground());
 
         content = content.trim();
 
@@ -682,7 +717,7 @@ public class AOTMapParser extends Parser {
         if (!content.isBlank()) {
             Integer level = Integer.valueOf(content.substring(0, 1));
             String identifier = content.substring(2);
-            MethodObject method = (MethodObject) ElementFactory.getOrCreate(identifier, "Method", null);
+            MethodObject method = (MethodObject) ElementFactory.getOrCreate(identifier, "Method", null, super.getPlayground());
 
             e.addReference(method);
             method.addCompileTrainingData(level, e);
@@ -695,16 +730,19 @@ public class AOTMapParser extends Parser {
 
     private Element processClass(String identifier, String thisSource, String address) {
         // 0x000000080082d490: @@ Class             760 java.lang.StackFrameInfo
-        ClassObject classObject = (ClassObject) ElementFactory.getOrCreate(identifier, "Class", address);
+        ClassObject classObject = (ClassObject) ElementFactory.getOrCreate(identifier, "Class", address, super.getPlayground());
         classObject.addSource(thisSource);
         //If there are Symbols with this exact class name (dotted or slashed), link them:
-        var symbol = this.information.getElements(identifier.replaceAll("\\.", "/"), null, null, true, "Symbol")
-                .findAny();
+        var params = new CommonParameters();
+        params.setName(identifier.replaceAll("\\.", "/"));
+        params.setTypes(new String[] {"Symbol"});
+        var symbol = this.information.getElements(params, super.getPlayground()).findAny();
         if (symbol.isPresent()) {
             symbol.get().addSource(thisSource);
             Information.getMyself().addRelationship(classObject, symbol.get());
         }
-        symbol = this.information.getElements(identifier, null, null, true, "Symbol").findAny();
+        params.setName(identifier);
+        symbol = this.information.getElements(params, super.getPlayground()).findAny();
         if (symbol.isPresent()) {
             symbol.get().addSource(thisSource);
             Information.getMyself().addRelationship(classObject, symbol.get());
@@ -713,7 +751,7 @@ public class AOTMapParser extends Parser {
         if (identifier.contains("$$")) {
             //Lambda class, link to main outer class
             String parent = identifier.substring(0, identifier.indexOf("$$"));
-            classObject.addReference(ElementFactory.getOrCreate(parent, "Class", null));
+            classObject.addReference(ElementFactory.getOrCreate(parent, "Class", null, super.getPlayground()));
         }
         classObject.setLoaded(Element.WhichRun.Training);
 
@@ -721,10 +759,10 @@ public class AOTMapParser extends Parser {
     }
 
     private Element processConstMethod(String identifier, String address) {
-        BasicObject constMethod = (BasicObject) ElementFactory.getOrCreate(identifier, "ConstMethod", address);
+        BasicObject constMethod = (BasicObject) ElementFactory.getOrCreate(identifier, "ConstMethod", address, super.getPlayground());
 
         //Which Method do we belong to?
-        MethodObject method = (MethodObject) ElementFactory.getOrCreate(identifier, "Method", null);
+        MethodObject method = (MethodObject) ElementFactory.getOrCreate(identifier, "Method", null, super.getPlayground());
         method.setConstMethod(constMethod);
 
         return constMethod;

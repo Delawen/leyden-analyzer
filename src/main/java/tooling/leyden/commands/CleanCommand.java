@@ -10,8 +10,16 @@ class CleanCommand extends BaseCommand {
     @CommandLine.ParentCommand
     DefaultCommand parent;
 
+    @CommandLine.Option(names = { "--playground" }, description = {
+            "Only remove information related to this playground" }, paramLabel = "<playground>")
+    String playground;
+
     public void execution() {
-        parent.getInformation().clear();
+        if (playground == null || playground.isBlank()) {
+            parent.getInformation().clear();
+        } else {
+            parent.getInformation().clear(playground);
+        }
         parent.getOut().println("Cleaned the elements. Load again files to start a new analysis.");
     }
 }
