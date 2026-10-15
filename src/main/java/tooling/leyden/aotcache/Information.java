@@ -12,6 +12,11 @@ import io.quarkus.arc.Arc;
 import io.quarkus.arc.Unremovable;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.inject.Singleton;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
+import org.jspecify.annotations.NonNull;
 import tooling.leyden.commands.CommonParameters;
 
 @Singleton
@@ -580,5 +585,9 @@ public class Information {
             }));
         });
         return result.get();
+    }
+
+    public @NonNull Map<Integer, Long> getCompiledLevels(Playground playground) {
+        return elementRepository().getCompiledLevels(playground);
     }
 }
