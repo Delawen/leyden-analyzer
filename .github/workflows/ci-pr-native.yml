@@ -19,6 +19,7 @@ jobs:
         java: # If you change it here, change it below too
           - version: '25'
           - version: '26'
+          - version: '27'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -74,10 +75,11 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         mandrel:
           - java: '25'
-            version: '25.0.2.0-Final'
+            version: '25.0.4.1-Final'
         java: # If you change it here, change it above too
           - version: '25'
           - version: '26'
+          - version: '27'
 
     steps:
       - name: Checkout repository
