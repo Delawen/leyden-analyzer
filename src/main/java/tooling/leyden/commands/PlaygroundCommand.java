@@ -58,60 +58,64 @@ class PlaygroundCommand extends BaseCommand {
                     completionCandidates = Playgrounds.class) String[] playground) {
         setupHandle();
 
-        //Check playgrounds exist
-        if (playground.length !=2 ) {
+        io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> {
+            //Check playgrounds exist
+            if (playground.length !=2 ) {
+                AttributedStringBuilder asb = new AttributedStringBuilder();
+                asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.RED));
+                asb.append("This command needs two playgrounds to compare.");
+                asb.toAttributedString().println(parent.getTerminal());
+                return;
+            }
+            Playground playground1 = Information.getMyself().getPlayground(playground[0]);
+            if (playground1 == null) {
+                AttributedStringBuilder asb = new AttributedStringBuilder();
+                asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.RED));
+                asb.append("Couldn't find playground " + playground[0]);
+                asb.toAttributedString().println(parent.getTerminal());
+                return;
+            }
+            Playground playground2 = Information.getMyself().getPlayground(playground[1]);
+            if (playground2 == null) {
+                AttributedStringBuilder asb = new AttributedStringBuilder();
+                asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.RED));
+                asb.append("Couldn't find playground " + playground[1]);
+                asb.toAttributedString().println(parent.getTerminal());
+                return;
+            }
+
             AttributedStringBuilder asb = new AttributedStringBuilder();
-            asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.RED));
-            asb.append("This command needs two playgrounds to compare.");
+            asb.style(AttributedStyle::bold);
+            asb.append(" COMPARING ");
+            addPlayground(asb, playground[0]);
+            asb.append(" WITH ");
+            addPlayground(asb, playground[1]);
             asb.toAttributedString().println(parent.getTerminal());
-            return;
-        }
-        Playground playground1 = Information.getMyself().getPlayground(playground[0]);
-        if (playground1 == null) {
-            AttributedStringBuilder asb = new AttributedStringBuilder();
-            asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.RED));
-            asb.append("Couldn't find playground " + playground[0]);
-            asb.toAttributedString().println(parent.getTerminal());
-            return;
-        }
-        Playground playground2 = Information.getMyself().getPlayground(playground[1]);
-        if (playground2 == null) {
-            AttributedStringBuilder asb = new AttributedStringBuilder();
-            asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.RED));
-            asb.append("Couldn't find playground " + playground[1]);
-            asb.toAttributedString().println(parent.getTerminal());
-            return;
-        }
+            AttributedString.NEWLINE.println(parent.getTerminal());
 
-        AttributedStringBuilder asb = new AttributedStringBuilder();
-        asb.append(" Comparing ");
-        addPlayground(asb, playground[0]);
-        asb.append(" with ");
-        addPlayground(asb, playground[1]);
-        asb.append(" : ");
-        asb.toAttributedString().println(parent.getTerminal());
-        AttributedString.NEWLINE.println(parent.getTerminal());
+            //Detailed Count
+            printDetailedCountComparison(playground1, playground2).println(parent.getTerminal());
+            AttributedString.NEWLINE.println(parent.getTerminal());
 
-        //Detailed Count
-        printDetailedCountComparison(playground1, playground2).println(parent.getTerminal());
-        AttributedString.NEWLINE.println(parent.getTerminal());
+            //Classes comparison
+            printClassesComparison(playground1, playground2).println(parent.getTerminal());
+            AttributedString.NEWLINE.println(parent.getTerminal());
 
-        //Classes comparison
-        printClassesComparison(playground1, playground2).println(parent.getTerminal());
-        AttributedString.NEWLINE.println(parent.getTerminal());
-
-        //Methods compiled
-        printMethodsCompiledComparison(playground1, playground2).println(parent.getTerminal());
-        AttributedString.NEWLINE.println(parent.getTerminal());
+            //Methods compiled
+            printMethodsCompiledComparison(playground1, playground2).println(parent.getTerminal());
+            AttributedString.NEWLINE.println(parent.getTerminal());
+        });
     }
 
     protected AttributedString printDetailedCountComparison(Playground playground1, Playground playground2) {
         AttributedStringBuilder asb = new AttributedStringBuilder();
         String format = "%20s";
+        asb.style(AttributedStyle::bold);
         asb.append(String.format("%-20s", "Summary Count"));
         asb.append(String.format(format, playground1.getIdentifier()));
         asb.append(String.format(format, playground2.getIdentifier()));
         asb.append(AttributedString.NEWLINE);
+        asb.style(AttributedStyle::boldOff);
         var detailedCount1 = Information.getMyself().getDetailedCount(playground1);
         var detailedCount2 = Information.getMyself().getDetailedCount(playground2);
         var detailedCount = new HashSet<>();
@@ -119,20 +123,39 @@ class PlaygroundCommand extends BaseCommand {
         detailedCount.addAll(detailedCount2.keySet());
         detailedCount.stream().sorted().forEachOrdered(key -> {
             asb.append(String.format(format, key));
-            asb.append(String.format(format, detailedCount1.getOrDefault(key, 0l)));
-            asb.append(String.format(format, detailedCount2.getOrDefault(key, 0l)));
+            Long value1 = detailedCount1.getOrDefault(key, 0l);
+            Long value2 = detailedCount2.getOrDefault(key, 0l);
+            printValues(value1, value2, asb, format);
             asb.append(AttributedString.NEWLINE);
         });
         return asb.toAttributedString();
+    }
+
+    private static void printValues(Long value1, Long value2, AttributedStringBuilder asb, String format) {
+        if (value1 > value2) {
+            asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.GREEN));
+        } else if (value2 > value1){
+            asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.RED));
+        }
+        asb.append(String.format(format, value1));
+        if (value1 < value2) {
+            asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.GREEN));
+        } else if (value2 < value1){
+            asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.RED));
+        }
+        asb.append(String.format(format, value2));
+        asb.style(AttributedStyle.DEFAULT);
     }
 
 
     protected AttributedString printMethodsCompiledComparison(Playground playground1, Playground playground2) {
         AttributedStringBuilder asb = new AttributedStringBuilder();
         String format = "%1$25s";
+        asb.style(AttributedStyle::bold);
         asb.append(String.format(format, "Compiled Methods by Level"));
         asb.append(String.format(format, playground1.getIdentifier()));
         asb.append(String.format(format, playground2.getIdentifier()));
+        asb.style(AttributedStyle::boldOff);
         asb.append(AttributedString.NEWLINE);
 
         Map<Integer, Long> trainingCompilationLevels1 = parent.getInformation().getCompiledLevels(playground1);
@@ -144,8 +167,9 @@ class PlaygroundCommand extends BaseCommand {
 
         trainingCompilationLevels.stream().sorted().forEachOrdered(key -> {
             asb.append(String.format(format, "Level " + key));
-            asb.append(String.format(format, trainingCompilationLevels1.getOrDefault(key, 0l)));
-            asb.append(String.format(format, trainingCompilationLevels2.getOrDefault(key, 0l)));
+            var value1 = trainingCompilationLevels1.getOrDefault(key, 0l);
+            var value2 = trainingCompilationLevels2.getOrDefault(key, 0l);
+            printValues(value1, value2, asb, format);
             asb.append(AttributedString.NEWLINE);
         });
 
@@ -156,9 +180,11 @@ class PlaygroundCommand extends BaseCommand {
     protected AttributedString printClassesComparison(Playground playground1, Playground playground2) {
         AttributedStringBuilder asb = new AttributedStringBuilder();
         String format = "%20s";
+        asb.style(AttributedStyle::bold);
         asb.append(String.format("%-20s", "Classes stored on the cache"));
         asb.append(String.format(format, playground1.getIdentifier()));
         asb.append(String.format(format, playground2.getIdentifier()));
+        asb.style(AttributedStyle::boldOff);
         asb.append(AttributedString.NEWLINE);
 
         var params = new CommonParameters();
@@ -170,24 +196,29 @@ class PlaygroundCommand extends BaseCommand {
                 .map(e -> e.getKey()).toList();
 
         asb.append(String.format(format, ""));
-        asb.append(String.format(format, classes1.size()));
-        asb.append(String.format(format, classes2.size()));
+        var value1 = (long) classes1.size();
+        var value2 = (long) classes2.size();
+        printValues(value1, value2, asb, format);
         asb.append(AttributedString.NEWLINE);
         asb.append(AttributedString.NEWLINE);
 
         if (this.verbose) {
+            asb.style(AttributedStyle::bold);
             asb.append("Classes in ");
             asb.append(playground1.getIdentifier());
             asb.append(" and not in ");
             asb.append(playground2.getIdentifier());
             asb.append(":");
+            asb.style(AttributedStyle::boldOff);
             asb.append(AttributedString.NEWLINE);
             diffBetweenLists(classes1, classes2, asb);
             asb.append(AttributedString.NEWLINE);
 
+            asb.style(AttributedStyle::bold);
             asb.append("Classes in ");
             asb.append(playground2.getIdentifier());
             asb.append(" and not in ");
+            asb.style(AttributedStyle::boldOff);
             asb.append(playground1.getIdentifier());
             asb.append(":");
             asb.append(AttributedString.NEWLINE);
@@ -217,10 +248,12 @@ class PlaygroundCommand extends BaseCommand {
 
 
     private void addPlayground(AttributedStringBuilder asb, String identifier) {
+        asb.append("'");
         if (identifier.equalsIgnoreCase(Information.getMyself().getPlayground())) {
             asb.style(AttributedStyle.BOLD.foreground(AttributedStyle.GREEN));
         }
         asb.append(identifier);
         asb.style(AttributedStyle.DEFAULT);
+        asb.append("'");
     }
 }
