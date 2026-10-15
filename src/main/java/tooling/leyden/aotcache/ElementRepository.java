@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 import io.quarkus.arc.Unremovable;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.jspecify.annotations.NonNull;
 import tooling.leyden.commands.CommonParameters;
 import tooling.leyden.commands.autocomplete.WhichRun;
 
@@ -326,5 +327,23 @@ public class ElementRepository implements PanacheRepository<Element> {
         Information.getMyself().removePlaceholder(placeholder.getAddress());
         delete(placeholder);
         flush();
+    }
+
+    public @NonNull Map<Integer, Long> getCompiledLevels(Playground playground) {
+        var levels = new HashMap<Integer, Long>();
+        var compiled = getEntityManager()
+                .createQuery("SELECT e.compilationLevel as level, COUNT(*) as count "
+                        + " FROM NMethodObject e "
+                        + " WHERE playground = :playground"
+                        + " GROUP BY compilationLevel")
+                .setParameter("playground", playground)
+                .getResultList();
+
+        for (Object element : compiled) {
+            var rows = (Object[]) element;
+            levels.put((Integer) rows[0], (Long) rows[1]);
+        }
+
+        return levels;
     }
 }
