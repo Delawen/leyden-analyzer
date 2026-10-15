@@ -41,6 +41,11 @@ public class LoadFileCommand extends BaseCommand {
             "This allows you to continue working while the file gets parsed." }, defaultValue = "false", arity = "0..1", scope = CommandLine.ScopeType.INHERIT)
     protected Boolean background = false;
 
+    @CommandLine.Option(names = { "--playground" },
+            description = { "Load the file(s) into this playground. If it doesn't exist, it creates it." },
+            arity = "0..1", scope = CommandLine.ScopeType.INHERIT)
+    protected String playground = null;
+
     private final Thread.Builder builder = Thread.ofVirtual().name("loading-file-", 0);
 
     public void execution() {
@@ -151,7 +156,8 @@ public class LoadFileCommand extends BaseCommand {
     public void aotCache(
             @CommandLine.Parameters(arity = "1..*", paramLabel = "<file>", description = "files to load") Path[] files) {
         setupHandle();
-        load(new AOTMapParser(this), files);
+        addSourceToPlayground(files);
+        load(new AOTMapParser(this, this.playground), files);
     }
 
     @Command(version = "1.0", subcommands = {
@@ -160,7 +166,7 @@ public class LoadFileCommand extends BaseCommand {
             @CommandLine.Parameters(arity = "1..*", paramLabel = "<file>", description = "files to load") Path[] files) {
         setupHandle();
         addSourceToPlayground(files);
-        load(new ProductionLogParser(this), files);
+        load(new ProductionLogParser(this, this.playground), files);
     }
 
     @Command(version = "1.0", subcommands = {
@@ -169,7 +175,7 @@ public class LoadFileCommand extends BaseCommand {
             @CommandLine.Parameters(arity = "1..*", paramLabel = "<file>", description = "files to load") Path[] files) {
         setupHandle();
         addSourceToPlayground(files);
-        load(new TrainingLogParser(this), files);
+        load(new TrainingLogParser(this, this.playground), files);
     }
 
     public DefaultCommand getParent() {
@@ -180,13 +186,16 @@ public class LoadFileCommand extends BaseCommand {
         this.parent = parent;
     }
 
-    private static void addSourceToPlayground(Path[] files) {
+    private void addSourceToPlayground(Path[] files) {
+        if (this.playground == null) {
+            this.playground = Information.getMyself().getPlayground();
+        }
+
         io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
-            Playground playground = Information.getMyself().getPlaygroundObject();
+            var playg = Information.getMyself().getOrCreatePlayground(this.playground);
             for (Path p : files) {
-                playground.getSources().add(p.toString());
+                playg.getSources().add(p.toString());
             }
-            Information.getMyself().flush();
         });
     }
 }

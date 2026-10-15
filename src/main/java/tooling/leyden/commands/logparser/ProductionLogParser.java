@@ -6,8 +6,12 @@ import tooling.leyden.commands.LoadFileCommand;
 
 public class ProductionLogParser extends LogParser {
 
+    public ProductionLogParser(LoadFileCommand loadFile, String playground) {
+        super(loadFile, playground);
+    }
+
     public ProductionLogParser(LoadFileCommand loadFile) {
-        super(loadFile, Information.getMyself().getPlaygroundObject());
+        this(loadFile, null);
     }
 
     @Override

@@ -10,11 +10,8 @@ import java.util.stream.Stream;
 import io.quarkus.arc.Arc;
 
 import io.quarkus.arc.Unremovable;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.inject.Singleton;
-import jakarta.persistence.TypedQuery;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Root;
 import tooling.leyden.commands.CommonParameters;
 
 @Singleton
@@ -567,16 +564,21 @@ public class Information {
 
     public void changePlayground(String identifier) {
         io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> {
-            var pl = playgroundRepository().findByIdentifier(identifier);
-            if (pl.isEmpty()) {
+            this.currentPlayground = getOrCreatePlayground(identifier);
+        });
+    }
+
+    public Playground getOrCreatePlayground(String identifier) {
+        AtomicReference<Playground> result = new AtomicReference<>();
+        io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> {
+            result.set(this.playgroundRepository().findByIdentifier(identifier).orElseGet(() -> {
                 var p = new Playground();
                 p.setIdentifier(identifier);
                 playgroundRepository().getEntityManager().persist(p);
                 playgroundRepository().flush();
-                this.currentPlayground = p;
-            } else {
-                this.currentPlayground = pl.get();
-            }
+                return p;
+            }));
         });
+        return result.get();
     }
 }

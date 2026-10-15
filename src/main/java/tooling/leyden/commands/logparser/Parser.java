@@ -19,10 +19,14 @@ public abstract class Parser implements Consumer<String> {
     protected final LoadFileCommand loadFile;
     private Playground playground;
 
-    public Parser(LoadFileCommand loadFile, Playground playground) {
+    public Parser(LoadFileCommand loadFile, String playground) {
         this.information = loadFile.getParent().getInformation();
         this.loadFile = loadFile;
-        this.playground = playground;
+        if (playground != null) {
+            this.playground = Information.getMyself().getOrCreatePlayground(playground);
+        } else {
+            this.playground = Information.getMyself().getPlaygroundObject();
+        }
     }
 
     public final Playground getPlayground() {
