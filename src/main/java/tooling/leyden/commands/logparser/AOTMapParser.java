@@ -17,6 +17,9 @@ import tooling.leyden.commands.LoadFileCommand;
  */
 public class AOTMapParser extends Parser {
 
+    //Useful to detect if there is more than one cache on the same file
+    private boolean nameFound;
+
     // AOT cache map for ab.aot.config
     // AOT cache map for ab.aot
     private final Pattern regexpNewAOTCache = Pattern.compile("AOT cache map for (?<name>.*)");
@@ -97,8 +100,14 @@ public class AOTMapParser extends Parser {
     // what element we are processing
     private Element current = null;
 
+    public AOTMapParser(LoadFileCommand loadFile, String playground) {
+        super(loadFile, playground);
+        nameFound = (playground == null);
+    }
+
     public AOTMapParser(LoadFileCommand loadFile) {
-        super(loadFile, Information.getMyself().getPlaygroundObject());
+        this(loadFile, null);
+
     }
 
     @Override
@@ -118,23 +127,24 @@ public class AOTMapParser extends Parser {
         Matcher m = regexpNewAOTCache.matcher(content);
         if (m.matches()) {
             var playground = m.group("name");
-            if (!Information.getMyself().getPlayground().equalsIgnoreCase(playground)) {
+            if (nameFound && !Information.getMyself().getPlayground().equalsIgnoreCase(playground)) {
                 (new AttributedString("Found a new playground on this AOT map file. "
-                        + "Going to change the playground to " + playground,
+                        + "Going to change the playground to " + playground + " for the following assets.",
                         AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW).bold()))
                         .println(loadFile.getParent().getTerminal());
                 (new AttributedString(
                         "You must make sure no log files were being loaded concurrently to get all the information right.",
-                        AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN).bold()))
+                        AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW).bold()))
                         .println(loadFile.getParent().getTerminal());
+                Information.getMyself().changePlayground(playground);
+                super.updatePlayground();
             }
-            Information.getMyself().changePlayground(playground);
             (new AttributedString("Parsing AOT Cache Map for " + playground,
                     AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN).bold()))
                     .println(loadFile.getParent().getTerminal());
-            Information.getMyself().getPlaygroundObject().getSources().add(content);
+            this.nameFound = true;
+            super.getPlayground().getSources().add(content);
             Information.getMyself().flush();
-            super.updatePlayground();
             return;
         }
 
