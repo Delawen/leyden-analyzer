@@ -19,6 +19,7 @@ jobs:
         java: # If you change it here, change it below too
           - version: '25'
           - version: '26'
+          - version: '27'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -33,33 +34,36 @@ jobs:
           cache: maven
 
       - name: Build quick without tests
-        run: ./mvnw package -DskipTests
+        run: cd src/test/java && javac example/Hello.java
 
       - name: Generating basic cache and training logs
         timeout-minutes: 5
         run: |
-          echo "Launching the analyzer to generate a cache"
+          echo "Launching a Hello World example"
+          cd src/test/java
+          mkdir target
           java -XX:AOTCacheOutput=target/app.aot \
               -Xlog:aot+map=trace,aot+map+oops=trace,aot=warning:file=target/aot.map:none:filesize=0 \
               -Xlog:aot+resolve*=trace,aot+codecache+exit=debug:file=target/training.log:level,tags \
-              -jar target/quarkus-app/quarkus-run.jar instructions=src/test/resources/instructions/commands0.txt
+              example/Hello
 
       - name: Generating production logs
         timeout-minutes: 2
         run: |
-          echo "Launching the analyzer to generate production logs"
+          echo "Launching the Hello World to generate production logs"
+          cd src/test/java
           java -XX:AOTCache=target/app.aot \
               -Xlog:class+load=info,aot+codecache=debug:file=target/production.log:level,tags \
-              -jar target/quarkus-app/quarkus-run.jar instructions=src/test/resources/instructions/commands0.txt
+              example/Hello
 
       - name: Upload cache and logs
         uses: actions/upload-artifact@v7
         with:
           name: assets-${{ matrix.java.version }}
           path: |
-            target/*log
-            target/app.aot
-            target/aot.map
+            src/test/java/target/*log
+            src/test/java/target/app.aot
+            src/test/java/target/aot.map
           retention-days: 2
 
   native-build-and-test:
@@ -74,10 +78,11 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         mandrel:
           - java: '25'
-            version: '25.0.2.0-Final'
+            version: '25.0.4.1-Final'
         java: # If you change it here, change it above too
           - version: '25'
           - version: '26'
+          - version: '27'
 
     steps:
       - name: Checkout repository
