@@ -22,6 +22,13 @@ public class ElementRepository implements PanacheRepository<Element> {
                 .firstResultOptional();
     }
 
+    public Optional<PlaceHolderElement> getPlaceholder(String address, Playground playground) {
+        return find("address = :address AND type = :type AND playground = :playground",
+                Map.of("address", address, "type", "Placeholder",
+                        "playground", playground))
+                .firstResultOptional();
+    }
+
     /** Find an element by its database primary key. */
     public Optional<Element> findByDbId(Long dbId) {
         return findByIdOptional(dbId);
@@ -324,7 +331,6 @@ public class ElementRepository implements PanacheRepository<Element> {
                 .setParameter("placeholder_id", placeholder.getDbId())
                 .executeUpdate();
         flush();
-        Information.getMyself().removePlaceholder(placeholder.getAddress());
         delete(placeholder);
         flush();
     }

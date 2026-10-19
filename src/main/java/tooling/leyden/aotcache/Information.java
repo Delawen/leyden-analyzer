@@ -38,9 +38,6 @@ public class Information {
     private final Set<String> heapRootAddresses = Collections.synchronizedSet(new HashSet<>());
     private ReferencingElement heapRoot = null;
 
-    // To replace placeholders
-    private final Map<String, PlaceHolderElement> placeholders = new HashMap();
-
     private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
 
     public static Information getMyself() {
@@ -531,23 +528,12 @@ public class Information {
         elementRepository().replacePlaceHolders(playground);
     }
 
-    public PlaceHolderElement getPlaceholder(String address) {
-        return this.placeholders.entrySet().stream()
-                .filter(e -> e.getKey().equalsIgnoreCase(address))
-                .map(e -> e.getValue())
-                .findAny().orElse(null);
+    public PlaceHolderElement getPlaceholder(String address, Playground playground) {
+        return elementRepository().getPlaceholder(address, playground).orElse(null);
     }
 
     public void replacePlaceHolder(PlaceHolderElement placeholder, Element asset) {
         elementRepository().replacePlaceHolder(placeholder, asset);
-    }
-
-    public void addPlaceholder(PlaceHolderElement e) {
-        this.placeholders.put(e.getAddress(), e);
-    }
-
-    public void removePlaceholder(String address) {
-        this.placeholders.remove(address);
     }
 
     public String getPlayground() {
