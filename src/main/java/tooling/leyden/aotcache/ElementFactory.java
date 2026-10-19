@@ -37,7 +37,6 @@ public class ElementFactory {
                 e = Information.getMyself().getByAddress(address, playground);
                 if (e == null) {
                     e = new PlaceHolderElement(address);
-                    Information.getMyself().addPlaceholder((PlaceHolderElement) e);
                 }
             }
             default -> {
@@ -55,7 +54,7 @@ public class ElementFactory {
         e = Information.getMyself().updateElement(e);
 
         if (! (e instanceof PlaceHolderElement) && e.getAddress() != null) {
-             PlaceHolderElement placeholder = Information.getMyself().getPlaceholder(e.getAddress());
+             PlaceHolderElement placeholder = Information.getMyself().getPlaceholder(e.getAddress(), playground);
             if (placeholder != null) {
                 Information.getMyself().replacePlaceHolder(placeholder, e);
             }
