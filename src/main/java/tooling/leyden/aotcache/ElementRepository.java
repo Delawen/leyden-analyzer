@@ -318,9 +318,31 @@ public class ElementRepository implements PanacheRepository<Element> {
         flush();
         getEntityManager()
                 .createNativeQuery(
-                        "UPDATE element_references AS r SET target_id = :asset_id "
-                                + " WHERE r.target_id = :placeholder_id")
+                        "UPDATE element_references AS ref SET target_id = :asset_id "
+                                + " WHERE ref.target_id = :placeholder_id "
+                                + " AND NOT EXISTS "
+                                + " (SELECT 1 FROM element_references er "
+                                + " WHERE er.source_id = ref.source_id "
+                                + " AND er.target_id = :asset_id) ")
                 .setParameter("asset_id", asset.getDbId())
+                .setParameter("placeholder_id", placeholder.getDbId())
+                .executeUpdate();
+        getEntityManager()
+                .createNativeQuery(
+                        "UPDATE element_references AS ref SET source_id = :asset_id "
+                                + " WHERE ref.source_id = :placeholder_id "
+                                + " AND NOT EXISTS "
+                                + " (SELECT 1 FROM element_references er "
+                                + " WHERE er.target_id = ref.target_id "
+                                + " AND er.source_id = :asset_id) ")
+                .setParameter("asset_id", asset.getDbId())
+                .setParameter("placeholder_id", placeholder.getDbId())
+                .executeUpdate();
+        getEntityManager()
+                .createNativeQuery(
+                        "DELETE FROM element_references "
+                                + "WHERE target_id = :placeholder_id" +
+                                " OR source_id = :placeholder_id")
                 .setParameter("placeholder_id", placeholder.getDbId())
                 .executeUpdate();
         flush();
