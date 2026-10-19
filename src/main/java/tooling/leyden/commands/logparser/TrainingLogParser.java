@@ -11,8 +11,12 @@ import tooling.leyden.commands.LoadFileCommand;
 
 public class TrainingLogParser extends LogParser {
 
+    public TrainingLogParser(LoadFileCommand loadFile, String playground) {
+        super(loadFile, playground);
+    }
+
     public TrainingLogParser(LoadFileCommand loadFile) {
-        super(loadFile, Information.getMyself().getPlaygroundObject());
+        this(loadFile, null);
     }
 
     @Override

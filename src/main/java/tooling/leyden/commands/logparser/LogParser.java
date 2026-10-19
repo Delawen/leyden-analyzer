@@ -16,7 +16,7 @@ public abstract class LogParser extends Parser {
     final Pattern linePattern = Pattern
             .compile("(?<timestamp>\\[(?:\\d|,)+s\\])?\\[(?<level>\\w+)\\s*\\]\\[(?<tags>[^,\\]\\s]+(,[^,\\]\\s]+)*)\\s*\\](?<message>.*)");
 
-    public LogParser(LoadFileCommand loadFile, Playground playground) {
+    public LogParser(LoadFileCommand loadFile, String playground) {
         super(loadFile, playground);
     }
 
