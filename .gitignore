@@ -47,3 +47,4 @@ nb-configuration.xml
 .leyden*
 output*
 leyden-analyzer.db*
+src/test/java/example/Hello.class
