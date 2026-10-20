@@ -19,11 +19,10 @@ import org.jline.utils.AttributedStyle;
 @Table(name = "elements",
         indexes = {
                 @Index(name = "element_db_id_index", columnList = "dbId"),
-                @Index(name = "element_db_id_type_index", columnList = "dbId, type"),
-                @Index(name = "element_key_type_index", columnList = "element_key, type"),
-                @Index(name = "element_key_type_cache_index", columnList = "element_key, type, in_cache"),
-                @Index(name = "element_address_index", columnList = "address, type"),
-                @Index(name = "element_type_index", columnList = "type")})
+                @Index(name = "element_type_cache_index", columnList = "playground_id, type, in_cache"),
+                @Index(name = "element_key_type_cache_index", columnList = "playground_id, element_key, type, in_cache"),
+                @Index(name = "element_address_index", columnList = "address, type, playground_id"),
+                @Index(name = "element_playground_index", columnList = "playground_id, type")})
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "dtype")
 public abstract class Element {
