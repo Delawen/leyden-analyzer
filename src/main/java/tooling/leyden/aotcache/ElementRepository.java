@@ -323,28 +323,23 @@ public class ElementRepository implements PanacheRepository<Element> {
 
     public void replacePlaceHolder(PlaceHolderElement placeholder, Element asset) {
         flush();
+
         getEntityManager()
-                .createNativeQuery(
-                        "UPDATE element_references AS ref SET target_id = :asset_id "
-                                + " WHERE ref.target_id = :placeholder_id "
-                                + " AND NOT EXISTS "
-                                + " (SELECT 1 FROM element_references er "
-                                + " WHERE er.source_id = ref.source_id "
-                                + " AND er.target_id = :asset_id) ")
+                .createNativeQuery("MERGE INTO element_references (source_id, target_id) "
+                        + "SELECT source_id, :asset_id FROM element_references WHERE target_id = :placeholder_id")
                 .setParameter("asset_id", asset.getDbId())
                 .setParameter("placeholder_id", placeholder.getDbId())
                 .executeUpdate();
+
+
         getEntityManager()
-                .createNativeQuery(
-                        "UPDATE element_references AS ref SET source_id = :asset_id "
-                                + " WHERE ref.source_id = :placeholder_id "
-                                + " AND NOT EXISTS "
-                                + " (SELECT 1 FROM element_references er "
-                                + " WHERE er.target_id = ref.target_id "
-                                + " AND er.source_id = :asset_id) ")
+                .createNativeQuery("MERGE INTO element_references (source_id, target_id) "
+                        + "SELECT :asset_id, target_id FROM element_references WHERE source_id = :placeholder_id")
                 .setParameter("asset_id", asset.getDbId())
                 .setParameter("placeholder_id", placeholder.getDbId())
                 .executeUpdate();
+
+
         getEntityManager()
                 .createNativeQuery(
                         "DELETE FROM element_references "
@@ -353,7 +348,7 @@ public class ElementRepository implements PanacheRepository<Element> {
                 .setParameter("placeholder_id", placeholder.getDbId())
                 .executeUpdate();
         flush();
-        delete(placeholder);
+        deleteById(placeholder.getDbId());
         flush();
     }
 
