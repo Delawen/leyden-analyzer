@@ -414,10 +414,6 @@ public class Information {
         return autoWarnings;
     }
 
-    public Collection<Element> getAll(Playground playground) {
-        return elementRepository().findAllCached(playground);
-    }
-
     public Collection<Element> getAll() {
         return elementRepository().findAllCached(getPlaygroundObject());
     }
