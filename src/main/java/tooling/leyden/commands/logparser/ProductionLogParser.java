@@ -70,7 +70,8 @@ public class ProductionLogParser extends LogParser {
                     //This is a lambda
                     information.incrementStatistic("[LOG] Lambda Methods loaded from AOT Cache");
                 }
-                information.addAOTCacheElement(e, getSource());
+                Information.getMyself().addSource(e, getSource());
+                information.addAOTCacheElement(e);
 
             } else {
                 // else this wasn't loaded from the aot cache

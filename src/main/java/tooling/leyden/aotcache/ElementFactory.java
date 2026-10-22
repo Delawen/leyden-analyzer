@@ -18,11 +18,6 @@ public class ElementFactory {
     private static Element getElement(String identifier, String type, String address, Playground playground) {
         Element e;
 
-        if (address != null && !type.equals("PlaceHolder") && Information.getMyself().getByAddress(address, playground) != null) {
-            Information.getMyself().addWarning(Information.getMyself().getByAddress(address, playground),
-                    "Address collision at " + address, WarningType.CacheCreation);
-        }
-
         switch (type) {
             case "Class" -> e = new ClassObject(identifier);
             case "Method" -> e = new MethodObject(identifier, playground);
