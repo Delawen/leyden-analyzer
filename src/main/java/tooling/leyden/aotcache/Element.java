@@ -53,9 +53,8 @@ public abstract class Element {
             name = "element_sources",
             joinColumns = @JoinColumn(name = "dbId"),
             indexes = {
-                    @Index(name = "element_sources_id_index", columnList = "dbId"),
-                    @Index(name = "element_sources_id_source_index", columnList = "dbId, source")
-    })
+                    @Index(name = "element_sources_id_index", columnList = "dbId")
+                    })
     @Column(name = "source", length = 1000, nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<String> source = new HashSet<>();
