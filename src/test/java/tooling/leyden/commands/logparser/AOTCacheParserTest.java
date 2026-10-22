@@ -399,7 +399,7 @@ class AOTCacheParserTest extends DefaultTest {
 
         for (Element e : trainingData) {
             ReferencingElement re = (ReferencingElement) e;
-            assertEquals(0, re.getReferences().size());
+            assertEquals(0, re.getReferences().size(), re + " shouldn't have any references.");
         }
     }
 

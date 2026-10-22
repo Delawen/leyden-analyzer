@@ -22,16 +22,21 @@ import org.jline.utils.AttributedStyle;
                 @Index(name = "element_type_cache_index", columnList = "playground_id, type, in_cache"),
                 @Index(name = "element_key_type_cache_index", columnList = "playground_id, element_key, type, in_cache"),
                 @Index(name = "element_address_index", columnList = "address, type, playground_id"),
-                @Index(name = "element_playground_index", columnList = "playground_id, type")})
+                @Index(name = "element_playground_type_index", columnList = "playground_id, type"),
+                @Index(name = "element_playground_index", columnList = "playground_id")})
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "dtype")
 public abstract class Element {
 
+    @Version
+    private Long version;
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @Column(name = "dbId")
     private Long dbId;
 
-    @jakarta.persistence.Column(name = "element_key", length = 4096)
+    @Column(name = "element_key", length = 4096)
     private String key;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)

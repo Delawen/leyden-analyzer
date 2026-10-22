@@ -12,7 +12,8 @@ import java.util.Set;
 public class Playground {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @Column(name = "dbId")
     private Long dbId;
 
     @Column(name = "identifier", nullable = false, unique = true)
@@ -23,7 +24,7 @@ public class Playground {
             name = "playground_sources",
             joinColumns = @JoinColumn(name = "identifier"),
             indexes = {
-                    @Index(name = "playground_sources", columnList = "identifier")
+                    @Index(name = "playground_sources_identifier_index", columnList = "identifier")
             })
     @Column(name = "source", length = 1000, nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)

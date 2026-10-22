@@ -10,7 +10,7 @@ public abstract class BaseCommand implements Runnable {
 
     public final void run() {
         setupHandle();
-        io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() ->  execution());
+        execution();
     }
 
     protected void setupHandle() {
