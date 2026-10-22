@@ -139,8 +139,7 @@ public class Information {
         return statisticRepository().findAll().list();
     }
 
-    public void addAOTCacheElement(Element e, String source) {
-        e.addSource(source);
+    public void addAOTCacheElement(Element e) {
         e.setInCache(true);
 
         // Due to ordering in logfiles, sometimes an asset gets
@@ -203,7 +202,6 @@ public class Information {
             statisticRepository().deleteAll();
             playgroundRepository().deleteAll();
             changePlayground("default");
-            flush();
 
             warnings.clear();
             autoWarnings.clear();
@@ -563,7 +561,6 @@ public class Information {
                 var p = new Playground();
                 p.setIdentifier(identifier);
                 playgroundRepository().getEntityManager().persist(p);
-                playgroundRepository().flush();
                 return p;
             }));
         });
@@ -572,5 +569,9 @@ public class Information {
 
     public @NonNull Map<Integer, Long> getCompiledLevels(Playground playground) {
         return elementRepository().getCompiledLevels(playground);
+    }
+
+    public Collection<MethodObject> getMethods(ClassObject classObject) {
+        return elementRepository().getMethods(classObject);
     }
 }

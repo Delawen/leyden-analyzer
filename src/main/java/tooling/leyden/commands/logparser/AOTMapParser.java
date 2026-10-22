@@ -144,7 +144,6 @@ public class AOTMapParser extends Parser {
                     .println(loadFile.getParent().getTerminal());
             this.nameFound = true;
             super.getPlayground().getSources().add(content);
-            Information.getMyself().flush();
             return;
         }
 
@@ -488,7 +487,8 @@ public class AOTMapParser extends Parser {
                 element = ElementFactory.getOrCreate(address, type, address, super.getPlayground());
             }
             element.setSize(size);
-            this.information.addAOTCacheElement(element, getSource());
+            Information.getMyself().addSource(element, getSource());
+            this.information.addAOTCacheElement(element);
             current = element;
 
         } catch (Exception e) {

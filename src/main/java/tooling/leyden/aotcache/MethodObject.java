@@ -73,7 +73,7 @@ public class MethodObject extends ReferencingElement {
         String className = qualifiedName.substring(0, qualifiedName.lastIndexOf("."));
         this.fillReturnClass(identifier);
         this.fillClass(className);
-        this.procesParameters(identifier);
+        this.processParameters(identifier);
 
 
         StringBuilder sb = new StringBuilder(getReturnType() + " ");
@@ -92,7 +92,9 @@ public class MethodObject extends ReferencingElement {
 
     public void setClassObject(ClassObject classObject) {
         this.classObject = classObject;
+        Information.getMyself().updateElement(classObject);
         addReference(classObject);
+        classObject.addReference(this);
     }
 
     public BasicObject getConstMethod() {
@@ -339,7 +341,7 @@ public class MethodObject extends ReferencingElement {
         return sb.toAttributedString();
     }
 
-    private void procesParameters(final String identifier) {
+    private void processParameters(final String identifier) {
         if (!identifier.contains("(") || !identifier.contains(")")) {
             return;
         }
@@ -348,14 +350,15 @@ public class MethodObject extends ReferencingElement {
         //88 void java.util.Hashtable.reconstitutionPut(java.util.Hashtable$Entry[], java.lang.Object, java.lang.Object)
         String[] parameters = identifier.substring(identifier.indexOf("(") + 1, identifier.indexOf(")"))
                 .split(", ");
+        CommonParameters params = new CommonParameters();
+        params.setTypes(new String[]{"Class"});
         for (String parameter : parameters) {
             if (!parameter.isBlank()) {
-                CommonParameters params = new CommonParameters();
                 params.setName(parameter);
-                params.setTypes(new String[]{"Class"});
-                var classes = Information.getMyself().getElements(params, this.getPlayground()).toList();
-                classes.forEach(this::addParameter);
-                if (classes.isEmpty()) {
+                var classes = Information.getMyself().getElements(params, this.getPlayground()).findAny();
+                if(classes.isPresent()) {
+                    this.addParameter(classes.get());
+                } else {
                     this.addParameter(parameter);
                     //Maybe it was an array:
                     if (parameter.endsWith("[]")) {
@@ -363,7 +366,7 @@ public class MethodObject extends ReferencingElement {
                         params.setName(parameter);
                         Information.getMyself()
                                 .getElements(params, this.getPlayground())
-                                .forEachOrdered(this::addReference);
+                                .forEach(this::addReference);
                     }
                 }
 
@@ -387,8 +390,7 @@ public class MethodObject extends ReferencingElement {
     private void fillClass(String className) {
         Information.getMyself().updateElement(this);
         classObject = (ClassObject) ElementFactory.getOrCreate(className, "Class", null, this.getPlayground());
-        classObject.addMethod(this);
-        Information.getMyself().updateElement(classObject);
+        setClassObject(classObject);
     }
 
     private void fillReturnClass(String identifier) {
