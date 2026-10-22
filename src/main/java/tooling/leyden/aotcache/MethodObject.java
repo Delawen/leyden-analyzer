@@ -37,7 +37,7 @@ public class MethodObject extends ReferencingElement {
     public ReferencingElement methodTrainingData;
 
     // Maps compilation level (Integer) -> CompileTrainingData element dbId (Long)
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(
             name = "method_compile_training",
             joinColumns = @JoinColumn(name = "method_id"),
@@ -53,7 +53,7 @@ public class MethodObject extends ReferencingElement {
 
     public String returnType;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "method_parameters", joinColumns = @JoinColumn(name = "method_id"))
     @Column(name = "parameter_key")
     @OnDelete(action = OnDeleteAction.CASCADE)
@@ -71,6 +71,7 @@ public class MethodObject extends ReferencingElement {
         }
         this.setName(qualifiedName.substring(qualifiedName.lastIndexOf(".") + 1));
         String className = qualifiedName.substring(0, qualifiedName.lastIndexOf("."));
+        Information.getMyself().updateElement(this);
         this.fillReturnClass(identifier);
         this.fillClass(className);
         this.processParameters(identifier);
@@ -354,20 +355,19 @@ public class MethodObject extends ReferencingElement {
         params.setTypes(new String[]{"Class"});
         for (String parameter : parameters) {
             if (!parameter.isBlank()) {
-                params.setName(parameter);
-                var classes = Information.getMyself().getElements(params, this.getPlayground()).findAny();
-                if(classes.isPresent()) {
-                    this.addParameter(classes.get());
+                if (!parameter.endsWith("[]")) {
+                    params.setName(parameter);
+                    String finalParameter = parameter;
+                    Information.getMyself().getElements(params, this.getPlayground())
+                            .findAny().ifPresentOrElse(c -> this.addParameter(c), () -> this.addParameter(finalParameter));
                 } else {
                     this.addParameter(parameter);
-                    //Maybe it was an array:
-                    if (parameter.endsWith("[]")) {
-                        parameter = parameter.substring(0, parameter.length() - 2);
-                        params.setName(parameter);
-                        Information.getMyself()
-                                .getElements(params, this.getPlayground())
-                                .forEach(this::addReference);
-                    }
+                    parameter = parameter.substring(0, parameter.length() - 2);
+                    params.setName(parameter);
+                    Information.getMyself()
+                            .getElements(params, this.getPlayground())
+                            .findAny().ifPresent(this::addReference);
+
                 }
 
             }
@@ -388,13 +388,11 @@ public class MethodObject extends ReferencingElement {
     }
 
     private void fillClass(String className) {
-        Information.getMyself().updateElement(this);
         classObject = (ClassObject) ElementFactory.getOrCreate(className, "Class", null, this.getPlayground());
         setClassObject(classObject);
     }
 
     private void fillReturnClass(String identifier) {
-        Information.getMyself().updateElement(this);
         if (identifier.indexOf(" ") > 0) {
             this.setReturnType(identifier.substring(0, identifier.indexOf(" ")));
             CommonParameters params = new CommonParameters();
