@@ -1,8 +1,6 @@
 package tooling.leyden.aotcache;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 import jakarta.persistence.*;
 
@@ -18,9 +16,6 @@ import org.jline.utils.AttributedStyle;
 public class ClassObject extends ReferencingElement {
 
     private String packageName = "";
-
-    @OneToMany(mappedBy = "classObject", fetch = FetchType.LAZY)
-    private final List<MethodObject> methods = new ArrayList<>();
 
     private String arrayPrefix = "";
 
@@ -60,10 +55,6 @@ public class ClassObject extends ReferencingElement {
         return packageName;
     }
 
-    public List<MethodObject> getMethods() {
-        return methods;
-    }
-
     public Boolean isClassLoader() {
         return isClassLoader;
     }
@@ -87,15 +78,6 @@ public class ClassObject extends ReferencingElement {
             }
         }
         this.packageName = packageName;
-    }
-
-    public void addMethod(MethodObject method) {
-        if (!this.methods.contains(method)) {
-            this.methods.add(method);
-            method.setClassObject(this);
-            this.getMethods().sort(Comparator.comparing(Element::isTrained).thenComparing(Element::getKey));
-        }
-        Information.getMyself().addRelationship(this, method);
     }
 
     public Boolean isArray() {
@@ -137,17 +119,18 @@ public class ClassObject extends ReferencingElement {
         }
 
         int trained = 0;
-        if (!this.getMethods().isEmpty()) {
+        Collection<MethodObject> methods = Information.getMyself().getMethods(this);
+        if (!methods.isEmpty()) {
             sb.append(AttributedString.NEWLINE);
             sb.append(leftPadding).append("This class has ");
             sb.style(AttributedStyle.DEFAULT.bold());
-            sb.append(Integer.toString(this.getMethods().size()));
+            sb.append(Integer.toString(methods.size()));
             sb.style(AttributedStyle.DEFAULT.bold().foreground(AttributedStyle.YELLOW));
             sb.append(" Methods");
             sb.style(AttributedStyle.DEFAULT);
             sb.append(", of which");
 
-            for (MethodObject method : this.getMethods()) {
+            for (MethodObject method : methods) {
                 if (method.isTrained()) {
                     trained++;
                 }

@@ -226,27 +226,22 @@ public class ElementRepository implements PanacheRepository<Element> {
     }
 
     public void addRelationship(Long ref, Long e) {
-        getEntityManager().flush();
         getEntityManager()
                 .createNativeQuery("MERGE INTO element_references (source_id, target_id) VALUES (:refId, :eId)")
                 .setParameter("refId", ref)
                 .setParameter("eId", e)
                 .executeUpdate();
-        getEntityManager().flush();
     }
 
     public void addSource(Long dbId, String source) {
-        getEntityManager().flush();
         getEntityManager()
                 .createNativeQuery("MERGE INTO element_sources (dbId, source) VALUES (:eId, :source)")
                 .setParameter("source", source)
                 .setParameter("eId", dbId)
                 .executeUpdate();
-        getEntityManager().flush();
     }
 
     public void replacePlaceHolders(Playground playground) {
-        flush();
         // Get the rows we need to update
         //The full query with everything at the same time just takes minutes and times out
        var placeholders = getEntityManager()
@@ -306,12 +301,9 @@ public class ElementRepository implements PanacheRepository<Element> {
                         + " WHERE playground_id = :playground")
                 .setParameter("playground", playground.getDbId())
                 .executeUpdate();
-        flush();
     }
 
     public void replacePlaceHolder(PlaceHolderElement placeholder, Element asset) {
-        flush();
-
         getEntityManager()
                 .createNativeQuery("MERGE INTO element_references (source_id, target_id) "
                         + "SELECT source_id, :asset_id FROM element_references WHERE target_id = :placeholder_id")
@@ -335,9 +327,7 @@ public class ElementRepository implements PanacheRepository<Element> {
                                 " OR source_id = :placeholder_id")
                 .setParameter("placeholder_id", placeholder.getDbId())
                 .executeUpdate();
-        flush();
         deleteById(placeholder.getDbId());
-        flush();
     }
 
     public @NonNull Map<Integer, Long> getCompiledLevels(Playground playground) {
@@ -354,5 +344,13 @@ public class ElementRepository implements PanacheRepository<Element> {
             levels.put(row.get(0, Integer.class), row.get(1, Long.class));
         }
         return levels;
+    }
+
+    public Collection<MethodObject> getMethods(ClassObject classObject) {
+        CriteriaBuilder builder = getEntityManager().getCriteriaBuilder();
+        CriteriaQuery<MethodObject> query = builder.createQuery(MethodObject.class);
+        Root<MethodObject> elementRoot = query.from(MethodObject.class);
+        query = query.where(builder.equal(elementRoot.get("classObject"),  classObject));
+        return getSession().createQuery(query).getResultList();
     }
 }

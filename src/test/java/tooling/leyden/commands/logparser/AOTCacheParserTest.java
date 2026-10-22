@@ -97,13 +97,13 @@ class AOTCacheParserTest extends DefaultTest {
         aotCacheParser.updatePlayground();
         io.quarkus.narayana.jta.QuarkusTransaction.begin();
         var classObject = ElementFactory.getOrCreate("java.lang.Float", "Class", null, Information.getMyself().getPlaygroundObject());
-        information.addAOTCacheElement(classObject, "test");
+        information.addAOTCacheElement(classObject);
 
         classObject = ElementFactory.getOrCreate("java.lang.String", "Class", null, Information.getMyself().getPlaygroundObject());
-        information.addAOTCacheElement(classObject, "test");
+        information.addAOTCacheElement(classObject);
 
         classObject = ElementFactory.getOrCreate("java.lang.String$CaseInsensitiveComparator", "Class", null, Information.getMyself().getPlaygroundObject());
-        information.addAOTCacheElement(classObject, "test");
+        information.addAOTCacheElement(classObject);
         io.quarkus.narayana.jta.QuarkusTransaction.commit();
 
         aotCacheParser.accept("0x00000000fff63458: @@ Object (0xfff63458) java.lang.String$CaseInsensitiveComparator");
