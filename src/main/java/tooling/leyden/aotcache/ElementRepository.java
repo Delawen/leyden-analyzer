@@ -6,6 +6,14 @@ import java.util.regex.Pattern;
 import io.quarkus.arc.Unremovable;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.persistence.Tuple;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import org.hibernate.query.criteria.HibernateCriteriaBuilder;
+import org.hibernate.query.criteria.JpaExpression;
 import org.jspecify.annotations.NonNull;
 import tooling.leyden.commands.CommonParameters;
 import tooling.leyden.commands.autocomplete.WhichRun;
@@ -43,198 +51,178 @@ public class ElementRepository implements PanacheRepository<Element> {
 
     /** All distinct types among cached elements. */
     public List<String> findAllTypes() {
-        return getEntityManager()
-                .createQuery("SELECT DISTINCT e.type FROM Element e", String.class)
-                .getResultList();
+        CriteriaBuilder builder = getEntityManager().getCriteriaBuilder();
+        CriteriaQuery<String> query = builder.createQuery(String.class);
+        Root<Element> elementRoot = query.from(Element.class);
+        query = query.select(elementRoot.get("type")).distinct(true);
+        return getSession().createQuery(query).getResultList();
     }
 
     /** All distinct package names among cached ClassObjects. */
     public List<String> findAllPackages() {
-        return getEntityManager()
-                .createQuery(
-                        "SELECT DISTINCT c.packageName FROM ClassObject c WHERE playground = :playground",
-                        String.class)
-                .setParameter("playground", Information.getMyself().getPlaygroundObject())
-                .getResultList();
+        CriteriaBuilder builder = getEntityManager().getCriteriaBuilder();
+        CriteriaQuery<String> query = builder.createQuery(String.class);
+        Root<Element> elementRoot = query.from(Element.class);
+        query = query.where(builder.equal(elementRoot.get("playground"),  Information.getMyself().getPlaygroundObject()));
+        query = query.select(elementRoot.get("type")).distinct(true);
+        return getSession().createQuery(query).getResultList();
     }
 
     /** All keys of cached Class elements (used for auto-completion). */
     public List<String> findAllClassIdentifiers() {
-        return getEntityManager()
-                .createQuery(
-                        "SELECT e.name FROM Element e WHERE e.type = 'Class' AND playground = :playground",
-                        String.class)
-                .setParameter("playground", Information.getMyself().getPlaygroundObject())
-                .getResultList();
+        CriteriaBuilder builder = getEntityManager().getCriteriaBuilder();
+        CriteriaQuery<String> query = builder.createQuery(String.class);
+        Root<Element> elementRoot = query.from(Element.class);
+        query = query.where(builder.equal(elementRoot.get("playground"),  Information.getMyself().getPlaygroundObject()));
+        query = query.where(builder.equal(elementRoot.get("type"),  "Class"));
+        query = query.select(elementRoot.get("name")).distinct(true);
+        return getSession().createQuery(query).getResultList();
     }
 
     public Collection<Element> findWhoReferencesMe(Element element) {
         var res = new ArrayList<Element>();
-        var select = "SELECT e FROM ReferencingElement e JOIN e.references ref WHERE ref.dbId = :referencing AND e.dbId <> :myself";
-        Map<String, Object> params = Map.of("referencing", element.getDbId(), "myself", element.getDbId());
-        res.addAll(find(select, params).list());
-        select = "SELECT e FROM ConstantPoolObject e WHERE e.poolHolderKey = :referencing AND e.type = 'Class' AND e.dbId <> :myself";
-        res.addAll(find(select, params).list());
+
+        // Query 1: ReferencingElement rows whose references collection contains this element
+        CriteriaBuilder cb = getEntityManager().getCriteriaBuilder();
+        CriteriaQuery<ReferencingElement> q1 = cb.createQuery(ReferencingElement.class);
+        Root<ReferencingElement> r1 = q1.from(ReferencingElement.class);
+        Join<ReferencingElement, Element> ref = r1.join("references");
+        q1.select(r1).where(
+                cb.equal(ref.get("dbId"), element.getDbId()),
+                cb.notEqual(r1.get("dbId"), element.getDbId()));
+        res.addAll(getSession().createQuery(q1).getResultList());
+
+        // Query 2: ConstantPoolObject rows whose poolHolderKey matches this element's key
+        CriteriaQuery<ConstantPoolObject> q2 = cb.createQuery(ConstantPoolObject.class);
+        Root<ConstantPoolObject> r2 = q2.from(ConstantPoolObject.class);
+        q2.select(r2).where(
+                cb.equal(r2.get("poolHolderKey"), element.getKey()),
+                cb.equal(r2.get("type"), "Class"),
+                cb.notEqual(r2.get("dbId"), element.getDbId()));
+        res.addAll(getSession().createQuery(q2).getResultList());
+
         return res;
     }
 
     /** All addresses of registered heap roots (elements flagged as heap root). */
     public List<String> findHeapRootAddresses() {
-        return getEntityManager()
-                .createQuery(
-                        "SELECT e.address FROM Element e WHERE e.isHeapRoot = true AND e.address IS NOT NULL AND playground = :playground",
-                        String.class)
-                .setParameter("playground", Information.getMyself().getPlaygroundObject())
-                .getResultList();
-    }
-
-    private void addWhere(StringBuilder where, String s) {
-        where.append(" AND ");
-        where.append(s);
+        CriteriaBuilder builder = getEntityManager().getCriteriaBuilder();
+        CriteriaQuery<String> query = builder.createQuery(String.class);
+        Root<Element> elementRoot = query.from(Element.class);
+        query.select(elementRoot.<String>get("address")).where(
+                builder.isTrue(elementRoot.<Boolean>get("isHeapRoot")),
+                builder.isNotNull(elementRoot.get("address")),
+                builder.equal(elementRoot.get("playground"), Information.getMyself().getPlaygroundObject()));
+        return getEntityManager().createQuery(query).getResultList();
     }
 
     public List<Element> findByParameters(CommonParameters parameters, Playground playground) {
-        Map<String, Object> params = new HashMap<>();
-        StringBuilder where = new StringBuilder("");
-        String select = "SELECT e FROM Element e WHERE playground = :playground";
-        params.put("playground", playground);
+        HibernateCriteriaBuilder cb = getSession().getCriteriaBuilder();
+        CriteriaQuery<Element> query = cb.createQuery(Element.class);
+        Root<Element> e = query.from(Element.class);
+        List<Predicate> where = new ArrayList<>();
+        where.add(cb.equal(e.get("playground"), playground));
 
         if (parameters.getName() != null && !parameters.getName().isBlank()) {
-            addWhere(where, "e.key = :key");
-            params.put("key", parameters.getName());
+            where.add(cb.equal(e.get("key"), parameters.getName()));
         }
 
         if (parameters.getTypes() != null && parameters.getTypes().length > 0) {
-            int i = 0;
-            where.append(" AND (");
-            for (String type : parameters.getTypes()) {
-                if (i > 0) {
-                    where.append(" OR ");
-                }
-                where.append("e.type = :type" + i);
-                params.put("type" + i, type);
-                i++;
-            }
-            where.append(")");
+            where.add(e.get("type").in((Object[]) parameters.getTypes()));
         }
 
         if (parameters.getUse() != null && parameters.getUse() != CommonParameters.ElementsToUse.both) {
-            addWhere(where, "e.inCache = :inCache");
-            params.put("inCache", parameters.getUse() == CommonParameters.ElementsToUse.cached);
+            where.add(cb.equal(e.get("inCache"), parameters.getUse() == CommonParameters.ElementsToUse.cached));
         }
 
         if (parameters.getAddress() != null) {
-            addWhere(where, "e.address = :address");
-            params.put("address", parameters.getAddress());
+            where.add(cb.equal(e.get("address"), parameters.getAddress()));
         }
 
         var packageName = parameters.getPackageName();
-
         if (packageName != null && packageName.length > 0) {
-            int i = 0;
-            where.append(" AND (");
+            List<Predicate> matches = new ArrayList<>();
             for (String pn : packageName) {
-                if (i > 0) {
-                    where.append(" OR ");
-                }
-               where.append("((e.class = :classType AND e.packageName like :packageName" + i + ") "
-                        + "OR (e.class = :methodType AND e.name like :packageName" + i + ")"
-                        + "OR (e.class = :objectType AND e.key like :packageName" + i + ")"
-                        + ")");
-                params.putIfAbsent("classType", ClassObject.class);
-                params.putIfAbsent("methodType", MethodObject.class);
-                params.putIfAbsent("objectType", InstanceObject.class);
-                params.put("packageName" + i, pn);
-                i++;
+                matches.add(matchesPackage(cb, e, pn));
             }
-            where.append(")");
+            where.add(cb.or(matches.toArray(new Predicate[0])));
         }
 
         var excludePackageName = parameters.getExcludePackageName();
         if (excludePackageName != null && excludePackageName.length > 0) {
-            int i = 0;
-            where.append(" AND NOT (");
+            List<Predicate> matches = new ArrayList<>();
             for (String pn : excludePackageName) {
-                if (i > 0) {
-                    where.append(" OR ");
-                }
-                where.append("(e.class = :classType AND e.packageName like :excludePackageName" + i + ")"
-                        + " OR (e.class = :methodType AND e.name like :excludePackageName" + i + ")"
-                        + " OR (e.class = :objectType AND e.key like :excludePackageName" + i + ")"
-                        + " ");
-                params.putIfAbsent("classType", ClassObject.class);
-                params.putIfAbsent("methodType", MethodObject.class);
-                params.putIfAbsent("objectType", InstanceObject.class);
-                params.put("excludePackageName" + i, pn);
-                i++;
+                matches.add(matchesPackage(cb, e, pn));
             }
-            where.append(")");
+            where.add(cb.not(cb.or(matches.toArray(new Predicate[0]))));
         }
 
         if (parameters.getShowAOTInited() != null) {
-            addWhere(where, "e.class = :typeInstance");
-            addWhere(where, "e.isAOTinited = :isAOTinited");
-            params.put("isAOTinited", parameters.getShowAOTInited());
-            params.putIfAbsent("typeInstance", InstanceObject.class);
+            where.add(cb.equal(e.type(), InstanceObject.class));
+            where.add(cb.equal(cb.treat(e, InstanceObject.class).get("isAOTinited"), parameters.getShowAOTInited()));
         }
 
         if (parameters.getLambdas() != null && !parameters.getLambdas()) {
-            addWhere(where, "NOT (e.class = :classType AND e.name like '%$$Lambda%')");
-            params.putIfAbsent("classType", ClassObject.class);
+            where.add(cb.not(cb.and(
+                    cb.equal(e.type(), ClassObject.class),
+                    cb.like(cb.treat(e, ClassObject.class).get("name"), "%$$Lambda%"))));
         }
 
-        if (parameters.getInnerClasses() != null && !parameters.getInnerClasses())  {
-            addWhere(where, "NOT(e.class = :classType AND e.name like '%$%')");
-            params.putIfAbsent("classType", ClassObject.class);
+        if (parameters.getInnerClasses() != null && !parameters.getInnerClasses()) {
+            where.add(cb.not(cb.and(
+                    cb.equal(e.type(), ClassObject.class),
+                    cb.like(cb.treat(e, ClassObject.class).get("name"), "%$%"))));
         }
 
         if (parameters.getLoaded() != null && parameters.getLoaded() != WhichRun.all) {
-            addWhere(where, "e.loaded = :loaded");
             switch (parameters.getLoaded()) {
-                case training -> params.putIfAbsent("loaded", Element.WhichRun.Training);
-                case production -> params.putIfAbsent("loaded", Element.WhichRun.Production);
-                case none -> params.putIfAbsent("loaded", Element.WhichRun.None);
-                case both -> params.putIfAbsent("loaded", Element.WhichRun.Both);
+                case training -> where.add(cb.equal(e.get("loaded"), Element.WhichRun.Training));
+                case production -> where.add(cb.equal(e.get("loaded"), Element.WhichRun.Production));
+                case none -> where.add(cb.equal(e.get("loaded"), Element.WhichRun.None));
+                case both -> where.add(cb.equal(e.get("loaded"), Element.WhichRun.Both));
             }
         }
 
         if (parameters.getNameLike() != null && !parameters.getNameLike().isBlank()) {
-            addWhere(where, "e.key like regexp :nameLike");
-            params.putIfAbsent("nameLike", parameters.getNameLike());
+            where.add(cb.likeRegexp(e.get("key"), parameters.getNameLike()));
         }
 
         if (parameters.getInstanceOf() != null) {
-            addWhere(where, "e.instanceOf.key = :instanceof");
-            params.putIfAbsent("instanceof", parameters.getInstanceOf());
+            where.add(cb.equal(cb.treat(e, InstanceObject.class).get("instanceOf").get("key"), parameters.getInstanceOf()));
         }
 
         if (parameters.getReferencing() != null) {
-            select = "SELECT e FROM ReferencingElement e JOIN e.references ref WHERE e.playground = :playground";
-            addWhere(where, "ref.key = :referencing ");
-            params.putIfAbsent("referencing", parameters.getReferencing());
+            Join<Element, Element> ref = cb.treat(e, ReferencingElement.class).join("references");
+            where.add(cb.equal(ref.get("key"), parameters.getReferencing()));
         }
 
         if (parameters.getTrained() != null) {
-            // classObject            return this.getKlassTrainingData() != null;
-            //methodObject             return !this.compileTrainingDataIds.isEmpty();
-            //nmethod true
-            if (parameters.getTrained()) {
-                addWhere(where, "(e.class = :nmethodType "
-                        + "OR (e.class = :classType AND e.klassTrainingData IS NOT NULL) "
-                        + "OR (e.class = :methodType AND e.compileTrainingDataIds IS NOT EMPTY))");
-            } else {
-                addWhere(where, "(e.class = :nmethodType "
-                        + "OR (e.class = :classType AND e.klassTrainingData IS NULL) "
-                        + "OR (e.class = :methodType AND e.compileTrainingDataIds IS EMPTY))");
-            }
-            params.putIfAbsent("nmethodType", NMethodObject.class);
-            params.putIfAbsent("methodType", MethodObject.class);
-            params.putIfAbsent("classType", ClassObject.class);
+            // classObject: getKlassTrainingData() != null
+            // methodObject: !compileTrainingDataIds.isEmpty()
+            // nmethod: true
+            boolean trained = parameters.getTrained();
+            Predicate classTrained = trained
+                    ? cb.isNotNull(cb.treat(e, ClassObject.class).get("klassTrainingData"))
+                    : cb.isNull(cb.treat(e, ClassObject.class).get("klassTrainingData"));
+            JpaExpression<Map<Integer, Long>> compileIds = (JpaExpression<Map<Integer, Long>>) cb.treat(e, MethodObject.class).<Map<Integer, Long>>get("compileTrainingDataIds");
+            Predicate methodTrained = trained ? cb.isMapNotEmpty(compileIds) : cb.isMapEmpty(compileIds);
+            where.add(cb.or(
+                    cb.equal(e.type(), NMethodObject.class),
+                    cb.and(cb.equal(e.type(), ClassObject.class), classTrained),
+                    cb.and(cb.equal(e.type(), MethodObject.class), methodTrained)));
         }
 
-        var res = find(select + where, params).list();
+        query.select(e).where(where.toArray(new Predicate[0]));
+        var res = getSession().createQuery(query).getResultList();
         res.sort(Comparator.comparing(Element::getKey).thenComparing(Element::getType));
         return res;
+    }
+
+    private Predicate matchesPackage(HibernateCriteriaBuilder cb, Root<Element> e, String pn) {
+        return cb.or(
+                cb.and(cb.equal(e.type(), ClassObject.class), cb.like(cb.treat(e, ClassObject.class).get("packageName"), pn)),
+                cb.and(cb.equal(e.type(), MethodObject.class), cb.like(cb.treat(e, MethodObject.class).get("name"), pn)),
+                cb.and(cb.equal(e.type(), InstanceObject.class), cb.like(e.get("key"), pn)));
     }
 
     public void addRelationship(Long ref, Long e) {
@@ -353,20 +341,18 @@ public class ElementRepository implements PanacheRepository<Element> {
     }
 
     public @NonNull Map<Integer, Long> getCompiledLevels(Playground playground) {
+        CriteriaBuilder cb = getEntityManager().getCriteriaBuilder();
+        CriteriaQuery<Tuple> query = cb.createTupleQuery();
+        Root<NMethodObject> root = query.from(NMethodObject.class);
+        var levelPath = root.<Integer>get("compilationLevel");
+        query.multiselect(levelPath, cb.count(root))
+                .where(cb.equal(root.get("playground"), playground))
+                .groupBy(levelPath);
+
         var levels = new HashMap<Integer, Long>();
-        var compiled = getEntityManager()
-                .createQuery("SELECT e.compilationLevel as level, COUNT(*) as count "
-                        + " FROM NMethodObject e "
-                        + " WHERE playground = :playground"
-                        + " GROUP BY compilationLevel")
-                .setParameter("playground", playground)
-                .getResultList();
-
-        for (Object element : compiled) {
-            var rows = (Object[]) element;
-            levels.put((Integer) rows[0], (Long) rows[1]);
+        for (Tuple row : getEntityManager().createQuery(query).getResultList()) {
+            levels.put(row.get(0, Integer.class), row.get(1, Long.class));
         }
-
         return levels;
     }
 }

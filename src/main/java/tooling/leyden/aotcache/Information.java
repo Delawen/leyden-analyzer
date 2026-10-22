@@ -197,12 +197,13 @@ public class Information {
 
     public void clear() {
 
-        io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> {
+        io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
             elementRepository().deleteAll();
             configurationRepository().deleteAll();
             statisticRepository().deleteAll();
             playgroundRepository().deleteAll();
             changePlayground("default");
+            flush();
 
             warnings.clear();
             autoWarnings.clear();
