@@ -18,6 +18,7 @@ public abstract class Parser implements Consumer<String> {
     protected final Information information;
     protected final LoadFileCommand loadFile;
     private Playground playground;
+    private int countForCommit = 0;
 
     public Parser(LoadFileCommand loadFile, String playground) {
         this.information = loadFile.getParent().getInformation();
@@ -36,8 +37,13 @@ public abstract class Parser implements Consumer<String> {
     @Override
     public final void accept(String s) {
         if (!s.isBlank()) {
+            countForCommit++;
             try {
-                io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> actualAccept(s));
+                io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() -> actualAccept(s));
+                if (countForCommit > 5000) {
+                    countForCommit = 0;
+                    Information.getMyself().flush();
+                }
             } catch (Exception e) {
                 QuarkusPicocliLineApp.addStatusMessage(new StatusMessage(System.currentTimeMillis(),
                         new AttributedString("ERROR: processing line '" + s + "'. " + e.getMessage(),
@@ -51,6 +57,7 @@ public abstract class Parser implements Consumer<String> {
     abstract String getSource();
 
     public final void postProcessing() {
+        Information.getMyself().flush();
         io.quarkus.narayana.jta.QuarkusTransaction.joiningExisting().run(() ->  actualPostProcessing());
     }
 
