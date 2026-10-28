@@ -320,11 +320,13 @@ public class ElementRepository implements PanacheRepository<Element> {
                 .executeUpdate();
 
 
+        // Two separate deletes so each one can use its own index (an OR forces a full scan)
         getEntityManager()
-                .createNativeQuery(
-                        "DELETE FROM element_references "
-                                + "WHERE target_id = :placeholder_id" +
-                                " OR source_id = :placeholder_id")
+                .createNativeQuery("DELETE FROM element_references WHERE target_id = :placeholder_id")
+                .setParameter("placeholder_id", placeholder.getDbId())
+                .executeUpdate();
+        getEntityManager()
+                .createNativeQuery("DELETE FROM element_references WHERE source_id = :placeholder_id")
                 .setParameter("placeholder_id", placeholder.getDbId())
                 .executeUpdate();
         deleteById(placeholder.getDbId());
