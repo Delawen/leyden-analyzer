@@ -16,8 +16,8 @@ jobs:
     steps:
       - name: Who am I
         run: |
-          echo {{ github.event.pull_request.user }}
-          echo {{ github.event.pull_request.user.id }}
+          echo ${{ github.event.pull_request.user }}
+          echo ${{ github.event.pull_request.user.id }}
       - uses: peternied/check-pull-request-description-checklist@ec79db61b595a5f3bea6df7963f818c013845b89
         with:
           checklist-items: |
