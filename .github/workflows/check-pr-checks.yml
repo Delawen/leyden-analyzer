@@ -9,7 +9,7 @@ on:
 jobs:
   publish:
     name: "PR Mandatory Checks"
-    if:  github.event.pull_request.user.id != 49699333
+    if:  github.event.pull_request.user.id != 49699333 && github.event.pull_request.user.id == 41898282
     permissions:
       pull-requests: write
     runs-on: ubuntu-latest
@@ -21,7 +21,7 @@ jobs:
                   I have added tests that prove my fix is effective or that my feature works
   whoami:
     name: "PR Mandatory Checks"
-    if:  github.event.pull_request.user.id == 49699333
+    if:  github.event.pull_request.user.id == 49699333 || github.event.pull_request.user.id == 41898282
     permissions:
       pull-requests: read
     runs-on: ubuntu-latest
