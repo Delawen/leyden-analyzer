@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
     - uses: actions/checkout@v7
@@ -23,6 +24,9 @@ jobs:
         settings-path: ${{ github.workspace }}
         cache: maven
 
+    - name: Set up version RELEASE
+      run:  mvn versions:set -DnewVersion=${{ github.ref_name }}
+
     - name: Build
       run:  ./mvnw verify -Dquarkus.package.jar.type=uber-jar
 
@@ -34,3 +38,30 @@ jobs:
         prerelease: false
         generate_release_notes: true
         draft: true
+
+    - name: Set up version SNAPSHOT
+      run:  mvn versions:set -DnewVersion=${{ github.ref_name }}-SNAPSHOT
+
+    - name: Creates commit with new version SNAPSHOT
+      uses: EndBug/add-and-commit@cc9c08ba6c8df3b93a8f2db63e89b98368ae2ae8
+      with:
+          add: 'pom.xml'
+          author_name: "Github Action"
+          author_email: automated@delawen.com
+          commit: --signoff
+          committer_name: María Arias de Reyna Domínguez
+          message: 'auto: Update version to ${{ github.ref_name }}-SNAPSHOT'
+          new_branch: update-version-to-${{ github.ref_name }}-SNAPSHOT
+          push_attempts: 3
+
+
+    - name: Open pull request for version SNAPSHOT
+      run: |
+        gh pr create \
+          --title "auto: Update to version ${{ github.ref_name }}-SNAPSHOT" \
+          --body "This PR was automatically created by the release job." \
+          --base main \
+          --head update-version-to-${{ github.ref_name }}-SNAPSHOT
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
