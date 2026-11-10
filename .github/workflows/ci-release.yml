@@ -40,10 +40,12 @@ jobs:
         draft: true
 
     - name: Set up version SNAPSHOT
+      if: !endsWith(github.ref_name, 'dev')
       run:  mvn versions:set -DnewVersion=${{ github.ref_name }}-SNAPSHOT
 
     - name: Creates commit with new version SNAPSHOT
       uses: EndBug/add-and-commit@cc9c08ba6c8df3b93a8f2db63e89b98368ae2ae8
+      if: !endsWith(github.ref_name, 'dev')
       with:
           add: 'pom.xml'
           author_name: "Github Action"
@@ -56,6 +58,7 @@ jobs:
 
 
     - name: Open pull request for version SNAPSHOT
+    - if: !endsWith(github.ref_name, 'dev')
       run: |
         gh pr create \
           --title "auto: Update to version ${{ github.ref_name }}-SNAPSHOT" \
